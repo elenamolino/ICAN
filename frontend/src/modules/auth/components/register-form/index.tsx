@@ -74,7 +74,7 @@ const RegisterForm: React.FC = () => {
           Create your account
         </h1>
         <p className="mt-2 text-sm text-tp-steel">
-          Get started with SPHERE in just a few steps
+          Get started with ICAN in just a few steps
         </p>
       </motion.div>
 

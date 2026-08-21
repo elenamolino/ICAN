@@ -15,13 +15,13 @@ export default function FundersSection({ funders }: { funders: Funder[] }) {
           <article className="rounded-[calc(2rem-0.375rem)] border border-black/10 bg-white p-8 shadow-[inset_0_1px_1px_rgba(255,255,255,0.75)] md:p-10">
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#667085]">Founded by public entities</p>
             <h3 className="mt-4 max-w-3xl text-3xl font-medium leading-tight text-[#111827] md:text-5xl">
-              Public institutions and grants powering SPHERE from day one.
+              Public institutions and grants powering ICAN from day one.
             </h3>
             <p className="mt-6 max-w-3xl text-sm leading-relaxed text-[#475467] md:text-base">
-              SPHERE is a collaborative effort backed by public entities, dedicated to advancing research and innovation in SaaS pricing. Our mission is to democratize access to cutting-edge technology, empowering researchers worldwide.
+              ICAN is a collaborative effort backed by public entities, dedicated to advancing research and innovation in SaaS contract analysis. Our mission is to democratize access to cutting-edge technology, empowering researchers worldwide.
             </p>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[#475467] md:text-base">
-              Discover the public entities, projects, and grants that have made SPHERE possible.
+              Discover the public entities, projects, and grants that have made ICAN possible.
             </p>
 
             <div className="mt-10 grid grid-cols-1 items-stretch gap-5 md:grid-cols-3">

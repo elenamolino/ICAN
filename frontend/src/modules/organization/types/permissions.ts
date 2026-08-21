@@ -1,4 +1,4 @@
-export type EntityType = 'pricing' | 'collection';
+export type EntityType = 'contract' | 'contractCollection';
 export type PermissionType = 'GET' | 'PUT' | 'DELETE' | 'CREATE';
 
 export interface EntityPermissions {

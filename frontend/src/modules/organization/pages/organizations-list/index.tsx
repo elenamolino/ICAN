@@ -5,7 +5,7 @@ import Iconify from '../../../core/components/iconify';
 import OrgAvatar from '../../../core/components/org-avatar';
 import { useOrganization } from '../../hooks/useOrganization';
 import { Organization, OrgRole } from '../../api/organizationsApi';
-import Pagination from '../../../pricing/components/pagination';
+import Pagination from '../../../core/components/pagination';
 import OrgListSkeleton from '../../../core/components/skeletons/org-list-skeleton';
 import {
   staggerContainer,

@@ -12,7 +12,7 @@ const kindIcons: Record<string, string> = {
   OrganizationInvitation: 'mdi:account-plus',
   System: 'mdi:information',
   CollectionShared: 'mdi:folder-shared',
-  PricingUpdated: 'mdi:file-replace',
+  ContractUpdated: 'mdi:file-replace',
 };
 
 function timeAgo(dateString: string): string {

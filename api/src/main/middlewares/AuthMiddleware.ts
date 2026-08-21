@@ -289,16 +289,16 @@ function _intersectRoleWithScope(
 }
 
 /**
- * Determines if a route involves a pricing or collection entity that requires
+ * Determines if a route involves a contract or contractCollection entity that requires
  * entity-level permission checking.
  */
 function _resolveEntityTypeFromPath(apiPath: string): EntityType | null {
   const segments = apiPath.split('/').filter(Boolean);
-  if (segments[0] === 'pricings' && segments.length >= 2) {
-    return 'pricing';
+  if (segments[0] === 'contracts' && segments.length >= 2) {
+    return 'contract';
   }
-  if (segments[0] === 'collections' && segments.length >= 2) {
-    return 'collection';
+  if (segments[0] === 'contractCollections' && segments.length >= 2) {
+    return 'contractCollection';
   }
   return null;
 }
@@ -314,7 +314,7 @@ function _mapMethodToPermission(method: HttpMethod, isGet: boolean): PermissionT
 }
 
 /**
- * Checks entity-level permissions for pricing/collection operations.
+ * Checks entity-level permissions for contract/contractCollection operations.
  * Returns an error message if the request should be denied, null if allowed.
  */
 async function checkEntityPermissions(
@@ -344,12 +344,12 @@ async function checkEntityPermissions(
 
   // For GET operations, only check permissions for private entities
   if (permissionType === 'GET') {
-    const entityRepo = entityType === 'pricing'
-      ? container.resolve('pricingRepository')
-      : container.resolve('pricingCollectionRepository');
+    const entityRepo = entityType === 'contract'
+      ? container.resolve('contractRepository')
+      : container.resolve('contractCollectionRepository');
 
     let entity;
-    if (entityType === 'pricing') {
+    if (entityType === 'contract') {
       entity = await entityRepo.findBySlugAndOrganization(entitySlug, organizationId);
     } else {
       entity = await entityRepo.findByOrganizationAndSlug(organizationId, entitySlug);

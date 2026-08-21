@@ -1286,7 +1286,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
         .set('Authorization', `Bearer ${user.token}`)
         .send({
           OrganizationInvitation: { email: true, inbox: false },
-          PricingUpdated: { email: false, inbox: true },
+          ContractUpdated: { email: false, inbox: true },
         });
 
       expect(response.status).toBe(200);
@@ -1296,7 +1296,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
     it('Return 401 without authorization header.', async () => {
       const response = await request(app)
         .put(`${BASE_PATH}/users/me/settings/notifications`)
-        .send({ pricingCreated: { email: true, inbox: true } });
+        .send({ contractCreated: { email: true, inbox: true } });
 
       expect(response.status).toBe(401);
     });
@@ -1389,7 +1389,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
     });
   });
 
-  describe('GET /api/v1/users/me/collections - organizationIds filtering', () => {
+  describe('GET /api/v1/users/me/contractCollections - organizationIds filtering', () => {
     it('Return 200 and collections from all user organizations when no organizationIds param is provided.', async () => {
       const { user, organizationId: org1 } = await createAndLoginUser('USER');
       const { organizationId: org2 } = await createTestUser('USER');
@@ -1400,7 +1400,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       const col2 = await createTestCollection({ _organizationId: org2, name: `Col2_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections`)
+        .get(`${BASE_PATH}/users/me/contractCollections`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1420,7 +1420,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: org2, name: `Org2Col_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org2}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org2}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1441,7 +1441,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: org3, name: `O3_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org1},${org2}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org1},${org2}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1458,7 +1458,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: foreignOrg, name: `Foreign_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${foreignOrg}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${foreignOrg}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1484,7 +1484,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org}`)
         .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(200);
@@ -1509,7 +1509,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
         private: false,
       });
 
-      await createEntityScopedPermission(member.id, org, privateCol.slug, 'collection', {
+      await createEntityScopedPermission(member.id, org, privateCol.slug, 'contractCollection', {
         GET: true,
         PUT: false,
         DELETE: false,
@@ -1517,7 +1517,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org}`)
         .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(200);
@@ -1541,7 +1541,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1569,7 +1569,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org}`)
         .set('Authorization', `Bearer ${admin.token}`);
 
       expect(response.status).toBe(200);
@@ -1588,7 +1588,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: memberOrg, name: `MemberPriv_${randomSuffix()}`, private: true });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections`)
+        .get(`${BASE_PATH}/users/me/contractCollections`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1608,7 +1608,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: otherOrg, name: `Other_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${otherOrg}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${otherOrg}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1626,7 +1626,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: org2, name: `C3_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org1}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org1}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1648,7 +1648,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: org2, name: `UniqueName_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org1}&name=${encodeURIComponent(target.name)}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org1}&name=${encodeURIComponent(target.name)}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1664,7 +1664,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: org2, name: `Admin2_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org1}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org1}`)
         .set('Authorization', `Bearer ${adminUser.token}`);
 
       expect(response.status).toBe(200);
@@ -1680,7 +1680,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: org2, name: `AdminAll2_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections`)
+        .get(`${BASE_PATH}/users/me/contractCollections`)
         .set('Authorization', `Bearer ${adminUser.token}`);
 
       expect(response.status).toBe(200);
@@ -1706,7 +1706,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
         private: false,
       });
 
-      await createEntityScopedPermission(member.id, orgA, privateColA.id, 'collection', {
+      await createEntityScopedPermission(member.id, orgA, privateColA.id, 'contractCollection', {
         GET: true,
         PUT: false,
         DELETE: false,
@@ -1714,7 +1714,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${orgB}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${orgB}`)
         .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(200);
@@ -1730,7 +1730,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       }
 
       const page1 = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org}&limit=2&offset=0`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org}&limit=2&offset=0`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(page1.status).toBe(200);
@@ -1738,7 +1738,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       expect(page1.body.total).toBe(5);
 
       const page2 = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${org}&limit=2&offset=2`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${org}&limit=2&offset=2`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(page2.status).toBe(200);
@@ -1757,7 +1757,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: nonMemberOrg, name: `NonMember_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${nonMemberOrg}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${nonMemberOrg}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
@@ -1772,7 +1772,7 @@ it('Deletes organization when it becomes empty after user deletion (non-personal
       await createTestCollection({ _organizationId: nonMemberOrg, name: `Invalid_${randomSuffix()}` });
 
       const response = await request(app)
-        .get(`${BASE_PATH}/users/me/collections?organizationIds=${memberOrg},${nonMemberOrg}`)
+        .get(`${BASE_PATH}/users/me/contractCollections?organizationIds=${memberOrg},${nonMemberOrg}`)
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);

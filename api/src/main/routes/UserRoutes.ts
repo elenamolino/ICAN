@@ -5,13 +5,13 @@ import { addFilenameToBody, handleFileUpload } from '../middlewares/FileHandlerM
 import { handleValidation } from '../middlewares/ValidationHandlingMiddleware';
 import * as UserValidation from '../controllers/validation/UserValidation';
 import { checkEntityExists } from '../middlewares/EntityMiddleware';
-import PricingCollectionController from '../controllers/PricingCollectionController';
-import PricingController from '../controllers/PricingController';
+import ContractCollectionController from '../controllers/ContractCollectionController';
+import ContractController from '../controllers/ContractController';
 
 const loadFileRoutes = function (app: express.Application) {
   const userController = new UserController();
-  const pricingController = new PricingController();
-  const collectionController = new PricingCollectionController();
+  const contractController = new ContractController();
+  const collectionController = new ContractCollectionController();
   const userService = container.resolve('userService');
   const upload = handleFileUpload(['avatar'], (process.env.SERVER_STATICS_FOLDER || 'public/') + (process.env.AVATARS_FOLDER || 'static/avatars/users'));
   const baseUrl = (process.env.BASE_URL_PATH ?? "") + '/api/v1';
@@ -94,11 +94,11 @@ const loadFileRoutes = function (app: express.Application) {
     .delete(checkEntityExists(userService, 'username'), userController.destroy);
 
   app
-    .route(baseUrl + '/users/:username/pricings')
-    .get(pricingController.indexByAuthenticatedUser);
-  
+    .route(baseUrl + '/users/:username/contracts')
+    .get(contractController.indexByAuthenticatedUser);
+
   app
-    .route(baseUrl + '/users/:username/collections')
+    .route(baseUrl + '/users/:username/contractCollections')
     .get(collectionController.indexByAuthenticatedUser);
   
   app.route(baseUrl + '/users/:username/refresh-token').put(userController.updateToken);

@@ -11,8 +11,8 @@ class PermissionController {
     this.getOrgPermissions = this.getOrgPermissions.bind(this);
     this.setPermission = this.setPermission.bind(this);
     this.removePermission = this.removePermission.bind(this);
-    this.getPricingPermissions = this.getPricingPermissions.bind(this);
-    this.getCollectionPermissions = this.getCollectionPermissions.bind(this);
+    this.getContractPermissions = this.getContractPermissions.bind(this);
+    this.getContractCollectionPermissions = this.getContractCollectionPermissions.bind(this);
   }
 
   async getOrgPermissions(req: any, res: any) {
@@ -67,12 +67,12 @@ class PermissionController {
     }
   }
 
-  async getPricingPermissions(req: any, res: any) {
+  async getContractPermissions(req: any, res: any) {
     try {
-      const result = await this.permissionService.getPricingPermissions(
+      const result = await this.permissionService.getContractPermissions(
         req.user.id,
         req.params.organizationId,
-        req.params.pricingSlug,
+        req.params.contractSlug,
         req.user.orgRole
       );
       res.json(result);
@@ -82,9 +82,9 @@ class PermissionController {
     }
   }
 
-  async getCollectionPermissions(req: any, res: any) {
+  async getContractCollectionPermissions(req: any, res: any) {
     try {
-      const result = await this.permissionService.getCollectionPermissions(
+      const result = await this.permissionService.getContractCollectionPermissions(
         req.user.id,
         req.params.organizationId,
         req.params.collectionSlug,

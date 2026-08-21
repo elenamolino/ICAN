@@ -1,96 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { useOrganization } from '../../../organization/hooks/useOrganization';
-import { usePricingsApi } from '../../../pricing/api/pricingsApi';
-import { usePricingCollectionsApi } from '../../../profile/api/pricingCollectionsApi';
 import { useRouter } from '../../../core/hooks/useRouter';
 import { useRecentItems } from '../../../core/hooks/useRecentItems';
-import PricingCard from '../../../pricing/components/pricing-card';
-import CollectionCard from '../../../pricing/components/collection-card';
 import OrganizationCard from '../../../organization/components/organization-card';
 import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
-import DashboardSkeleton from '../../../core/components/skeletons/dashboard-skeleton';
-
-interface PricingEntry {
-  name: string;
-  slug: string;
-  version: string;
-  createdAt: string;
-  currency: string;
-  organization: { id: string; name: string; displayName: string; avatar: string };
-  collection: { id: string; name: string; slug: string } | null;
-  analytics: {
-    configurationSpaceSize: number;
-    minSubscriptionPrice: number;
-    maxSubscriptionPrice: number;
-  };
-}
-
-interface CollectionEntry {
-  id: string;
-  name: string;
-  slug: string;
-  organization: { id: string; name: string; displayName: string; avatar: string };
-  numberOfPricings: number;
-}
 
 const RECENT_LIMIT = 3;
 
 export default function DashboardPage() {
   const { authUser } = useAuth();
   const { organizations } = useOrganization();
-  const { getPermissionBasedUserPricings } = usePricingsApi();
-  const { getPermissionBasedUserCollections } = usePricingCollectionsApi();
   const router = useRouter();
-  const { recentPricings, recentCollections, recentOrganizations } = useRecentItems();
-
-  const [accessiblePricings, setAccessiblePricings] = useState<PricingEntry[]>([]);
-  const [totalAccessiblePricings, setTotalAccessiblePricings] = useState<number>(0);
-  const [accessibleCollections, setAccessibleCollections] = useState<CollectionEntry[]>([]);
-  const [totalAccessibleCollections, setTotalAccessibleCollections] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!authUser.isAuthenticated) return;
-
-    Promise.all([
-      getPermissionBasedUserPricings().catch(() => ({ pricings: [] })),
-      getPermissionBasedUserCollections().catch(() => ({ collections: [] })),
-    ]).then(([pricingsData, collectionsData]) => {
-      setAccessiblePricings(pricingsData.pricings ?? []);
-      setTotalAccessiblePricings(pricingsData.total ?? 0);
-      setAccessibleCollections(collectionsData.collections ?? []);
-      setTotalAccessibleCollections(collectionsData.total ?? 0);
-      setIsLoading(false);
-    });
-  }, [authUser.isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const recentPricingsData = useMemo(() => {
-    const accessible = new Map(
-      accessiblePricings.map(p => [`${p.organization.id}/${p.slug}`, p])
-    );
-    return recentPricings
-      .filter(item => accessible.has(item.id))
-      .slice(0, RECENT_LIMIT)
-      .map(item => {
-        const pricing = accessible.get(item.id)!;
-        return { ...pricing, visitedAt: item.visitedAt };
-      });
-  }, [recentPricings, accessiblePricings]);
-
-  const recentCollectionsData = useMemo(() => {
-    const accessible = new Map(
-      accessibleCollections.map(c => [`${c.organization.id}/${c.slug || c.name}`, c])
-    );
-    return recentCollections
-      .filter(item => accessible.has(item.id))
-      .slice(0, RECENT_LIMIT)
-      .map(item => {
-        const collection = accessible.get(item.id)!;
-        return { ...collection, visitedAt: item.visitedAt };
-      });
-  }, [recentCollections, accessibleCollections]);
+  const { recentOrganizations } = useRecentItems();
 
   const recentOrganizationsData = useMemo(() => {
     const orgMap = new Map<string, { id: string; name: string; displayName: string; avatar: string | null; avatarBgColor?: string; avatarFgColor?: string; isPersonal: boolean }>();
@@ -110,10 +33,6 @@ export default function DashboardPage() {
       });
   }, [recentOrganizations, organizations]);
 
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
-
   const firstName = authUser.user?.firstName ?? 'there';
 
   const stats: { label: string; value: number; icon: React.ReactNode; color: string }[] = [
@@ -127,66 +46,36 @@ export default function DashboardPage() {
       ),
       color: 'bg-tp-primary/10 text-tp-primary',
     },
-    {
-      label: 'Pricings',
-      value: totalAccessiblePricings,
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-        </svg>
-      ),
-      color: 'bg-blue-50 text-blue-600',
-    },
-    {
-      label: 'Collections',
-      value: totalAccessibleCollections,
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-        </svg>
-      ),
-      color: 'bg-purple-50 text-purple-600',
-    },
   ];
 
   const quickActions = [
     {
-      label: 'Browse Pricings',
-      description: 'Explore all public pricings in the SPHERE',
-      to: '/pricings',
+      label: 'Organizations',
+      description: 'Manage the organizations you belong to',
+      to: '/me/orgs',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18" />
         </svg>
       ),
     },
     {
-      label: 'Browse Collections',
-      description: 'Explore all public collections in the SPHERE',
-      to: '/collections',
+      label: 'API Keys',
+      description: 'Manage your personal API keys',
+      to: '/me/api-keys',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
         </svg>
       ),
     },
     {
-      label: 'Pricing Editor',
-      description: 'Create and edit pricings with live preview',
-      to: '/editor',
+      label: 'Settings',
+      description: 'Update your profile and preferences',
+      to: '/me/settings',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-        </svg>
-      ),
-    },
-    {
-      label: 'HARVEY Assistant',
-      description: 'Ask AI about pricing strategies and analysis',
-      to: '/harvey',
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
         </svg>
       ),
     },
@@ -205,7 +94,7 @@ export default function DashboardPage() {
           Welcome back, {firstName}
         </h1>
         <p className="mt-1 text-sm text-tp-steel">
-          Here's an overview of your SPHERE workspace.
+          Here's an overview of your workspace.
         </p>
       </motion.div>
 
@@ -269,80 +158,6 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {recentOrganizationsData.map(org => (
                   <OrganizationCard key={org.id} org={org} />
-                ))}
-              </div>
-            )}
-          </motion.section>
-
-          {/* Recent Pricings */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...transitionDefault, delay: 0.2 }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-tp-ink">Recent Pricings</h2>
-              <button
-                type="button"
-                onClick={() => router.push('/me/pricings')}
-                className="cursor-pointer text-xs text-tp-primary hover:underline"
-              >
-                View all
-              </button>
-            </div>
-
-            {recentPricingsData.length === 0 ? (
-              <div className="rounded-xl border border-tp-hairline bg-tp-canvas p-6 text-center">
-                <p className="text-sm text-tp-steel">No recent activity yet</p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/me/pricings')}
-                  className="mt-2 cursor-pointer text-sm font-medium text-tp-primary hover:underline"
-                >
-                  Browse pricings
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {recentPricingsData.map(pricing => (
-                  <PricingCard key={`${pricing.organization.id}-${pricing.name}`} data={pricing} />
-                ))}
-              </div>
-            )}
-          </motion.section>
-
-          {/* Recent Collections */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...transitionDefault, delay: 0.3 }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-tp-ink">Recent Collections</h2>
-              <button
-                type="button"
-                onClick={() => router.push('/me/collections')}
-                className="cursor-pointer text-xs text-tp-primary hover:underline"
-              >
-                View all
-              </button>
-            </div>
-
-            {recentCollectionsData.length === 0 ? (
-              <div className="rounded-xl border border-tp-hairline bg-tp-canvas p-6 text-center">
-                <p className="text-sm text-tp-steel">No recent activity yet</p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/me/collections')}
-                  className="mt-2 cursor-pointer text-sm font-medium text-tp-primary hover:underline"
-                >
-                  Browse collections
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {recentCollectionsData.map(collection => (
-                  <CollectionCard key={`${collection.organization.id}-${collection.slug}`} collection={collection} />
                 ))}
               </div>
             )}

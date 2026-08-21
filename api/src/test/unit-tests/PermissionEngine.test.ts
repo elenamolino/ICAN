@@ -14,8 +14,7 @@ function baseCtx(overrides: Partial<PermissionContext> = {}): PermissionContext 
   return {
     userId: 'user1',
     organizationId: 'org1',
-    entityType: 'pricing',
-    entityId: 'pricing1',
+    entityType: 'contract',
     action: 'GET',
     ...overrides,
   };
@@ -140,26 +139,26 @@ describe('PermissionEngine', () => {
     });
   });
 
-  describe('Collection → Pricing inheritance', () => {
-    it('allows GET on pricing when collection has GET permission', () => {
+  describe('Collection → Contract inheritance', () => {
+    it('allows GET on contract when collection has GET permission', () => {
       const result = engine.evaluate(baseCtx({
         action: 'GET',
-        entityType: 'pricing',
-        entitySlug: 'pricing1',
+        entityType: 'contract',
+        entitySlug: 'contract1',
         isPrivate: true,
         userOrgRole: 'MEMBER',
-        entityPermissions: NO_PERMS, // No direct permission on pricing
+        entityPermissions: NO_PERMS, // No direct permission on contract
         collectionSlug: 'col1',
         collectionPermissions: GET_ONLY, // But collection has GET
       }));
       expect(result.allowed).toBe(true);
     });
 
-    it('denies GET on pricing when collection has no GET permission', () => {
+    it('denies GET on contract when collection has no GET permission', () => {
       const result = engine.evaluate(baseCtx({
         action: 'GET',
-        entityType: 'pricing',
-        entitySlug: 'pricing1',
+        entityType: 'contract',
+        entitySlug: 'contract1',
         isPrivate: true,
         userOrgRole: 'MEMBER',
         entityPermissions: NO_PERMS,
@@ -169,15 +168,15 @@ describe('PermissionEngine', () => {
       expect(result.allowed).toBe(false);
     });
 
-    it('allows GET on pricing with direct permission even without collection', () => {
+    it('allows GET on contract with direct permission even without collection', () => {
       const result = engine.evaluate(baseCtx({
         action: 'GET',
-        entityType: 'pricing',
-        entitySlug: 'pricing1',
+        entityType: 'contract',
+        entitySlug: 'contract1',
         isPrivate: true,
         userOrgRole: 'MEMBER',
         entityPermissions: GET_ONLY,
-        collectionId: undefined,
+        collectionSlug: undefined,
         collectionPermissions: undefined,
       }));
       expect(result.allowed).toBe(true);
@@ -261,26 +260,26 @@ describe('PermissionEngine', () => {
     it('evaluates multiple contexts correctly', () => {
       const contexts = [
         {
-          key: 'public-pricing',
+          key: 'public-contract',
           context: baseCtx({
-            entityId: 'pricing1',
+            entitySlug: 'contract1',
             isPrivate: false,
             userOrgRole: 'MEMBER',
           }),
         },
         {
-          key: 'private-pricing-with-perm',
+          key: 'private-contract-with-perm',
           context: baseCtx({
-            entityId: 'pricing2',
+            entitySlug: 'contract2',
             isPrivate: true,
             userOrgRole: 'MEMBER',
             entityPermissions: GET_ONLY,
           }),
         },
         {
-          key: 'private-pricing-no-perm',
+          key: 'private-contract-no-perm',
           context: baseCtx({
-            entityId: 'pricing3',
+            entitySlug: 'contract3',
             isPrivate: true,
             userOrgRole: 'MEMBER',
             entityPermissions: NO_PERMS,
@@ -290,9 +289,9 @@ describe('PermissionEngine', () => {
 
       const results = engine.evaluateBatch(contexts);
 
-      expect(results.get('public-pricing')?.allowed).toBe(true);
-      expect(results.get('private-pricing-with-perm')?.allowed).toBe(true);
-      expect(results.get('private-pricing-no-perm')?.allowed).toBe(false);
+      expect(results.get('public-contract')?.allowed).toBe(true);
+      expect(results.get('private-contract-with-perm')?.allowed).toBe(true);
+      expect(results.get('private-contract-no-perm')?.allowed).toBe(false);
     });
 
     it('enriches context with batch data', () => {
@@ -303,16 +302,16 @@ describe('PermissionEngine', () => {
         isGlobalAdmin: false,
         orgPermissions: new Map(),
         entityPermissions: new Map([
-          ['pricing:pricing1', GET_ONLY],
+          ['contract:contract1', GET_ONLY],
         ]),
         collectionPermissions: new Map(),
       };
 
       const contexts = [
         {
-          key: 'pricing1',
+          key: 'contract1',
           context: baseCtx({
-            entitySlug: 'pricing1',
+            entitySlug: 'contract1',
             isPrivate: true,
             userOrgRole: undefined,
             isGlobalAdmin: undefined,
@@ -322,7 +321,7 @@ describe('PermissionEngine', () => {
 
       const results = engine.evaluateBatch(contexts, { batchContext });
 
-      expect(results.get('pricing1')?.allowed).toBe(true);
+      expect(results.get('contract1')?.allowed).toBe(true);
     });
   });
 });

@@ -17,8 +17,8 @@ import { allPolicies } from './policies';
  *   const result = engine.evaluate({
  *     userId: 'user1',
  *     organizationId: 'org1',
- *     entityType: 'pricing',
- *     entitySlug: 'pricing1',
+ *     entityType: 'contract',
+ *     entitySlug: 'contract1',
  *     action: 'GET',
  *     isPrivate: true,
  *     userOrgRole: 'MEMBER',
@@ -94,7 +94,7 @@ export class PermissionEngine {
       enriched.entityPermissions = batchContext.entityPermissions.get(key);
     }
 
-    // Apply collection permissions for pricing inheritance
+    // Apply collection permissions for contract inheritance
     if (!enriched.collectionPermissions && enriched.collectionSlug) {
       enriched.collectionPermissions = batchContext.collectionPermissions.get(enriched.collectionSlug);
     }

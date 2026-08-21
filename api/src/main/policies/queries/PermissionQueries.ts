@@ -123,7 +123,7 @@ export class PermissionQueries {
 
   /**
    * Extract collection permissions from entity permissions map.
-   * Used for pricing inheritance (pricing inside collection).
+   * Used for contract inheritance (contract inside collection).
    */
   private extractCollectionPermissions(
     entityPermissions: Map<string, EntityPermissions>
@@ -131,8 +131,8 @@ export class PermissionQueries {
     const collectionPermissions = new Map<string, EntityPermissions>();
 
     for (const [key, perms] of entityPermissions) {
-      if (key.startsWith('collection:')) {
-        collectionPermissions.set(key.replace('collection:', ''), perms);
+      if (key.startsWith('contractCollection:')) {
+        collectionPermissions.set(key.replace('contractCollection:', ''), perms);
       }
     }
 
@@ -148,22 +148,22 @@ export class PermissionQueries {
   ): Promise<Map<string, EntityPermissions>> {
     const permissions = new Map<string, EntityPermissions>();
 
-    const orgPricingPerm = await this.entityPermissionRepository.findByUserAndOrgScopedType(
+    const orgContractPerm = await this.entityPermissionRepository.findByUserAndOrgScopedType(
       userId,
       organizationId,
-      'pricing'
+      'contract'
     );
-    if (orgPricingPerm) {
-      permissions.set('pricing', orgPricingPerm.permissions);
+    if (orgContractPerm) {
+      permissions.set('contract', orgContractPerm.permissions);
     }
 
     const orgCollectionPerm = await this.entityPermissionRepository.findByUserAndOrgScopedType(
       userId,
       organizationId,
-      'collection'
+      'contractCollection'
     );
     if (orgCollectionPerm) {
-      permissions.set('collection', orgCollectionPerm.permissions);
+      permissions.set('contractCollection', orgCollectionPerm.permissions);
     }
 
     return permissions;

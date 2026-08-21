@@ -19,7 +19,7 @@ const entityPermissionSchema = new Schema(
     entityType: {
       type: String,
       required: true,
-      enum: ['pricing', 'collection'],
+      enum: ['contract', 'contractCollection'],
     },
     entitySlug: {
       type: String,

@@ -1,7 +1,6 @@
 import { OrgRole } from '../../api/organizationsApi';
 import { Tab } from './types';
 import { IconType } from 'react-icons';
-import { FaFileInvoiceDollar } from 'react-icons/fa';
 
 export const ROLE_LABELS: Record<OrgRole, string> = {
   OWNER: 'Owner',
@@ -19,8 +18,6 @@ export const TAB_META: Record<Tab, { label: string; icon: string; iconComponent?
   overview: { label: 'Overview', icon: 'mdi:view-dashboard-outline' },
   members: { label: 'Members', icon: 'mdi:account-group-outline' },
   invitations: { label: 'Invitations', icon: 'mdi:link-variant' },
-  pricings: { label: 'Pricings', icon: 'mdi:tag-outline', iconComponent: FaFileInvoiceDollar },
-  collections: { label: 'Collections', icon: 'mdi:folder-outline' },
   children: { label: 'Hierarchy', icon: 'mdi:graph-outline' },
   permissions: { label: 'Permissions', icon: 'mdi:shield-lock-outline' },
 };

@@ -65,7 +65,7 @@ const UserSettingsSchema = new Schema(
         OrganizationInvitation: { email: true, inbox: true },
         System: { email: true, inbox: true },
         CollectionShared: { email: true, inbox: true },
-        PricingUpdated: { email: true, inbox: true },
+        ContractUpdated: { email: true, inbox: true },
       }),
     },
   },

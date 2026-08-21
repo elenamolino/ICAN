@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import RepositoryBase from '../RepositoryBase';
 import EntityPermissionMongoose from './models/EntityPermissionMongoose';
-import PricingMongoose from './models/PricingMongoose';
-import PricingCollectionMongoose from './models/PricingCollectionMongoose';
+import ContractMongoose from './models/ContractMongoose';
+import ContractCollectionMongoose from './models/ContractCollectionMongoose';
 import { EntityType, EntityPermissions, LeanEntityPermission } from '../../types/models/EntityPermission';
 
 class EntityPermissionRepository extends RepositoryBase {
@@ -23,18 +23,18 @@ class EntityPermissionRepository extends RepositoryBase {
       { $match: match },
       {
         $lookup: {
-          from: 'pricings',
+          from: 'contracts',
           let: { slug: '$entitySlug', orgId: '$_organizationId' },
           pipeline: [
             { $match: { $expr: { $and: [{ $eq: ['$slug', '$$slug'] }, { $eq: ['$_organizationId', '$$orgId'] }] } } },
             { $project: { name: 1, slug: 1 } },
           ],
-          as: 'pricingEntity',
+          as: 'contractEntity',
         },
       },
       {
         $lookup: {
-          from: 'pricingCollections',
+          from: 'contractCollections',
           let: { slug: '$entitySlug', orgId: '$_organizationId' },
           pipeline: [
             { $match: { $expr: { $and: [{ $eq: ['$slug', '$$slug'] }, { $eq: ['$_organizationId', '$$orgId'] }] } } },
@@ -51,8 +51,8 @@ class EntityPermissionRepository extends RepositoryBase {
           grantedBy: { $cond: [{ $ifNull: ['$grantedBy', null] }, { $toString: '$grantedBy' }, null] },
           entityName: {
             $cond: [
-              { $eq: ['$entityType', 'pricing'] },
-              { $arrayElemAt: ['$pricingEntity.name', 0] },
+              { $eq: ['$entityType', 'contract'] },
+              { $arrayElemAt: ['$contractEntity.name', 0] },
               { $arrayElemAt: ['$collectionEntity.name', 0] },
             ],
           },
@@ -158,18 +158,18 @@ class EntityPermissionRepository extends RepositoryBase {
       },
       {
         $lookup: {
-          from: 'pricings',
+          from: 'contracts',
           let: { slug: '$entitySlug', orgId: '$_organizationId' },
           pipeline: [
             { $match: { $expr: { $and: [{ $eq: ['$slug', '$$slug'] }, { $eq: ['$_organizationId', '$$orgId'] }] } } },
             { $project: { name: 1 } },
           ],
-          as: 'pricingEntity',
+          as: 'contractEntity',
         },
       },
       {
         $lookup: {
-          from: 'pricingCollections',
+          from: 'contractCollections',
           let: { slug: '$entitySlug', orgId: '$_organizationId' },
           pipeline: [
             { $match: { $expr: { $and: [{ $eq: ['$slug', '$$slug'] }, { $eq: ['$_organizationId', '$$orgId'] }] } } },
@@ -187,8 +187,8 @@ class EntityPermissionRepository extends RepositoryBase {
           userName: { $arrayElemAt: ['$user.username', 0] },
           entityName: {
             $cond: [
-              { $eq: ['$entityType', 'pricing'] },
-              { $arrayElemAt: ['$pricingEntity.name', 0] },
+              { $eq: ['$entityType', 'contract'] },
+              { $arrayElemAt: ['$contractEntity.name', 0] },
               { $arrayElemAt: ['$collectionEntity.name', 0] },
             ],
           },
@@ -221,20 +221,20 @@ class EntityPermissionRepository extends RepositoryBase {
     entitySlug: string,
     organizationId: string
   ): Promise<string> {
-    if (entityType === 'pricing') {
-      const pricing = await PricingMongoose.findOne({
+    if (entityType === 'contract') {
+      const contract = await ContractMongoose.findOne({
         slug: entitySlug,
         _organizationId: new mongoose.Types.ObjectId(organizationId),
       }).select('slug');
-      if (!pricing) throw new Error(`Pricing "${entitySlug}" not found in this organization`);
-      return pricing.slug!;
+      if (!contract) throw new Error(`Contract "${entitySlug}" not found in this organization`);
+      return contract.slug!;
     }
-    const collection = await PricingCollectionMongoose.findOne({
+    const collection = await ContractCollectionMongoose.findOne({
       slug: entitySlug,
       _organizationId: new mongoose.Types.ObjectId(organizationId),
     }).select('slug');
     if (!collection) throw new Error(`Collection "${entitySlug}" not found in this organization`);
-    return collection.slug!;
+    return (collection.slug as unknown as string)!;
   }
 
   async findOrCreate(

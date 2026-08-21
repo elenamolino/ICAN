@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Iconify from '../../../core/components/iconify';
-import { FaFileInvoiceDollar } from 'react-icons/fa';
 import customAlert from '../../../core/utils/custom-alert';
-import { useOrganizationsApi, OrgMemberWithUser, OrgPricing, OrgCollection } from '../../api/organizationsApi';
+import { useOrganizationsApi, OrgMemberWithUser, OrgContract, OrgContractCollection } from '../../api/organizationsApi';
 import { EntityType, EntityPermission } from '../../types/permissions';
 
 interface PermissionsTabProps {
@@ -31,26 +30,26 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 export default function PermissionsTab({ organizationId, canManage }: PermissionsTabProps) {
-  const { getOrgMembers, getOrgPermissions, getOrgPricings, getOrgCollections, setOrgPermission, removeOrgPermission } = useOrganizationsApi();
+  const { getOrgMembers, getOrgPermissions, getOrgContracts, getOrgContractCollections, setOrgPermission, removeOrgPermission } = useOrganizationsApi();
 
   const [members, setMembers] = useState<OrgMemberWithUser[]>([]);
   const [permissions, setPermissions] = useState<EntityPermission[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const [entityTab, setEntityTab] = useState<EntityType>('pricing');
+  const [entityTab, setEntityTab] = useState<EntityType>('contract');
   const [memberSearch, setMemberSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const [pricings, setPricings] = useState<OrgPricing[]>([]);
-  const [collections, setCollections] = useState<OrgCollection[]>([]);
+  const [contracts, setContracts] = useState<OrgContract[]>([]);
+  const [collections, setCollections] = useState<OrgContractCollection[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addSearch, setAddSearch] = useState('');
   const [addPermissions, setAddPermissions] = useState<{ GET: boolean; CREATE: boolean; PUT: boolean; DELETE: boolean }>({ GET: true, CREATE: false, PUT: false, DELETE: false });
   const [isSaving, setIsSaving] = useState(false);
 
-  const getOrgPricingsRef = useRef(getOrgPricings);
-  getOrgPricingsRef.current = getOrgPricings;
-  const getOrgCollectionsRef = useRef(getOrgCollections);
-  getOrgCollectionsRef.current = getOrgCollections;
+  const getOrgContractsRef = useRef(getOrgContracts);
+  getOrgContractsRef.current = getOrgContracts;
+  const getOrgContractCollectionsRef = useRef(getOrgContractCollections);
+  getOrgContractCollectionsRef.current = getOrgContractCollections;
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -87,11 +86,11 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
     if (!showAddModal) return;
     (async () => {
       try {
-        const [pricingData, collectionData] = await Promise.all([
-          getOrgPricingsRef.current(organizationId, { limit: '200' }),
-          getOrgCollectionsRef.current(organizationId, { limit: '200' }),
+        const [contractData, collectionData] = await Promise.all([
+          getOrgContractsRef.current(organizationId, { limit: '200' }),
+          getOrgContractCollectionsRef.current(organizationId, { limit: '200' }),
         ]);
-        setPricings(pricingData.pricings);
+        setContracts(contractData.contracts);
         setCollections(collectionData.collections);
       } catch (err: any) {
         customAlert(err.message, 'error');
@@ -135,14 +134,14 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
     const existingSlugs = new Set(
       entityScopedPermissions.map(p => p.entitySlug)
     );
-    const entities = entityTab === 'pricing'
-      ? pricings.map(p => ({ slug: p.slug, label: p.name, sub: p.collection?.name ?? 'No collection' }))
-      : collections.map(c => ({ slug: c.slug, label: c.name, sub: `${c.numberOfPricings} pricings` }));
+    const entities = entityTab === 'contract'
+      ? contracts.map(c => ({ slug: c.slug, label: c.name, sub: c.collection?.name ?? 'No collection' }))
+      : collections.map(c => ({ slug: c.slug, label: c.name, sub: c.slug }));
     return entities.filter(e => !existingSlugs.has(e.slug)).filter(e => {
       if (!addSearch.trim()) return true;
       return e.label.toLowerCase().includes(addSearch.toLowerCase());
     });
-  }, [entityTab, pricings, collections, entityScopedPermissions, addSearch]);
+  }, [entityTab, contracts, collections, entityScopedPermissions, addSearch]);
 
   const handleToggleOrgPermission = useCallback(async (targetType: EntityType) => {
     if (!canManage || !selectedMemberId || isOwnerOrAdmin) return;
@@ -227,7 +226,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
       <div className="flex flex-col gap-3 border-b border-tp-hairline px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-lg text-tp-ink">Entity Permissions</h2>
-          <p className="text-xs text-tp-steel">Configure which pricings and collections each member can access.</p>
+          <p className="text-xs text-tp-steel">Configure which contracts and collections each member can access.</p>
         </div>
       </div>
 
@@ -302,7 +301,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
                 <div className="flex items-center gap-3 rounded-lg border border-sphere-primary-200 bg-tp-primary/8 px-4 py-3">
                   <Iconify icon="mdi:shield-check-outline" width={20} className="text-tp-primary" />
                   <p className="text-sm text-tp-ink">
-                    <span className="font-semibold">{selectedMember.role}</span> users have full access to all pricings and collections in this organization. No granular permissions needed.
+                    <span className="font-semibold">{selectedMember.role}</span> users have full access to all contracts and collections in this organization. No granular permissions needed.
                   </p>
                 </div>
               </div>
@@ -325,9 +324,9 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
                 {/* ── Org-scoped CREATE permissions ── */}
                 <div className="mb-6">
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-tp-steel">Organization-level</h3>
-                  <p className="mb-3 text-[11px] text-tp-muted">Grants the ability to create new pricings or collections in this organization.</p>
+                  <p className="mb-3 text-[11px] text-tp-muted">Grants the ability to create new contracts or collections in this organization.</p>
                   <div className="flex gap-3">
-                    {(['pricing', 'collection'] as EntityType[]).map(type => {
+                    {(['contract', 'contractCollection'] as EntityType[]).map(type => {
                       const orgPerm = orgScopedPermissions.find(p => p.entityType === type);
                       const isOn = orgPerm?.permissions.CREATE ?? false;
                       return (
@@ -343,7 +342,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
                           }`}
                         >
                           <Iconify icon={isOn ? 'mdi:check-circle-outline' : 'mdi:plus-circle-outline'} width={16} />
-                          {type === 'pricing' ? 'Pricing CREATE' : 'Collection CREATE'}
+                          {type === 'contract' ? 'Contract CREATE' : 'Collection CREATE'}
                         </button>
                       );
                     })}
@@ -355,7 +354,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-tp-steel">Entity-level</h3>
                     <div className="flex gap-1 rounded-lg border border-tp-hairline bg-tp-surface p-0.5">
-                      {(['pricing', 'collection'] as EntityType[]).map(type => (
+                      {(['contract', 'contractCollection'] as EntityType[]).map(type => (
                         <button
                           key={type}
                           type="button"
@@ -366,7 +365,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
                               : 'text-tp-steel hover:text-tp-ink'
                           }`}
                         >
-                          {type === 'pricing' ? 'Pricings' : 'Collections'}
+                          {type === 'contract' ? 'Contracts' : 'Collections'}
                         </button>
                       ))}
                     </div>
@@ -477,7 +476,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
           >
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-xl text-tp-ink">
-                Grant {entityTab === 'pricing' ? 'pricing' : 'collection'} access
+                Grant {entityTab === 'contract' ? 'contract' : 'collection'} access
               </h2>
               <button
                 type="button"
@@ -512,8 +511,8 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
                   className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-tp-surface/60 disabled:opacity-50"
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tp-cream text-tp-primary">
-                    {entityTab === 'pricing' ? (
-                      <FaFileInvoiceDollar size={16} />
+                    {entityTab === 'contract' ? (
+                      <Iconify icon="mdi:file-document-outline" width={16} />
                     ) : (
                       <Iconify icon="mdi:folder-outline" width={16} />
                     )}

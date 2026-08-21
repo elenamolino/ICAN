@@ -20,7 +20,7 @@ export type NotificationKind =
   | 'OrganizationInvitation'
   | 'System'
   | 'CollectionShared'
-  | 'PricingUpdated';
+  | 'ContractUpdated';
 
 export type NotificationPreferences = Record<string, Record<NotificationChannel, boolean>>;
 

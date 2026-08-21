@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiCommand, FiSun, FiMoon, FiSearch } from 'react-icons/fi';
+import { FiCommand, FiSun, FiMoon, FiSearch, FiCpu, FiShare2, FiFileText, FiFolder, FiBook } from 'react-icons/fi';
 import { useMode } from '../../hooks/useTheme';
+import { useRouter } from '../../hooks/useRouter';
 
 interface Command {
   id: string;
@@ -10,6 +11,7 @@ interface Command {
   description: string;
   shortcut: string[];
   icon: React.ComponentType<{ className?: string }>;
+  group?: string;
   action: () => void;
 }
 
@@ -29,9 +31,54 @@ export default function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const { mode, setMode } = useMode();
+  const router = useRouter();
 
   const commands: Command[] = useMemo(
     () => [
+      {
+        id: 'ai-classify',
+        label: 'AI Classify',
+        description: 'Automatically classify contract clauses',
+        shortcut: [],
+        icon: FiCpu,
+        group: 'Analyse',
+        action: () => router.push('/analyse/ai-classify'),
+      },
+      {
+        id: 'ontology-analysis',
+        label: 'Ontology Analysis',
+        description: 'Analyse contracts against a shared ontology',
+        shortcut: [],
+        icon: FiShare2,
+        group: 'Analyse',
+        action: () => router.push('/analyse/ontology-analysis'),
+      },
+      {
+        id: 'explore-contracts',
+        label: 'Contracts',
+        description: 'Browse contracts',
+        shortcut: [],
+        icon: FiFileText,
+        group: 'Explore',
+        action: () => router.push('/contracts'),
+      },
+      {
+        id: 'explore-collections',
+        label: 'Collections',
+        description: 'Browse contract collections',
+        shortcut: [],
+        icon: FiFolder,
+        group: 'Explore',
+        action: () => router.push('/collections'),
+      },
+      {
+        id: 'explore-docs',
+        label: 'Docs',
+        description: 'Read the documentation',
+        shortcut: [],
+        icon: FiBook,
+        action: () => router.push('/docs'),
+      },
       {
         id: 'command-palette',
         label: 'Command palette',
@@ -49,7 +96,7 @@ export default function CommandPalette() {
         action: () => setMode(mode === 'dark' ? 'light' : 'dark'),
       },
     ],
-    [mode, setMode],
+    [mode, setMode, router],
   );
 
   const filtered = useMemo(() => {
@@ -202,40 +249,47 @@ export default function CommandPalette() {
                     <div className="flex flex-col gap-0.5">
                       {filtered.map((cmd, i) => {
                         const Icon = cmd.icon;
+                        const isFirstInGroup = cmd.group && filtered[i - 1]?.group !== cmd.group;
                         return (
-                          <button
-                            key={cmd.id}
-                            type="button"
-                            onClick={() => executeCommand(cmd)}
-                            onMouseEnter={() => setSelectedIndex(i)}
-                            className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-                              i === selectedIndex
-                                ? 'bg-tp-surface text-tp-ink'
-                                : 'text-tp-slate hover:bg-tp-surface hover:text-tp-ink'
-                            }`}
-                          >
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tp-surface text-tp-ink">
-                              <Icon className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-tp-ink">
-                                {cmd.label}
+                          <div key={cmd.id}>
+                            {isFirstInGroup && (
+                              <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-tp-muted first:pt-0">
+                                {cmd.group}
                               </p>
-                              <p className="text-xs text-tp-ink">
-                                {cmd.description}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-1">
-                              {cmd.shortcut.map((key, j) => (
-                                <kbd
-                                  key={j}
-                                  className="rounded-md border border-tp-hairline bg-tp-surface px-1.5 py-0.5 text-[10px] font-medium text-tp-ink"
-                                >
-                                  {formatKey(key)}
-                                </kbd>
-                              ))}
-                            </div>
-                          </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => executeCommand(cmd)}
+                              onMouseEnter={() => setSelectedIndex(i)}
+                              className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
+                                i === selectedIndex
+                                  ? 'bg-tp-surface text-tp-ink'
+                                  : 'text-tp-slate hover:bg-tp-surface hover:text-tp-ink'
+                              }`}
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-tp-surface text-tp-ink">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-tp-ink">
+                                  {cmd.label}
+                                </p>
+                                <p className="text-xs text-tp-ink">
+                                  {cmd.description}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1">
+                                {cmd.shortcut.map((key, j) => (
+                                  <kbd
+                                    key={j}
+                                    className="rounded-md border border-tp-hairline bg-tp-surface px-1.5 py-0.5 text-[10px] font-medium text-tp-ink"
+                                  >
+                                    {formatKey(key)}
+                                  </kbd>
+                                ))}
+                              </div>
+                            </button>
+                          </div>
                         );
                       })}
                     </div>

@@ -117,7 +117,7 @@ export default function SettingsPage() {
   return (
     <>
       <Helmet>
-        <title>Settings | SPHERE</title>
+        <title>Settings | ICAN</title>
       </Helmet>
       <div className="mx-auto h-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <motion.div

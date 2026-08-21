@@ -18,7 +18,7 @@
       "avatarFgColor": "#ffffff",
       "profile": {
         "displayName": "Admin",
-        "bio": "Platform administrator and pricing researcher.",
+        "bio": "Platform administrator and contract analysis researcher.",
         "city": "Seville",
         "country": "Spain",
         "dateOfBirth": "1990-01-15"
@@ -31,7 +31,7 @@
         "OrganizationInvitation": { "email": true, "inbox": true },
         "System": { "email": true, "inbox": true },
         "CollectionShared": { "email": true, "inbox": true },
-        "PricingUpdated": { "email": false, "inbox": true }
+        "ContractUpdated": { "email": false, "inbox": true }
       }
     },
     "createdAt": {"$date": "2023-02-20T11:22:04.000Z"},
@@ -56,7 +56,7 @@
       "avatarFgColor": "#ffd900",
       "profile": {
         "displayName": "Sphere User",
-        "bio": "Exploring pricing strategies and SaaS analytics.",
+        "bio": "Exploring SaaS contracts and terms-of-service analytics.",
         "city": "Madrid",
         "country": "Spain"
       },
@@ -67,7 +67,7 @@
         "OrganizationInvitation": { "email": true, "inbox": true },
         "System": { "email": true, "inbox": true },
         "CollectionShared": { "email": true, "inbox": true },
-        "PricingUpdated": { "email": true, "inbox": true }
+        "ContractUpdated": { "email": true, "inbox": true }
       }
     },
     "createdAt": {"$date": "2023-02-20T11:22:04.000Z"},
@@ -104,7 +104,7 @@
         "OrganizationInvitation": { "email": false, "inbox": true },
         "System": { "email": true, "inbox": false },
         "CollectionShared": { "email": true, "inbox": true },
-        "PricingUpdated": { "email": false, "inbox": false }
+        "ContractUpdated": { "email": false, "inbox": false }
       }
     },
     "createdAt": {"$date": "2023-02-20T11:22:04.000Z"},
@@ -138,7 +138,7 @@
         "OrganizationInvitation": { "email": true, "inbox": true },
         "System": { "email": true, "inbox": true },
         "CollectionShared": { "email": true, "inbox": true },
-        "PricingUpdated": { "email": true, "inbox": true }
+        "ContractUpdated": { "email": true, "inbox": true }
       }
     },
     "createdAt": {"$date": "2023-02-20T11:22:04.000Z"},

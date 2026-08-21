@@ -24,24 +24,24 @@ export const createEntityPermission = async (
   return saved.toObject({ getters: true, virtuals: true, versionKey: false });
 };
 
-export const grantPricingPermission = async (
+export const grantContractPermission = async (
   userId: string,
   organizationId: string,
-  pricingId: string,
+  contractId: string,
   permissions: EntityPermissions,
   grantedBy?: string
 ): Promise<any> => {
-  return createEntityPermission(userId, organizationId, 'pricing', pricingId, permissions, grantedBy);
+  return createEntityPermission(userId, organizationId, 'contract', contractId, permissions, grantedBy);
 };
 
-export const grantCollectionPermission = async (
+export const grantContractCollectionPermission = async (
   userId: string,
   organizationId: string,
   collectionId: string,
   permissions: EntityPermissions,
   grantedBy?: string
 ): Promise<any> => {
-  return createEntityPermission(userId, organizationId, 'collection', collectionId, permissions, grantedBy);
+  return createEntityPermission(userId, organizationId, 'contractCollection', collectionId, permissions, grantedBy);
 };
 
 export const cleanupPermissions = async (): Promise<void> => {

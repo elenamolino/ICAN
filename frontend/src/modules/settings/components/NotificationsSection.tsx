@@ -12,8 +12,8 @@ interface Props {
 const NOTIFICATION_KINDS = [
   { key: 'OrganizationInvitation', label: 'Organization Invitations', description: 'When someone invites you to an organization' },
   { key: 'System', label: 'System Notices', description: 'Important platform updates and maintenance notices' },
-  { key: 'CollectionShared', label: 'Collection Shared', description: 'When someone shares a pricing collection with you' },
-  { key: 'PricingUpdated', label: 'Pricing Updated', description: 'When a pricing you follow is updated' },
+  { key: 'CollectionShared', label: 'Collection Shared', description: 'When someone shares a contract collection with you' },
+  { key: 'ContractUpdated', label: 'Contract Updated', description: 'When a contract you follow is updated' },
 ] as const;
 
 const CHANNELS = [

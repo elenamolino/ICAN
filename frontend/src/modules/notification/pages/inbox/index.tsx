@@ -8,14 +8,14 @@ const kindLabels: Record<string, string> = {
   OrganizationInvitation: 'Organization Invitations',
   System: 'System',
   CollectionShared: 'Collections',
-  PricingUpdated: 'Pricing Updates',
+  ContractUpdated: 'Contract Updates',
 };
 
 const kindIcons: Record<string, string> = {
   OrganizationInvitation: 'mdi:account-plus',
   System: 'mdi:information',
   CollectionShared: 'mdi:folder-shared',
-  PricingUpdated: 'mdi:file-replace',
+  ContractUpdated: 'mdi:file-replace',
 };
 
 function timeAgo(dateString: string): string {

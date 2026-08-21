@@ -1,0 +1,14 @@
+[
+  {
+    "_id": { "$oid": "6787d0facaeb2b25748bc01c" },
+    "name": "Example SaaS Terms of Service",
+    "slug": "example-saas-tos",
+    "_organizationId": { "$oid": "63f74bf8eeed64058364b601" },
+    "_collectionId": "6787d0facaeb2b25748bc12a",
+    "version": "1.0",
+    "private": false,
+    "createdAt": { "$date": "2026-01-01T00:00:00.000Z" },
+    "url": null,
+    "content": "Placeholder contract content seeded for local development."
+  }
+]

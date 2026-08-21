@@ -1,13 +1,13 @@
 import container from '../config/container';
 import EntityPermissionRepository from '../repositories/mongoose/EntityPermissionRepository';
 import OrganizationMembershipRepository from '../repositories/mongoose/OrganizationMembershipRepository';
-import PricingRepository from '../repositories/mongoose/PricingRepository';
-import PricingCollectionRepository from '../repositories/mongoose/PricingCollectionRepository';
+import ContractRepository from '../repositories/mongoose/ContractRepository';
+import ContractCollectionRepository from '../repositories/mongoose/ContractCollectionRepository';
 import { EntityType, EntityPermissions, LeanEntityPermission, PermissionType } from '../types/models/EntityPermission';
 import { OrgRole } from '../types/models/Organization';
 import { LeanUser } from '../types/models/User';
-import { PricingIndexQueryParams } from '../types/services/PricingService';
-import { CollectionIndexQueryParams } from '../types/services/PricingCollection';
+import { ContractIndexQueryParams } from '../types/services/ContractService';
+import { CollectionIndexQueryParams } from '../types/services/ContractCollection';
 import { PermissionQueries } from '../policies/queries/PermissionQueries';
 import { BatchEvaluationContext, OrgUserPermissionsContext } from '../types/policies';
 
@@ -17,15 +17,15 @@ const NO_PERMISSIONS: EntityPermissions = { GET: false, PUT: false, DELETE: fals
 class PermissionService {
   private entityPermissionRepository: EntityPermissionRepository;
   private organizationMembershipRepository: OrganizationMembershipRepository;
-  private pricingRepository: PricingRepository;
-  private pricingCollectionRepository: PricingCollectionRepository;
+  private contractRepository: ContractRepository;
+  private contractCollectionRepository: ContractCollectionRepository;
   private permissionQueries: PermissionQueries;
 
   constructor() {
     this.entityPermissionRepository = container.resolve('entityPermissionRepository');
     this.organizationMembershipRepository = container.resolve('organizationMembershipRepository');
-    this.pricingRepository = container.resolve('pricingRepository');
-    this.pricingCollectionRepository = container.resolve('pricingCollectionRepository');
+    this.contractRepository = container.resolve('contractRepository');
+    this.contractCollectionRepository = container.resolve('contractCollectionRepository');
     this.permissionQueries = new PermissionQueries();
   }
 
@@ -65,16 +65,16 @@ class PermissionService {
       .filter(([_, permissions]) => permissions.GET === true)
       .map(([key]) => key);
 
-    const pricingsWithGetPermissions = entriesWithGetPermissions
-      .filter(key => key.startsWith('pricing:'))
+    const contractsWithGetPermissions = entriesWithGetPermissions
+      .filter(key => key.startsWith('contract:'))
       .map(key => key.split(':')[1]);
     const collectionsWithGetPermissions = entriesWithGetPermissions
-      .filter(key => key.startsWith('collection:'))
+      .filter(key => key.startsWith('contractCollection:'))
       .map(key => key.split(':')[1]);
 
     return {
       orgRole: orgPermissions.isGlobalAdmin ? 'OWNER' : orgRole,
-      pricings: pricingsWithGetPermissions,
+      contracts: contractsWithGetPermissions,
       collections: collectionsWithGetPermissions,
       isGlobalAdmin: orgPermissions.isGlobalAdmin ?? false,
       adminOrgIds: (orgRole === 'OWNER' || orgRole === 'ADMIN' || orgPermissions.isGlobalAdmin)
@@ -89,7 +89,7 @@ class PermissionService {
       reqUser.role === 'ADMIN'
     );
 
-    const pricingsWithGetPermissions: string[] = [];
+    const contractsWithGetPermissions: string[] = [];
     const collectionsWithGetPermissions: string[] = [];
     const collectionsWithPutPermissions: string[] = [];
     const adminOrgIds: string[] = [];
@@ -108,28 +108,28 @@ class PermissionService {
         .filter(([_, permissionEntry]) => permissionEntry.GET === true && permissionEntry.PUT === true)
         .map(([key]) => key);
 
-      pricingsWithGetPermissions.push(
+      contractsWithGetPermissions.push(
         ...entriesWithGetPermissions
-          .filter(key => key.startsWith('pricing:'))
+          .filter(key => key.startsWith('contract:'))
           .map(key => key.split(':')[1])
       );
 
       collectionsWithGetPermissions.push(
         ...entriesWithGetPermissions
-          .filter(key => key.startsWith('collection:'))
+          .filter(key => key.startsWith('contractCollection:'))
           .map(key => key.split(':')[1])
       );
 
       collectionsWithPutPermissions.push(
         ...entriesWithPutPermissions
-          .filter(key => key.startsWith('collection:'))
+          .filter(key => key.startsWith('contractCollection:'))
           .map(key => key.split(':')[1])
       );
     }
 
     return {
       orgRole: null,
-      pricings: pricingsWithGetPermissions,
+      contracts: contractsWithGetPermissions,
       collections: collectionsWithGetPermissions,
       collectionsWritable: collectionsWithPutPermissions,
       isGlobalAdmin: reqUser.role === 'ADMIN',
@@ -217,7 +217,7 @@ class PermissionService {
 
   /**
    * Grants entity permissions without role verification. Internal use only.
-   * Used by services to auto-grant permissions (e.g., MEMBER creating a pricing).
+   * Used by services to auto-grant permissions (e.g., MEMBER creating a contract).
    */
   async grantEntityPermission(
     userId: string,
@@ -264,7 +264,7 @@ class PermissionService {
     const orgRole = await this.resolveOrgRole(userId, organizationId);
 
     if (isGlobalAdmin || orgRole === 'OWNER' || orgRole === 'ADMIN') {
-      const types: EntityType[] = entityType ? [entityType] : ['pricing', 'collection'];
+      const types: EntityType[] = entityType ? [entityType] : ['contract', 'contractCollection'];
       for (const type of types) {
         const existing = permissions.find(
           p => p.entitySlug === null && p.entityType === type && p._userId?.toString() === userId
@@ -285,29 +285,29 @@ class PermissionService {
   }
 
   /**
-   * Gets all pricings accessible to a user across all their organizations,
+   * Gets all contracts accessible to a user across all their organizations,
    * with effective permissions included.
    */
-  async getUserAccessiblePricings(
+  async getUserAccessibleContracts(
     userId: string,
-    queryParams: PricingIndexQueryParams,
+    queryParams: ContractIndexQueryParams,
     reqUser?: LeanUser
-  ): Promise<{ pricings: any[]; total: number }> {
+  ): Promise<{ contracts: any[]; total: number }> {
     const memberships = await this.organizationMembershipRepository.findByUserId(userId, true);
     const orgIds = memberships.map((m: any) => m._organizationId?.toString() ?? m._organizationId);
 
     if (orgIds.length === 0) {
-      return { pricings: [], total: 0 };
+      return { contracts: [], total: 0 };
     }
 
-    const allPricings: any[] = [];
+    const allContracts: any[] = [];
 
     for (const orgId of orgIds) {
       const membership = memberships.find((m: any) => (m._organizationId?.toString() ?? m._organizationId) === orgId);
       const orgRole = membership?.role as OrgRole | undefined;
       const isOwnerOrAdmin = reqUser?.role === 'ADMIN' || orgRole === 'OWNER' || orgRole === 'ADMIN';
 
-      const orgQueryParams: PricingIndexQueryParams = {
+      const orgQueryParams: ContractIndexQueryParams = {
         ...queryParams,
         selectedOrganizations: [orgId],
       };
@@ -316,31 +316,31 @@ class PermissionService {
         ? await this.buildOrgUserPermissionsContext(reqUser, orgRole ?? null, orgId)
         : {
             orgRole: null,
-            pricings: [],
+            contracts: [],
             collections: [],
             isGlobalAdmin: false,
             adminOrgIds: [],
           };
 
-      const result = await this.pricingRepository.findAll(orgQueryParams, orgPermissionsContext);
+      const result = await this.contractRepository.findAll(orgQueryParams, orgPermissionsContext);
 
-      if (result && result.pricings) {
-        for (const pricing of result.pricings) {
-          const entitySlug = pricing.slug;
+      if (result && result.contracts) {
+        for (const contract of result.contracts) {
+          const entitySlug = contract.slug;
           if (!entitySlug) continue;
           const permissions = await this.getEffectivePermissions(
             userId,
             orgId,
-            'pricing',
+            'contract',
             entitySlug,
             orgRole
           );
 
-          if (isOwnerOrAdmin || !pricing.private || permissions.GET) {
-            allPricings.push({
-              ...pricing,
+          if (isOwnerOrAdmin || !contract.private || permissions.GET) {
+            allContracts.push({
+              ...contract,
               permissions,
-              organization: { ...pricing.organization, id: orgId, role: orgRole },
+              organization: { ...contract.organization, id: orgId, role: orgRole },
             });
           }
         }
@@ -349,13 +349,13 @@ class PermissionService {
 
     if (queryParams.name) {
       const nameFilter = queryParams.name.toLowerCase();
-      const filtered = allPricings.filter((p: any) => p.name?.toLowerCase().includes(nameFilter));
-      return { pricings: filtered, total: filtered.length };
+      const filtered = allContracts.filter((c: any) => c.name?.toLowerCase().includes(nameFilter));
+      return { contracts: filtered, total: filtered.length };
     }
 
     const sortBy = queryParams.sortBy || 'name';
     const sortDir = queryParams.sort === 'asc' ? 1 : -1;
-    allPricings.sort((a: any, b: any) => {
+    allContracts.sort((a: any, b: any) => {
       const aVal = a[sortBy] ?? a.name ?? '';
       const bVal = b[sortBy] ?? b.name ?? '';
       if (typeof aVal === 'string') return aVal.localeCompare(bVal) * sortDir;
@@ -364,9 +364,9 @@ class PermissionService {
 
     const offset = queryParams.offset || 0;
     const limit = queryParams.limit || 10;
-    const paginated = allPricings.slice(offset, offset + limit);
+    const paginated = allContracts.slice(offset, offset + limit);
 
-    return { pricings: paginated, total: allPricings.length };
+    return { contracts: paginated, total: allContracts.length };
   }
 
   /**
@@ -401,13 +401,13 @@ class PermissionService {
         ? await this.buildOrgUserPermissionsContext(reqUser, orgRole ?? null, orgId)
         : {
             orgRole: null,
-            pricings: [],
+            contracts: [],
             collections: [],
             isGlobalAdmin: false,
             adminOrgIds: [],
           };
 
-      const result = await this.pricingCollectionRepository.findAll(orgQueryParams, orgPermissionsContext);
+      const result = await this.contractCollectionRepository.findAll(orgQueryParams, orgPermissionsContext);
 
       if (result && result.collections) {
         for (const collection of result.collections) {
@@ -416,7 +416,7 @@ class PermissionService {
           const permissions = await this.getEffectivePermissions(
             userId,
             orgId,
-            'collection',
+            'contractCollection',
             entitySlug,
             orgRole
           );
@@ -452,17 +452,17 @@ class PermissionService {
   }
 
   /**
-   * Gets effective permissions for the current user on a specific pricing.
+   * Gets effective permissions for the current user on a specific contract.
    */
-  async getPricingPermissions(
+  async getContractPermissions(
     userId: string,
     organizationId: string,
-    pricingSlug: string,
+    contractSlug: string,
     userOrgRole?: OrgRole | null
   ): Promise<EntityPermissions> {
-    const pricing = await this.pricingRepository.findBySlugAndOrganization(pricingSlug, organizationId);
-    if (!pricing) {
-      throw new Error('NOT FOUND: Pricing not found');
+    const contract = await this.contractRepository.findBySlugAndOrganization(contractSlug, organizationId);
+    if (!contract) {
+      throw new Error('NOT FOUND: Contract not found');
     }
 
     const isOwnerOrAdmin = userOrgRole === 'OWNER' || userOrgRole === 'ADMIN';
@@ -472,8 +472,8 @@ class PermissionService {
     const permissions = await this.getEffectivePermissions(
       userId,
       organizationId,
-      'pricing',
-      pricingSlug,
+      'contract',
+      contractSlug,
       userOrgRole
     );
 
@@ -483,13 +483,13 @@ class PermissionService {
   /**
    * Gets effective permissions for the current user on a specific collection.
    */
-  async getCollectionPermissions(
+  async getContractCollectionPermissions(
     userId: string,
     organizationId: string,
     collectionSlug: string,
     userOrgRole?: OrgRole | null
   ): Promise<EntityPermissions> {
-    const collection = await this.pricingCollectionRepository.findByOrganizationAndSlug(
+    const collection = await this.contractCollectionRepository.findByOrganizationAndSlug(
       organizationId,
       collectionSlug
     );
@@ -504,7 +504,7 @@ class PermissionService {
     const permissions = await this.getEffectivePermissions(
       userId,
       organizationId,
-      'collection',
+      'contractCollection',
       collectionSlug,
       userOrgRole
     );

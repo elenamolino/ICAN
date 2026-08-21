@@ -2,8 +2,8 @@ import { Policy } from '../../types/policies';
 
 /**
  * Entity-level policies.
- * These handle GET/PUT/DELETE on specific pricings and collections.
- * Includes collection → pricing inheritance for GET.
+ * These handle GET/PUT/DELETE on specific contracts and collections.
+ * Includes collection → contract inheritance for GET.
  */
 
 const GLOBAL_ADMIN_ENTITY_BYPASS: Policy = {
@@ -55,10 +55,10 @@ const PRIVATE_ENTITY_GET: Policy = {
 
 const COLLECTION_INHERITED_GET: Policy = {
   name: 'collection-inherited-get',
-  description: 'Pricing inherits GET permission from its parent collection',
+  description: 'Contract inherits GET permission from its parent collection',
   evaluate: (ctx) => {
-    if (ctx.action === 'GET' && ctx.entityType === 'pricing' && ctx.collectionSlug) {
-      // If the pricing has no direct GET permission but has a collection
+    if (ctx.action === 'GET' && ctx.entityType === 'contract' && ctx.collectionSlug) {
+      // If the contract has no direct GET permission but has a collection
       if (!ctx.entityPermissions?.GET && ctx.collectionPermissions?.GET) {
         return { allowed: true, reason: 'Inherited GET from parent collection' };
       }

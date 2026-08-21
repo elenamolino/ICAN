@@ -22,13 +22,13 @@ export interface PermissionContext {
   userOrgRole?: OrgRole | null;
   /** Whether the user is a global SPHERE ADMIN */
   isGlobalAdmin?: boolean;
-  /** Collection slug for inheritance checks (pricing inside collection) */
+  /** Collection slug for inheritance checks (contract inside collection) */
   collectionSlug?: string;
   /** Pre-fetched org-scoped permissions (for CREATE checks) */
   orgPermissions?: EntityPermissions;
   /** Pre-fetched entity-level permissions */
   entityPermissions?: EntityPermissions;
-  /** Pre-fetched collection permissions (for pricing inheritance) */
+  /** Pre-fetched collection permissions (for contract inheritance) */
   collectionPermissions?: EntityPermissions;
 }
 
@@ -71,7 +71,7 @@ export interface BatchEvaluationContext {
   orgPermissions: Map<string, EntityPermissions>;
   /** Pre-fetched entity permissions keyed by "entityType:entitySlug" */
   entityPermissions: Map<string, EntityPermissions>;
-  /** Pre-fetched collection permissions for pricing inheritance */
+  /** Pre-fetched collection permissions for contract inheritance */
   collectionPermissions: Map<string, EntityPermissions>;
 }
 
@@ -85,7 +85,7 @@ export interface BatchEvaluationOptions {
 
 export interface OrgUserPermissionsContext {
   orgRole: OrgRole | null;
-  pricings: string[];
+  contracts: string[];
   collections: string[];
   collectionsWritable?: string[];
   isGlobalAdmin: boolean;

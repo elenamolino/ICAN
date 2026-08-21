@@ -11,8 +11,8 @@ const setPermission = [
   check('entityType')
     .exists()
     .withMessage('An entityType must be provided')
-    .isIn(['pricing', 'collection'])
-    .withMessage('The entityType must be one of: pricing, collection'),
+    .isIn(['contract', 'contractCollection'])
+    .withMessage('The entityType must be one of: contract, contractCollection'),
   check('entitySlug')
     .optional({ values: 'null' })
     .isString()

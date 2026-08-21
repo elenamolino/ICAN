@@ -7,8 +7,6 @@ export interface RecentItem {
 }
 
 const STORAGE_KEYS = {
-  pricings: 'sphere:recentPricings',
-  collections: 'sphere:recentCollections',
   organizations: 'sphere:recentOrganizations',
 } as const;
 
@@ -37,22 +35,6 @@ function addRecent(key: string, item: Omit<RecentItem, 'visitedAt'>): void {
   const list = readList(key).filter(i => i.id !== item.id);
   list.unshift({ ...item, visitedAt: new Date().toISOString() });
   writeList(key, list.slice(0, MAX_ITEMS));
-}
-
-export function addRecentPricing(item: Omit<RecentItem, 'visitedAt'>): void {
-  addRecent(STORAGE_KEYS.pricings, item);
-}
-
-export function addRecentCollection(item: Omit<RecentItem, 'visitedAt'>): void {
-  addRecent(STORAGE_KEYS.collections, item);
-}
-
-export function getRecentPricings(): RecentItem[] {
-  return readList(STORAGE_KEYS.pricings);
-}
-
-export function getRecentCollections(): RecentItem[] {
-  return readList(STORAGE_KEYS.collections);
 }
 
 export function addRecentOrganization(item: Omit<RecentItem, 'visitedAt'>): void {

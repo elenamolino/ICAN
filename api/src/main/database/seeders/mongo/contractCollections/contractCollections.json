@@ -1,0 +1,10 @@
+[
+  {
+    "_id": { "$oid": "6787d0facaeb2b25748bc12a" },
+    "name": "Demo Contracts",
+    "slug": "demo-contracts",
+    "description": "Placeholder collection seeded for local development.",
+    "_organizationId": { "$oid": "63f74bf8eeed64058364b601" },
+    "private": false
+  }
+]

@@ -3,7 +3,7 @@ import { useAuth } from '../../auth/hooks/useAuth';
 
 export interface Notification {
   id: string;
-  kind: 'OrganizationInvitation' | 'System' | 'CollectionShared' | 'PricingUpdated';
+  kind: 'OrganizationInvitation' | 'System' | 'CollectionShared' | 'ContractUpdated';
   title: string;
   message: string;
   data?: Record<string, any>;

@@ -16,7 +16,7 @@ import { randomSuffix } from './utils/helpers';
 import UserMongoose from '../main/repositories/mongoose/models/UserMongoose';
 import OrganizationMongoose from '../main/repositories/mongoose/models/OrganizationMongoose';
 import OrganizationMembershipMongoose from '../main/repositories/mongoose/models/OrganizationMembershipMongoose';
-import PricingCollectionMongoose from '../main/repositories/mongoose/models/PricingCollectionMongoose';
+import ContractCollectionMongoose from '../main/repositories/mongoose/models/ContractCollectionMongoose';
 import { generateJwtToken } from '../main/utils/users/helpers';
 import mongoose from 'mongoose';
 
@@ -153,7 +153,7 @@ describe('API Keys management', () => {
       expect(keyResponse.status).toBe(201);
 
       const hashResponse = await request(app)
-        .post(`${BASE_PATH}/collections/${testOrg._id.toString()}`)
+        .post(`${BASE_PATH}/contractCollections/${testOrg._id.toString()}`)
         .set('x-api-key', keyResponse.body.apiKey.key)
         .send({ name: `rejected_hash_${randomSuffix()}` });
 
@@ -163,14 +163,14 @@ describe('API Keys management', () => {
 
       try {
         const collectionResponse = await request(app)
-          .post(`${BASE_PATH}/collections/${testOrg._id.toString()}`)
+          .post(`${BASE_PATH}/contractCollections/${testOrg._id.toString()}`)
           .set('x-api-key', keyResponse.body.plainKey)
           .send({ name: collectionName });
 
         expect(collectionResponse.status).toBe(201);
         expect(collectionResponse.body.name).toBe(collectionName);
       } finally {
-        await PricingCollectionMongoose.deleteOne({
+        await ContractCollectionMongoose.deleteOne({
           _organizationId: testOrg._id,
           name: collectionName,
         });

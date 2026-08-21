@@ -7,41 +7,9 @@ export interface HeaderRoute {
 
 export const headerRoutes: HeaderRoute[] = [
   {
-    name: 'Tools',
-    disabled: false,
-    children: [
-      {
-        name: 'Pricing2Yaml Editor',
-        disabled: false,
-        to: '/editor',
-      },
-      {
-        name: 'HARVEY',
-        disabled: false,
-        to: '/harvey',
-      },
-    ],
-  },
-  {
     name: 'Organizations',
     disabled: false,
     to: '/me/orgs',
-  },
-  {
-    name: 'Pricings',
-    disabled: false,
-    children: [
-      {
-        name: 'Pricings',
-        disabled: false,
-        to: '/pricings',
-      },
-      {
-        name: 'Collections',
-        disabled: false,
-        to: '/collections',
-      },
-    ],
   },
   {
     name: 'Team',

@@ -46,14 +46,14 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['PUT'],
     allowedUserRoles: ['ADMIN'],
   },
-  // User pricing/collection access queries (before general /users/**)
+  // User contract/collection access queries (before general /users/**)
   {
-    path: '/users/*/pricings',
+    path: '/users/*/contracts',
     methods: ['GET'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
   {
-    path: '/users/*/collections',
+    path: '/users/*/contractCollections',
     methods: ['GET'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
@@ -86,48 +86,48 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
 
   // ============================================
-  // Pricing Management Routes 
+  // Contract Management Routes
   // ============================================
 
   {
-    path: '/pricings',
-    methods: ['GET', 'PUT'], // Also allow updating pricings through /pricings endpoint for simplicity
-    isPublic: true, // Allow public access to list pricings
+    path: '/contracts',
+    methods: ['GET'],
+    isPublic: true, // Allow public access to list contracts
   },
-  // Pricing entity permissions (before general /pricings/** for GET)
+  // Contract entity permissions (before general /contracts/** for GET)
   {
-    path: '/pricings/*/*/permissions',
+    path: '/contracts/*/*/permissions',
     methods: ['GET'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
   {
-    path: '/pricings/**',
+    path: '/contracts/**',
     methods: ['GET'],
     isPublic: true,
   },
   {
-    path: '/pricings/**',
+    path: '/contracts/**',
     methods: ['POST', 'PUT', 'DELETE', 'PATCH'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
 
   // ============================================
-  // Collection Management Routes 
+  // Contract Collection Management Routes
   // ============================================
 
   // Collection entity permissions
   {
-    path: '/collections/*/*/permissions',
+    path: '/contractCollections/*/*/permissions',
     methods: ['GET'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
   {
-    path: '/collections/**',
+    path: '/contractCollections/**',
     methods: ['GET'],
     isPublic: true, // Allow public access to view collections
   },
   {
-    path: '/collections/**',
+    path: '/contractCollections/**',
     methods: ['POST', 'PUT', 'DELETE', 'PATCH'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },

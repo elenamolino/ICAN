@@ -4,27 +4,23 @@ import UserMenu from './user-menu';
 import MobileNav from './mobile-nav';
 import CommandPalette from '../../../core/components/command-palette';
 import NotificationBell from '../../../notification/components/notification-bell';
-import { FaFileInvoiceDollar, FaFolder } from "react-icons/fa";
 
 const NAV_ITEMS = [
   {
-    label: 'Explore',
+    label: 'Analyse',
     children: [
-      { label: 'Pricings', to: '/pricings' },
-      { label: 'Collections', to: '/collections' },
+      { label: 'AI Classify', to: '/analyse/ai-classify' },
+      { label: 'Ontology Analysis', to: '/analyse/ontology-analysis' },
     ],
   },
   {
-    label: 'Tools',
+    label: 'Explore',
     children: [
-      { label: 'Pricing2Yaml Editor', to: '/editor' },
-      { label: 'HARVEY', to: '/harvey' },
+      { label: 'Contracts', to: '/contracts' },
+      { label: 'Collections', to: '/collections' },
     ],
   },
-  { label: 'Pricing', to: '/pricing' },
-  { label: 'Team', to: '/team' },
-  { label: 'Research', to: '/research' },
-  { label: 'Changelog', to: '/changelog'}
+  { label: 'Docs', to: '/docs' },
 ];
 
 export default function AppHeader() {
@@ -48,7 +44,7 @@ export default function AppHeader() {
               onClick={() => handleNavigate('/')}
               className="cursor-pointer text-sm font-semibold tracking-[0.22em] text-tp-ink transition-colors hover:text-tp-primary"
             >
-              SPHERE
+              ICAN
             </button>
           </div>
 
@@ -142,22 +138,6 @@ export default function AppHeader() {
                 }`}
               >
                 <div className="rounded-lg border border-tp-hairline bg-tp-canvas py-1 shadow-elevation-4">
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate('/pricings/new')}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left text-sm text-tp-slate transition-colors hover:bg-tp-surface hover:text-tp-ink"
-                  >
-                    <FaFileInvoiceDollar className='h-4 w-4'/>
-                    Pricing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate('/collections/new')}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left text-sm text-tp-slate transition-colors hover:bg-tp-surface hover:text-tp-ink"
-                  >
-                    <FaFolder className='h-4 w-4' />
-                    Collection
-                  </button>
                   <button
                     type="button"
                     onClick={() => handleNavigate('/orgs/new')}

@@ -4,8 +4,8 @@ import dotenv from "dotenv";
 import process from "node:process";
 
 import MongooseUserRepository from "../repositories/mongoose/UserRepository";
-import MongoosePricingRepository from "../repositories/mongoose/PricingRepository";
-import MongoosePricingCollectionRepository from "../repositories/mongoose/PricingCollectionRepository";
+import MongooseContractRepository from "../repositories/mongoose/ContractRepository";
+import MongooseContractCollectionRepository from "../repositories/mongoose/ContractCollectionRepository";
 import OrganizationRepository from '../repositories/mongoose/OrganizationRepository';
 import OrganizationMembershipRepository from '../repositories/mongoose/OrganizationMembershipRepository';
 import OrganizationInvitationRepository from '../repositories/mongoose/OrganizationInvitationRepository';
@@ -13,8 +13,8 @@ import EntityPermissionRepository from '../repositories/mongoose/EntityPermissio
 import NotificationRepository from '../repositories/mongoose/NotificationRepository';
 
 import UserService from "../services/UserService";
-import PricingService from "../services/PricingService";
-import PricingCollectionService from "../services/PricingCollectionService";
+import ContractService from "../services/ContractService";
+import ContractCollectionService from "../services/ContractCollectionService";
 import CacheService from "../services/CacheService";
 import OrganizationService from '../services/OrganizationService';
 import PermissionService from '../services/PermissionService';
@@ -27,13 +27,13 @@ dotenv.config();
 
 function initContainer(databaseType: string): AwilixContainer {
   const container: AwilixContainer = createContainer();
-  let userRepository, pricingRepository, pricingCollectionRepository, organizationRepository, organizationMembershipRepository, organizationInvitationRepository, entityPermissionRepository, notificationRepository;
+  let userRepository, contractRepository, contractCollectionRepository, organizationRepository, organizationMembershipRepository, organizationInvitationRepository, entityPermissionRepository, notificationRepository;
 
   switch (databaseType) {
     case "mongoDB":
       userRepository = new MongooseUserRepository();
-      pricingRepository = new MongoosePricingRepository();
-      pricingCollectionRepository = new MongoosePricingCollectionRepository();
+      contractRepository = new MongooseContractRepository();
+      contractCollectionRepository = new MongooseContractCollectionRepository();
       organizationRepository = new OrganizationRepository();
       organizationMembershipRepository = new OrganizationMembershipRepository();
       organizationInvitationRepository = new OrganizationInvitationRepository();
@@ -45,16 +45,16 @@ function initContainer(databaseType: string): AwilixContainer {
   }
   container.register({
     userRepository: asValue(userRepository),
-    pricingRepository: asValue(pricingRepository),
-    pricingCollectionRepository: asValue(pricingCollectionRepository),
+    contractRepository: asValue(contractRepository),
+    contractCollectionRepository: asValue(contractCollectionRepository),
     organizationRepository: asValue(organizationRepository),
     organizationMembershipRepository: asValue(organizationMembershipRepository),
     organizationInvitationRepository: asValue(organizationInvitationRepository),
     entityPermissionRepository: asValue(entityPermissionRepository),
     notificationRepository: asValue(notificationRepository),
     userService: asClass(UserService).singleton(),
-    pricingService: asClass(PricingService).singleton(),
-    pricingCollectionService: asClass(PricingCollectionService).singleton(),
+    contractService: asClass(ContractService).singleton(),
+    contractCollectionService: asClass(ContractCollectionService).singleton(),
     cacheService: asClass(CacheService).singleton(),
     organizationService: asClass(OrganizationService).singleton(),
     permissionService: asClass(PermissionService).singleton(),

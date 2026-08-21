@@ -146,10 +146,7 @@ export default function AnimatedSphereLogo({ className = "" }: { className?: str
         className="flex flex-col items-center gap-1"
       >
         <span className="font-display tracking-wide text-white text-5xl">
-          SPHERE
-        </span>
-        <span className="text-sm font-lg text-center tracking-[0.25em] text-white/60 uppercase w-full">
-          SaaS Pricing Holistic Evaluation and Regulation Environment
+          ICAN
         </span>
       </motion.div>
     </div>

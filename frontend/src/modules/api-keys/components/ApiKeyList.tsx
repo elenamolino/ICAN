@@ -26,7 +26,7 @@ export default function ApiKeyList({ keys, onRevoke, onDelete }: ApiKeyListProps
         </svg>
         <h3 className="mt-3 text-sm font-medium text-tp-ink">No API keys</h3>
         <p className="mt-1 text-sm text-tp-steel">
-          Create an API key to access SPHERE programmatically.
+          Create an API key to access ICAN programmatically.
         </p>
       </div>
     );

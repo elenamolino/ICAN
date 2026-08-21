@@ -79,7 +79,7 @@ export function extractOrganizationIdFromPath(path: string): string | undefined 
     .split('/')
     .filter(Boolean);
 
-  if (segments[0] !== 'orgs' && segments[0] !== 'pricings' && segments[0] !== 'collections') {
+  if (segments[0] !== 'orgs' && segments[0] !== 'contracts' && segments[0] !== 'contractCollections') {
     return undefined;
   }
 

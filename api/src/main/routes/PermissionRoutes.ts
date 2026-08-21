@@ -25,14 +25,14 @@ const loadPermissionRoutes = function (app: express.Application) {
       permissionController.removePermission
     );
 
-  // Current user's permissions on a specific pricing/collection
+  // Current user's permissions on a specific contract/collection
   app
-    .route(baseUrl + '/pricings/:organizationId/:pricingSlug/permissions')
-    .get(permissionController.getPricingPermissions);
+    .route(baseUrl + '/contracts/:organizationId/:contractSlug/permissions')
+    .get(permissionController.getContractPermissions);
 
   app
-    .route(baseUrl + '/collections/:organizationId/:collectionSlug/permissions')
-    .get(permissionController.getCollectionPermissions);
+    .route(baseUrl + '/contractCollections/:organizationId/:collectionSlug/permissions')
+    .get(permissionController.getContractCollectionPermissions);
 };
 
 export default loadPermissionRoutes;

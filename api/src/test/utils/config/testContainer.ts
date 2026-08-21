@@ -11,7 +11,7 @@ async function initTestContainer(): Promise<AwilixContainer> {
   container.register({
     app: asValue(await getApp()),
     usersToDelete: asValue(new Set<string>()),
-    pricingsToDelete: asValue(new Set<string>()),
+    contractsToDelete: asValue(new Set<string>()),
     generatedFilesToDelete: asValue(new Set<string>()),
     collectionIdsToDelete: asValue(new Set<string>()),
     orgsToDelete: asValue(new Set<string>()),

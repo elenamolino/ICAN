@@ -137,8 +137,8 @@ describe('Auth Middleware - Real Execution Tests', () => {
       permissionService: {
         hasPermission: vi.fn().mockResolvedValue(true),
       },
-      pricingRepository: {},
-      pricingCollectionRepository: {},
+      contractRepository: {},
+      contractCollectionRepository: {},
     };
 
     // Reset JWT mock
@@ -243,7 +243,7 @@ describe('Auth Middleware - Real Execution Tests', () => {
 
       mockReq = createMockRequest({
         method: 'GET',
-        path: '/api/v1/pricings',
+        path: '/api/v1/contracts',
         headers: buildApiKeyHeader(apiKey),
       });
 
@@ -263,7 +263,7 @@ describe('Auth Middleware - Real Execution Tests', () => {
 
       mockReq = createMockRequest({
         method: 'GET',
-        path: '/api/v1/pricings',
+        path: '/api/v1/contracts',
         headers: buildApiKeyHeader(apiKey),
       });
 
@@ -281,7 +281,7 @@ describe('Auth Middleware - Real Execution Tests', () => {
 
       mockReq = createMockRequest({
         method: 'GET',
-        path: '/api/v1/pricings',
+        path: '/api/v1/contracts',
         headers: buildApiKeyHeader(apiKey),
       });
 
@@ -525,10 +525,10 @@ describe('Auth Middleware - Real Execution Tests', () => {
       expect(mockNext).toHaveBeenCalled();
     });
 
-    it('should deny POST /pricings without auth - CALLS MIDDLEWARE', async () => {
+    it('should deny POST /contracts without auth - CALLS MIDDLEWARE', async () => {
       mockReq = createMockRequest({
         method: 'POST',
-        path: '/api/v1/pricings',
+        path: '/api/v1/contracts',
         headers: {},
       });
 
@@ -537,14 +537,14 @@ describe('Auth Middleware - Real Execution Tests', () => {
       expect((mockRes as any).statusCode).toBe(401);
     });
 
-    it('should allow GET /pricings with valid token - CALLS MIDDLEWARE', async () => {
+    it('should allow GET /contracts with valid token - CALLS MIDDLEWARE', async () => {
       const user = createMockRegularUser();
       mockVerifyJwtToken.mockReturnValue({ id: user.id, username: user.username, role: user.role });
       mockUserRepository.findById.mockResolvedValue(user);
 
       mockReq = createMockRequest({
         method: 'GET',
-        path: '/api/v1/pricings',
+        path: '/api/v1/contracts',
         headers: buildBearerTokenHeader(user.token!),
       });
 

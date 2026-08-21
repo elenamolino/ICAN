@@ -114,7 +114,7 @@ export default function ApiKeysPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-tp-ink">API Keys</h1>
         <p className="mt-1 text-sm text-tp-steel">
-          Create and manage API keys for programmatic access to SPHERE.
+          Create and manage API keys for programmatic access to ICAN.
         </p>
       </div>
 
