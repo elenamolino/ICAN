@@ -14,6 +14,7 @@ export const DashboardPage = lazy(() => import('../modules/presentation/pages/da
 export const TeamPage = lazy(() => import('../modules/presentation/pages/team'));
 export const Page404 = lazy(() => import('../modules/core/pages/page-not-found'));
 export const InboxPage = lazy(() => import('../modules/notification/pages/inbox'));
+export const AiClassifyPage = lazy(() => import('../modules/analysis/pages/ai-classify'));
 
 import ResearchPage from '../modules/presentation/pages/research';
 import ContributionsPage from '../modules/presentation/pages/contributions';
@@ -83,7 +84,14 @@ export default function Router() {
         { element: <PlaceholderPage title="Contracts" />, path: '/contracts' },
         { element: <PlaceholderPage title="Collections" />, path: '/collections' },
         { element: <PlaceholderPage title="Docs" />, path: '/docs' },
-        { element: <PlaceholderPage title="AI Classify" />, path: '/analyse/ai-classify' },
+        {
+          path: '/analyse/ai-classify',
+          element: (
+            <Suspense fallback={<LoadingView />}>
+              <AiClassifyPage />
+            </Suspense>
+          ),
+        },
         { element: <PlaceholderPage title="Ontology Analysis" />, path: '/analyse/ontology-analysis' },
         {
           path: '/orgs/:organizationId',

@@ -7,7 +7,8 @@ ICAN is a platform for browsing SaaS Terms-of-Service contracts and their analys
 ### Prerequisites
 
 - Node.js and [pnpm](https://pnpm.io/)
-- Docker (for MongoDB and Redis)
+- Docker (for MongoDB, Redis, and the unfair-tos-detector analysis microservice)
+- The [unfair-terms-detector-app](https://github.com/elenamolino/unfair-terms-detector-app) repo checked out as a sibling folder of this one (i.e. `../unfair-terms-detector-app`), needed to build the `unfair-tos-detector` service in `docker/dev/docker-compose.yml`
 
 ### Steps
 

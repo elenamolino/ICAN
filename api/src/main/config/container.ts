@@ -22,6 +22,7 @@ import UserSettingsService from '../services/UserSettingsService';
 import NotificationService from '../services/NotificationService';
 import ApiKeyService from '../services/ApiKeyService';
 import AuthProviderService from '../services/AuthProviderService';
+import AnalysisService from '../services/AnalysisService';
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ function initContainer(databaseType: string): AwilixContainer {
     notificationService: asClass(NotificationService).singleton(),
     apiKeyService: asClass(ApiKeyService).singleton(),
     authProviderService: asClass(AuthProviderService).singleton(),
+    analysisService: asClass(AnalysisService).singleton(),
   });
   return container;
 }

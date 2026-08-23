@@ -20,6 +20,19 @@ services:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
     volumes:
       - 'redis_data:/data'
+  # unfair-tos-detector microservice (contract clause classification).
+  # Assumes it's checked out as a sibling repo: ../../../unfair-terms-detector-app
+  # relative to this file. Adjust the build context if your layout differs.
+  # api/.env.testing points ANALYZER_SERVICE_URL at http://localhost:3010 (host
+  # port below) -- 3000/3001 were already taken by other local containers.
+  unfair-tos-detector:
+    build:
+      context: ../../../unfair-terms-detector-app/service
+      dockerfile: packages/api/Dockerfile
+    ports:
+      - "3010:3000"
+    networks:
+      - dev-network
 volumes:
   dev-mongodb:
     driver: local

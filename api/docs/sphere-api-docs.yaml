@@ -3618,6 +3618,117 @@ paths:
                 error: "ERROR: Redis client not initialized"
 
   # ============================================
+  # Contract Analysis Routes
+  # ============================================
+
+  /analysis/ai-classify:
+    post:
+      summary: Classify contract clauses as fair/unfair using AI
+      description: |
+        Forwards the given contract text to the unfair-tos-detector microservice,
+        which splits it into clauses and scores each one against 8 unfairness
+        categories using the `lexglue-unfair-tos` model.
+
+        **Authentication**: Public
+
+        Category codes:
+        - `ltd`: Limitation of liability
+        - `ter`: Unilateral termination
+        - `ch`: Unilateral change
+        - `cr`: Content removal
+        - `use`: Contract by using
+        - `law`: Choice of law
+        - `j`: Jurisdiction
+        - `a`: Arbitration
+      tags:
+        - Analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  minLength: 1
+                  maxLength: 200000
+                  description: Full contract text to analyze
+                  example: "We may terminate your account at any time without notice."
+      responses:
+        '200':
+          description: Clause-by-clause classification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      totalClauses:
+                        type: integer
+                        example: 1
+                      unfairClauses:
+                        type: integer
+                        example: 1
+                      totalWords:
+                        type: integer
+                        example: 11
+                      sectionCount:
+                        type: integer
+                        nullable: true
+                        example: 0
+                  clauses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        term:
+                          type: string
+                        isUnfair:
+                          type: boolean
+                        wordCount:
+                          type: integer
+                        ltd:
+                          type: number
+                        ter:
+                          type: number
+                        ch:
+                          type: number
+                        cr:
+                          type: number
+                        use:
+                          type: number
+                        law:
+                          type: number
+                        j:
+                          type: number
+                        a:
+                          type: number
+        '422':
+          description: Missing or invalid 'text' field
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '500':
+          description: The analyzer microservice is unreachable or returned an error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Analyzer service unavailable"
+
+  # ============================================
   # Entity Permission Management Routes
   # ============================================
 

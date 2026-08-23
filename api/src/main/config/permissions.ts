@@ -217,6 +217,15 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
 
   // ============================================
+  // Contract Analysis Routes
+  // ============================================
+  {
+    path: '/analysis/ai-classify',
+    methods: ['POST'],
+    isPublic: true,
+  },
+
+  // ============================================
   // Notification Routes
   // ============================================
   // SSE stream endpoint: EventSource cannot set headers, so the token is passed
