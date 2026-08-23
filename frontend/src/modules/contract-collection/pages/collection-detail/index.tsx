@@ -1,0 +1,87 @@
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
+import Skeleton from 'react-loading-skeleton';
+import { useRouter } from '../../../core/hooks/useRouter';
+import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
+import { Contract, ContractCollectionSummary, getCollection } from '../../api/contractCollectionsApi';
+import ContractCard from '../../components/contract-card';
+
+const PER_PAGE = 12;
+
+export default function CollectionDetailPage() {
+  const { organizationId, collectionSlug } = useParams<{ organizationId: string; collectionSlug: string }>();
+  const router = useRouter();
+  const [collection, setCollection] = useState<ContractCollectionSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!organizationId || !collectionSlug) return;
+    setIsLoading(true);
+    setError(null);
+    getCollection(organizationId, collectionSlug)
+      .then(setCollection)
+      .catch(() => setError('Collection not found'))
+      .finally(() => setIsLoading(false));
+  }, [organizationId, collectionSlug]);
+
+  const contracts: Contract[] = collection?.contracts ?? [];
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
+      <Helmet>
+        <title>{collection?.name || collectionSlug} | ICAN</title>
+      </Helmet>
+
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={transitionDefault} className="mb-6">
+        <div className="mb-2 flex items-center gap-2 text-xs text-tp-steel">
+          <button type="button" onClick={() => router.push('/collections')} className="cursor-pointer hover:text-tp-ink">
+            Collections
+          </button>
+          <span>/</span>
+          <span className="text-tp-ink">{collection?.name || collectionSlug}</span>
+        </div>
+        <h1 className="font-display text-2xl font-normal text-tp-ink">{collection?.name || collectionSlug}</h1>
+        <p className="mt-1 text-sm text-tp-steel">
+          {collection?.organization.displayName || collection?.organization.name}
+          {collection?.description && <span className="ml-1">· {collection.description}</span>}
+        </p>
+      </motion.div>
+
+      {error ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-tp-hairline bg-tp-canvas py-16 text-center">
+          <p className="text-sm font-medium text-tp-ink">{error}</p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-4 text-sm font-medium text-tp-ink">
+            {isLoading ? 'Loading...' : `${contracts.length} ${contracts.length === 1 ? 'contract' : 'contracts'} in collection`}
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: PER_PAGE }).map((_, i) => (
+                <Skeleton key={i} height={96} />
+              ))}
+            </div>
+          ) : contracts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-tp-hairline bg-tp-canvas py-16 text-center">
+              <p className="text-sm font-medium text-tp-ink">No contracts in this collection</p>
+            </div>
+          ) : (
+            <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {contracts.map((contract) => (
+                <motion.div key={contract.id ?? contract.slug} variants={fadeInUp} transition={transitionDefault}>
+                  <ContractCard data={{ ...contract, organization: contract.organization ?? collection?.organization, collection: { id: collection!.id, name: collection!.name, slug: collection!.slug } }} />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

@@ -28,6 +28,10 @@ import OrganizationJoinPage from '../modules/organization/pages/organization-joi
 import SettingsPage from '../modules/settings/pages/SettingsPage';
 import ApiKeysPage from '../modules/api-keys/pages/ApiKeysPage';
 import PlaceholderPage from '../modules/core/pages/placeholder';
+import CollectionsListPage from '../modules/contract-collection/pages/collections-list';
+import CollectionDetailPage from '../modules/contract-collection/pages/collection-detail';
+import ContractDetailPage from '../modules/contract-collection/pages/contract-detail';
+import ContractsListPage from '../modules/contract-collection/pages/contracts-list';
 
 function RootPage() {
   const { authUser } = useAuth();
@@ -81,8 +85,11 @@ export default function Router() {
         { element: <ResearchPage />, path: '/research' },
         { element: <ContributionsPage />, path: '/contributions' },
         { element: <ChangelogPage />, path: '/changelog' },
-        { element: <PlaceholderPage title="Contracts" />, path: '/contracts' },
-        { element: <PlaceholderPage title="Collections" />, path: '/collections' },
+        { element: <ContractsListPage />, path: '/contracts' },
+        { element: <ContractDetailPage />, path: '/contracts/:organizationId/:contractSlug' },
+        { element: <CollectionsListPage />, path: '/collections' },
+        { element: <CollectionDetailPage />, path: '/collections/:organizationId/:collectionSlug' },
+        { element: <ContractDetailPage />, path: '/collections/:organizationId/:collectionSlug/:contractSlug' },
         { element: <PlaceholderPage title="Docs" />, path: '/docs' },
         {
           path: '/analyse/ai-classify',

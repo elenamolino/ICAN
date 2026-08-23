@@ -41,6 +41,10 @@ import {
     MdVpnKey,
     MdOutlineRemoveRedEye,
     MdOutlineShield,
+    MdSearch,
+    MdSearchOff,
+    MdOutlineDescription,
+    MdOpenInNew,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
@@ -87,6 +91,10 @@ const iconMap: Record<string, IconType> = {
     'mdi:key': MdVpnKey,
     'mdi:eye-outline': MdOutlineRemoveRedEye,
     'mdi:shield-account-outline': MdOutlineShield,
+    'mdi:magnify': MdSearch,
+    'mdi:magnify-close': MdSearchOff,
+    'mdi:file-document-outline': MdOutlineDescription,
+    'mdi:open-in-new': MdOpenInNew,
 };
 
 type IconifyProps = {

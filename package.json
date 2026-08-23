@@ -16,6 +16,7 @@
     "build:frontend": "cd frontend && vite build",
     "lint": "eslint .",
     "seed:mongo-local:small": "cd api && npx tsx --tsconfig tsconfig.json scripts/seedMongo.ts",
+    "sync:termscockpit": "cd api && npx tsx --tsconfig tsconfig.json scripts/syncTermsCockpit.ts",
     "prepare": "husky"
   },
   "devDependencies": {

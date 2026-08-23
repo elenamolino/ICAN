@@ -1,10 +1,12 @@
 [
   {
-    "_id": { "$oid": "6787d0facaeb2b25748bc12a" },
-    "name": "Demo Contracts",
-    "slug": "demo-contracts",
-    "description": "Placeholder collection seeded for local development.",
-    "_organizationId": { "$oid": "63f74bf8eeed64058364b601" },
-    "private": false
+    "_id": { "$oid": "6a8b24393b9cca36319a186e" },
+    "name": "OpenTermsArchive-contrib",
+    "slug": "contrib",
+    "description": "OpenTermsArchive",
+    "_organizationId": { "$oid": "6a8b24393b9cca36319a1869" },
+    "private": false,
+    "createdAt": { "$date": "2026-08-23T16:47:53.156Z" },
+    "updatedAt": { "$date": "2026-08-23T16:47:53.156Z" }
   }
 ]

@@ -40,5 +40,15 @@
     "isPersonal": false,
     "createdAt": { "$date": "2023-02-20T11:22:04.000Z" },
     "updatedAt": { "$date": "2023-02-20T11:22:04.000Z" }
+  },
+  {
+    "_id": { "$oid": "6a8b24393b9cca36319a1869" },
+    "name": "terms-cockpit",
+    "displayName": "Terms Cockpit",
+    "description": "ToS and Privacy Policy snapshots imported from OpenTermsArchive and ToS;DR via termscockpit.",
+    "avatar": null,
+    "isPersonal": false,
+    "createdAt": { "$date": "2026-08-23T16:47:53.095Z" },
+    "updatedAt": { "$date": "2026-08-23T16:47:53.095Z" }
   }
 ]
