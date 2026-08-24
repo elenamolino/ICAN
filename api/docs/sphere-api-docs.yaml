@@ -3729,6 +3729,234 @@ paths:
                 error: "Analyzer service unavailable"
 
   # ============================================
+  # Ontology Analysis Routes (tos-to-odrl)
+  # ============================================
+
+  /analysis/ontology-analysis/models:
+    get:
+      summary: List available LLM model presets for the ontology pipeline
+      description: |
+        Proxies the tos-to-odrl service's model catalog. Each preset's label
+        indicates its cost (free tier, paid per-run estimate, etc).
+
+        **Authentication**: Public
+      tags:
+        - Ontology Analysis
+      responses:
+        '200':
+          description: Available model presets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    label: { type: string }
+                    model: { type: string }
+                    base_url: { type: string }
+
+  /analysis/ontology-analysis:
+    post:
+      summary: Submit a contract for ToS-to-ODRL analysis
+      description: |
+        Uploads a contract document (.json, .txt or .pdf) to the tos-to-odrl
+        pipeline, which splits it into clauses and, using an LLM, converts
+        each one into ODRL permissions/prohibitions/duties, flags unfair
+        terms, and (optionally) evaluates semantic fidelity via
+        back-translation. This is an asynchronous job: this endpoint only
+        starts it. Poll `GET /analysis/ontology-analysis/{jobId}` for
+        progress and `GET /analysis/ontology-analysis/{jobId}/report` for
+        the result once done.
+
+        The LLM API key is configured server-side on the tos-to-odrl
+        service; the caller does not provide one.
+
+        **Authentication**: Public
+      tags:
+        - Ontology Analysis
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Contract document (.json, .txt or .pdf)
+                provider:
+                  type: string
+                  description: Optional contract provider/company name
+                title:
+                  type: string
+                  description: Optional contract title
+                date:
+                  type: string
+                  description: Optional contract date
+                model:
+                  type: string
+                  description: Model preset id from GET /analysis/ontology-analysis/models
+                runEvaluation:
+                  type: boolean
+                  description: Whether to run the semantic back-translation evaluation step
+                  default: true
+      responses:
+        '202':
+          description: Job accepted and started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+        '422':
+          description: Missing or invalid fields
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '500':
+          description: The ontology-analysis microservice is unreachable or returned an error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analysis/ontology-analysis/{jobId}:
+    get:
+      summary: Get the status of an ontology-analysis job
+      description: |
+        Returns the job's overall status (`pending | running | done | error`)
+        and per-phase progress (`split`, `phase1`, `phase2`, `phase3`,
+        `analysis`, `evaluation`), each with a `done`/`total` clause count.
+        Meant to be polled (e.g. every 2s) until `status` is `done` or `error`.
+
+        **Authentication**: Public
+      tags:
+        - Ontology Analysis
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+                  status: { type: string, enum: [pending, running, done, error] }
+                  created: { type: string }
+                  finished: { type: string, nullable: true }
+                  error: { type: string, nullable: true }
+                  steps:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        status: { type: string }
+                        done: { type: integer }
+                        total: { type: integer }
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analysis/ontology-analysis/{jobId}/report:
+    get:
+      summary: Get the final report for a completed ontology-analysis job
+      description: |
+        Returns aggregate statistics and the full per-clause breakdown
+        (ODRL permissions/prohibitions/duties, unfair term categories,
+        semantic similarity, Turtle/TTL). Only available once the job's
+        status is `done`.
+
+        **Authentication**: Public
+      tags:
+        - Ontology Analysis
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id: { type: string }
+                  provider: { type: string }
+                  title: { type: string }
+                  date: { type: string }
+                  aggregate:
+                    type: object
+                    properties:
+                      total_clauses: { type: integer }
+                      conforming: { type: integer }
+                      permissions: { type: integer }
+                      prohibitions: { type: integer }
+                      duties: { type: integer }
+                      unfair_count: { type: integer }
+                      mean_semantic_sim: { type: number, nullable: true }
+                  clauses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        clause_id: { type: string }
+                        clause_text: { type: string }
+                        type: { type: string }
+                        party: { type: string }
+                        action: { type: string }
+                        asset: { type: string }
+                        conforms: { type: boolean }
+                        repair_rounds: { type: integer }
+                        permissions: { type: array, items: { type: object } }
+                        prohibitions: { type: array, items: { type: object } }
+                        duties: { type: array, items: { type: object } }
+                        unfair_terms:
+                          type: object
+                          additionalProperties:
+                            type: array
+                            items: { type: object }
+                        semantic_sim: { type: number, nullable: true }
+                        back_translated: { type: string, nullable: true }
+                        ttl: { type: string }
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '425':
+          description: Job is not done yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============================================
   # Entity Permission Management Routes
   # ============================================
 

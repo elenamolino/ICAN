@@ -224,6 +224,26 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['POST'],
     isPublic: true,
   },
+  {
+    path: '/analysis/ontology-analysis/models',
+    methods: ['GET'],
+    isPublic: true,
+  },
+  {
+    path: '/analysis/ontology-analysis',
+    methods: ['POST'],
+    isPublic: true,
+  },
+  {
+    path: '/analysis/ontology-analysis/*',
+    methods: ['GET'],
+    isPublic: true,
+  },
+  {
+    path: '/analysis/ontology-analysis/*/report',
+    methods: ['GET'],
+    isPublic: true,
+  },
 
   // ============================================
   // Notification Routes

@@ -15,6 +15,7 @@ export const TeamPage = lazy(() => import('../modules/presentation/pages/team'))
 export const Page404 = lazy(() => import('../modules/core/pages/page-not-found'));
 export const InboxPage = lazy(() => import('../modules/notification/pages/inbox'));
 export const AiClassifyPage = lazy(() => import('../modules/analysis/pages/ai-classify'));
+export const OntologyAnalysisPage = lazy(() => import('../modules/analysis/pages/ontology-analysis'));
 
 import ResearchPage from '../modules/presentation/pages/research';
 import ContributionsPage from '../modules/presentation/pages/contributions';
@@ -99,7 +100,14 @@ export default function Router() {
             </Suspense>
           ),
         },
-        { element: <PlaceholderPage title="Ontology Analysis" />, path: '/analyse/ontology-analysis' },
+        {
+          path: '/analyse/ontology-analysis',
+          element: (
+            <Suspense fallback={<LoadingView />}>
+              <OntologyAnalysisPage />
+            </Suspense>
+          ),
+        },
         {
           path: '/orgs/:organizationId',
           element: (

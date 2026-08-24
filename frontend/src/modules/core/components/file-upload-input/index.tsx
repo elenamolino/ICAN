@@ -27,18 +27,15 @@ export default function FileUpload({
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const uploadedFile = acceptedFiles[0];
-    const extensionValidator = accept
-      ? Object.values(accept).every(extensions =>
-          extensions.some(ext => uploadedFile.name.endsWith(ext))
-        )
-      : uploadedFile.name.endsWith('.yaml') || uploadedFile.name.endsWith('.yml');
-      
+    const acceptedExtensions = accept ? Object.values(accept).flat() : ['.yaml', '.yml'];
+    const extensionValidator = acceptedExtensions.some(ext => uploadedFile.name.endsWith(ext));
+
     if (uploadedFile && extensionValidator) {
       setFile(uploadedFile);
     } else {
-      customAlert('Please upload a file with a .yaml or .yml extension', 'warning');
+      customAlert(`Please upload a file with a ${acceptedExtensions.join(', ')} extension`, 'warning');
     }
-  }, []);
+  }, [accept]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
