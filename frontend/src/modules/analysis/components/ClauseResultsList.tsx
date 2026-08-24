@@ -1,33 +1,6 @@
 import { AnalyzeResponse, ClauseAnalysis } from '../api/analysisApi';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  ltd: 'Limitation of liability',
-  ter: 'Unilateral termination',
-  ch: 'Unilateral change',
-  cr: 'Content removal',
-  use: 'Contract by using',
-  law: 'Choice of law',
-  j: 'Jurisdiction',
-  a: 'Arbitration',
-};
-
-const CATEGORY_KEYS = Object.keys(CATEGORY_LABELS) as (keyof typeof CATEGORY_LABELS)[];
-const RELEVANCE_THRESHOLD = 0.3;
-
-function topCategories(clause: ClauseAnalysis) {
-  return CATEGORY_KEYS.map((key) => ({ key, label: CATEGORY_LABELS[key], score: clause[key] as number }))
-    .filter((entry) => entry.score >= RELEVANCE_THRESHOLD)
-    .sort((a, b) => b.score - a.score);
-}
-
-function SummaryStat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg border border-tp-hairline-soft bg-tp-canvas px-4 py-3 text-center">
-      <p className="text-xl font-bold text-tp-ink">{value}</p>
-      <p className="text-xs text-tp-steel">{label}</p>
-    </div>
-  );
-}
+import { topCategories } from '../constants/clauseCategories';
+import SummaryStat from './SummaryStat';
 
 function ClauseCard({ clause }: { clause: ClauseAnalysis }) {
   const relevantCategories = topCategories(clause);

@@ -81,6 +81,7 @@ class ContractRepository extends RepositoryBase {
     const query = ContractMongoose.find(filter)
       .populate('organization', 'name displayName avatar')
       .populate('collection', 'name slug')
+      .populate('service', 'name slug')
       .sort({ [sortField]: sortOrder, _id: 1 });
 
     if (typeof queryParams.offset !== 'undefined') query.skip(queryParams.offset);
@@ -112,7 +113,8 @@ class ContractRepository extends RepositoryBase {
 
     const contract = await ContractMongoose.findOne(filter)
       .populate('organization', 'name displayName avatar')
-      .populate('collection', 'name slug');
+      .populate('collection', 'name slug')
+      .populate('service', 'name slug');
 
     if (!contract) return null;
 
@@ -154,6 +156,7 @@ class ContractRepository extends RepositoryBase {
 
   async create(data: Record<string, any>) {
     if (data._collectionId) data._collectionId = String(data._collectionId);
+    if (data._serviceId) data._serviceId = String(data._serviceId);
     if (data._organizationId) data._organizationId = new mongoose.Types.ObjectId(data._organizationId);
     if (!data.slug && data.name) data.slug = generateSlug(data.name);
 

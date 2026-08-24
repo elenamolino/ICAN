@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import RepositoryBase from '../RepositoryBase';
 import ContractCollectionMongoose from './models/ContractCollectionMongoose';
 import ContractMongoose from './models/ContractMongoose';
+import ServiceMongoose from './models/ServiceMongoose';
+import ContractVersionMongoose from './models/ContractVersionMongoose';
 import { RetrievedContractCollection } from '../../types/database/ContractCollection';
 import { CollectionIndexQueryParams } from '../../types/services/ContractCollection';
 import { OrgUserPermissionsContext } from '../../types/policies';
@@ -106,7 +108,10 @@ class ContractCollectionRepository extends RepositoryBase {
 
       if (!collection) return null;
 
-      const contracts = await ContractMongoose.find({ _collectionId: String(collection._id) });
+      const contracts = await ContractMongoose.find({ _collectionId: String(collection._id) }).populate(
+        'service',
+        'name slug'
+      );
 
       return {
         ...collection.toObject(),
@@ -125,7 +130,10 @@ class ContractCollectionRepository extends RepositoryBase {
     });
     if (!collection) return null;
 
-    const contracts = await ContractMongoose.find({ _collectionId: String(collection._id) });
+    const contracts = await ContractMongoose.find({ _collectionId: String(collection._id) }).populate(
+      'service',
+      'name slug'
+    );
     return { _id: collection._id, contracts };
   }
 
@@ -161,7 +169,14 @@ class ContractCollectionRepository extends RepositoryBase {
   }
 
   async destroyWithContracts(id: string) {
+    const contractIds = (await ContractMongoose.find({ _collectionId: id }).select('_id')).map(c =>
+      String(c._id)
+    );
+    if (contractIds.length > 0) {
+      await ContractVersionMongoose.deleteMany({ _contractId: { $in: contractIds } });
+    }
     await ContractMongoose.deleteMany({ _collectionId: id });
+    await ServiceMongoose.deleteMany({ _collectionId: id });
     const result = await ContractCollectionMongoose.deleteOne({ _id: new mongoose.Types.ObjectId(id) });
     return result?.deletedCount === 1;
   }

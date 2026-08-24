@@ -61,6 +61,17 @@ export default function ContractCard({ data }: Props) {
             Synced
           </span>
         )}
+        {data.latestVersionSummary && (
+          <span
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${
+              data.latestVersionSummary.unfairClauses > 0
+                ? 'bg-tp-severity-warning-bg text-tp-severity-warning'
+                : 'bg-tp-severity-success-bg text-tp-severity-success'
+            }`}
+          >
+            {data.latestVersionSummary.unfairClauses} unfair
+          </span>
+        )}
         {data.createdAt && (
           <span className="text-tp-muted">{formatDistanceToNow(parseISO(data.createdAt), { addSuffix: true })}</span>
         )}

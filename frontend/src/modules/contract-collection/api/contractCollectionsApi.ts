@@ -1,3 +1,5 @@
+import { AnalysisSummary, ClauseAnalysis } from '../../analysis/api/analysisApi';
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 export interface ContractCollectionOrganization {
@@ -16,6 +18,12 @@ export interface ContractCollectionSummary {
   contracts?: Contract[];
 }
 
+export interface ContractServiceRef {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface Contract {
   id: string;
   name: string;
@@ -27,6 +35,26 @@ export interface Contract {
   private: boolean;
   organization?: ContractCollectionOrganization;
   collection?: { id: string; name: string; slug: string } | null;
+  service?: ContractServiceRef | null;
+  latestVersionSummary?: AnalysisSummary;
+}
+
+export type ContractVersionLabel = 'first' | 'intermediate' | 'last';
+
+export interface ContractVersionListItem {
+  id: string;
+  commitHash: string;
+  capturedAt: string;
+  label: ContractVersionLabel;
+  insertions: number | null;
+  deletions: number | null;
+  summary: AnalysisSummary | null;
+  analysisSkipped: boolean;
+}
+
+export interface ContractVersionDetail extends ContractVersionListItem {
+  content: string;
+  clauses: ClauseAnalysis[] | null;
 }
 
 export async function listCollections(params?: {
@@ -77,4 +105,24 @@ export async function listContracts(params?: {
   if (!response.ok) throw new Error('Failed to fetch contracts');
   const data = await response.json();
   return { contracts: data.contracts ?? [], total: data.total ?? 0 };
+}
+
+export async function listContractVersions(
+  organizationId: string,
+  contractSlug: string
+): Promise<ContractVersionListItem[]> {
+  const response = await fetch(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions`);
+  if (!response.ok) throw new Error('Failed to fetch contract versions');
+  const data = await response.json();
+  return data.versions ?? [];
+}
+
+export async function getContractVersion(
+  organizationId: string,
+  contractSlug: string,
+  versionId: string
+): Promise<ContractVersionDetail> {
+  const response = await fetch(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}`);
+  if (!response.ok) throw new Error('Contract version not found');
+  return response.json();
 }

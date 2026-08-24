@@ -28,6 +28,15 @@ export interface ReadabilityDocument {
   content: string;
 }
 
+export interface DocumentChange {
+  commit_hash: string;
+  author: string;
+  timestamp: number;
+  insertions: number;
+  deletions: number;
+  blob_sha: string | null;
+}
+
 function encodeDocumentPath(document: string): string {
   return document.split('/').map(encodeURIComponent).join('/');
 }
@@ -102,8 +111,34 @@ class TermsCockpitClient {
     );
   }
 
-  documentUrl(repo: string, document: string): string {
-    return `${this.baseUrl()}/api/${encodeURIComponent(repo)}/documents/${encodeDocumentPath(document)}`;
+  async getDocumentReadabilityAt(repo: string, document: string, commitHash: string): Promise<ReadabilityDocument> {
+    return this.getJson<ReadabilityDocument>(
+      `/api/${encodeURIComponent(repo)}/documents/${encodeDocumentPath(document)}/readability/at/${encodeURIComponent(commitHash)}`
+    );
+  }
+
+  // Returns [] (rather than throwing) when the repository has change-tracking
+  // disabled (termscockpit responds 400) — callers treat that as "no history
+  // available", not a fatal error. Any other failure (network, 5xx) throws.
+  async listDocumentChanges(repo: string, document: string): Promise<DocumentChange[]> {
+    let response: Response;
+    try {
+      response = await fetch(
+        `${this.baseUrl()}/api/${encodeURIComponent(repo)}/documents/${encodeDocumentPath(document)}/changes`
+      );
+    } catch {
+      throw new Error('ERROR: termscockpit service unavailable');
+    }
+
+    if (response.status === 400) {
+      return [];
+    }
+    if (!response.ok) {
+      throw new Error(`ERROR: termscockpit responded with status ${response.status} for document changes`);
+    }
+
+    const data = (await response.json()) as { changes: DocumentChange[] };
+    return data.changes;
   }
 }
 

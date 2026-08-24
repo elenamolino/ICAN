@@ -9,6 +9,28 @@ import { Contract, ContractCollectionSummary, getCollection } from '../../api/co
 import ContractCard from '../../components/contract-card';
 
 const PER_PAGE = 12;
+const OTHER_GROUP_LABEL = 'Other';
+
+function groupByService(contracts: Contract[]): { label: string; contracts: Contract[] }[] {
+  const bySlug = new Map<string, { label: string; contracts: Contract[] }>();
+  const other: Contract[] = [];
+
+  for (const contract of contracts) {
+    if (!contract.service) {
+      other.push(contract);
+      continue;
+    }
+    const key = contract.service.slug;
+    if (!bySlug.has(key)) {
+      bySlug.set(key, { label: contract.service.name, contracts: [] });
+    }
+    bySlug.get(key)!.contracts.push(contract);
+  }
+
+  const groups = [...bySlug.values()].sort((a, b) => a.label.localeCompare(b.label));
+  if (other.length > 0) groups.push({ label: OTHER_GROUP_LABEL, contracts: other });
+  return groups;
+}
 
 export default function CollectionDetailPage() {
   const { organizationId, collectionSlug } = useParams<{ organizationId: string; collectionSlug: string }>();
@@ -28,6 +50,8 @@ export default function CollectionDetailPage() {
   }, [organizationId, collectionSlug]);
 
   const contracts: Contract[] = collection?.contracts ?? [];
+
+  const groups = groupByService(contracts);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
@@ -72,13 +96,27 @@ export default function CollectionDetailPage() {
               <p className="text-sm font-medium text-tp-ink">No contracts in this collection</p>
             </div>
           ) : (
-            <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {contracts.map((contract) => (
-                <motion.div key={contract.id ?? contract.slug} variants={fadeInUp} transition={transitionDefault}>
-                  <ContractCard data={{ ...contract, organization: contract.organization ?? collection?.organization, collection: { id: collection!.id, name: collection!.name, slug: collection!.slug } }} />
-                </motion.div>
+            <div className="space-y-8">
+              {groups.map((group) => (
+                <div key={group.label}>
+                  <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tp-steel">
+                    {group.label}
+                  </h2>
+                  <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                  >
+                    {group.contracts.map((contract) => (
+                      <motion.div key={contract.id ?? contract.slug} variants={fadeInUp} transition={transitionDefault}>
+                        <ContractCard data={{ ...contract, organization: contract.organization ?? collection?.organization, collection: { id: collection!.id, name: collection!.name, slug: collection!.slug } }} />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           )}
         </>
       )}

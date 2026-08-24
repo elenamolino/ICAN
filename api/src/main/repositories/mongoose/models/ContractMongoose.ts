@@ -7,14 +7,30 @@ const contractSchema = new Schema(
     slug: { type: String, required: false },
     _collectionId: { type: String, ref: 'ContractCollection', required: false },
     _organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+    _serviceId: { type: String, ref: 'Service', required: false },
+    _latestVersionId: { type: String, ref: 'ContractVersion', required: false },
     version: { type: String, required: false },
     createdAt: { type: Date, required: true, default: Date.now },
     url: { type: String, required: false },
     content: { type: String, required: false },
     private: { type: Boolean, required: true, default: false },
+    latestVersionSummary: {
+      type: {
+        totalClauses: { type: Number, required: true },
+        unfairClauses: { type: Number, required: true },
+        totalWords: { type: Number, required: true },
+        sectionCount: { type: Number, required: false, default: null },
+      },
+      required: false,
+      default: undefined,
+    },
   },
   {
     toObject: {
+      getters: true,
+      virtuals: true,
+    },
+    toJSON: {
       getters: true,
       virtuals: true,
     },
@@ -49,6 +65,13 @@ contractSchema.virtual('collection', {
 contractSchema.virtual('organization', {
   ref: 'Organization',
   localField: '_organizationId',
+  foreignField: '_id',
+  justOne: true,
+});
+
+contractSchema.virtual('service', {
+  ref: 'Service',
+  localField: '_serviceId',
   foreignField: '_id',
   justOne: true,
 });
