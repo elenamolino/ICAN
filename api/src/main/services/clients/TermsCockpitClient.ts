@@ -28,6 +28,12 @@ export interface ReadabilityDocument {
   content: string;
 }
 
+export interface RawDocument {
+  document: string;
+  commit: string | null;
+  content: string;
+}
+
 export interface DocumentChange {
   commit_hash: string;
   author: string;
@@ -114,6 +120,19 @@ class TermsCockpitClient {
   async getDocumentReadabilityAt(repo: string, document: string, commitHash: string): Promise<ReadabilityDocument> {
     return this.getJson<ReadabilityDocument>(
       `/api/${encodeURIComponent(repo)}/documents/${encodeDocumentPath(document)}/readability/at/${encodeURIComponent(commitHash)}`
+    );
+  }
+
+  // For repos backed by an already-extracted "versions" collection (clean
+  // text/markdown, not a raw scraped page), readability-lxml either doesn't
+  // apply or actively hurts — this returns the file content as-is.
+  async getDocumentContent(repo: string, document: string): Promise<RawDocument> {
+    return this.getJson<RawDocument>(`/api/${encodeURIComponent(repo)}/documents/${encodeDocumentPath(document)}`);
+  }
+
+  async getDocumentContentAt(repo: string, document: string, commitHash: string): Promise<RawDocument> {
+    return this.getJson<RawDocument>(
+      `/api/${encodeURIComponent(repo)}/documents/${encodeDocumentPath(document)}/at/${encodeURIComponent(commitHash)}`
     );
   }
 

@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import DOMPurify from 'dompurify';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Iconify from '../../../core/components/iconify';
 import { useRouter } from '../../../core/hooks/useRouter';
 import { fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
@@ -79,10 +81,13 @@ export default function ContractDetailPage() {
     };
   }, [organizationId, contractSlug, selectedVersionId]);
 
-  const sanitizedContent = useMemo(() => {
-    const html = selectedVersion?.content ?? contract?.content;
-    return html ? DOMPurify.sanitize(html) : '';
-  }, [selectedVersion?.content, contract?.content]);
+  // Version-history content comes from termscockpit's OpenTermsArchive sync,
+  // which is already-extracted markdown; a manually-uploaded contract (no
+  // version history) stores raw HTML instead.
+  const sanitizedHtml = useMemo(() => {
+    if (selectedVersion || !contract?.content) return '';
+    return DOMPurify.sanitize(contract.content);
+  }, [selectedVersion, contract?.content]);
 
   const backHref = collectionSlug
     ? `/collections/${organizationId}/${collectionSlug}`
@@ -217,8 +222,14 @@ export default function ContractDetailPage() {
               transition={{ ...transitionDefault, delay: 0.05 }}
               className="rounded-xl border border-tp-hairline bg-tp-canvas p-6 text-sm leading-relaxed text-tp-ink dark:border-tp-hairline dark:bg-tp-surface [&_a]:text-tp-primary [&_a]:underline [&_h1]:mt-6 [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:first:mt-0 [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-5 [&_ol]:mb-3 [&_ol]:list-decimal [&_p]:mb-3 [&_strong]:font-semibold [&_ul]:mb-3 [&_ul]:list-disc"
             >
-              {sanitizedContent ? (
-                <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
+              {selectedVersion ? (
+                selectedVersion.content ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{selectedVersion.content}</ReactMarkdown>
+                ) : (
+                  <p className="text-sm text-tp-steel">No content available for this version.</p>
+                )
+              ) : sanitizedHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
               ) : (
                 <p className="text-sm text-tp-steel">No content available for this contract.</p>
               )}

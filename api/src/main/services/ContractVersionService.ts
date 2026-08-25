@@ -49,7 +49,16 @@ class ContractVersionService {
       contractId,
       input.commitHash
     );
-    if (existing) return { version: existing, reused: true };
+    if (existing) {
+      // The commit's content never changes, but which slot it plays
+      // (first/intermediate/last) can shift between syncs as new commits
+      // land or the selection logic improves — keep the label current.
+      if (existing.label !== input.label) {
+        const relabeled = await this.contractVersionRepository.updateLabel(String(existing._id), input.label);
+        return { version: relabeled ?? existing, reused: true };
+      }
+      return { version: existing, reused: true };
+    }
 
     const visibleText = extractVisibleText(input.content);
     const analysisSkipped = visibleText.length < MIN_VISIBLE_TEXT_LENGTH;

@@ -24,6 +24,11 @@ class ContractVersionRepository extends RepositoryBase {
     return version.toObject();
   }
 
+  async updateLabel(id: string, label: string) {
+    const version = await ContractVersionMongoose.findByIdAndUpdate(id, { label }, { new: true });
+    return version ? version.toObject() : null;
+  }
+
   async create(data: Record<string, any>) {
     if (data._contractId) data._contractId = String(data._contractId);
     const version = await ContractVersionMongoose.create(data);

@@ -11,22 +11,35 @@ import { ContractVersionLabel } from '../types/models/ContractVersion';
 
 const ORGANIZATION_NAME = 'terms-cockpit';
 
-// Below this many characters of visible text, the readability extraction is
-// treated as having failed (typical of JS-rendered pages like Facebook/X,
-// where the static HTML snapshot has no content until client-side scripts run).
+// Below this many characters of visible text, a snapshot is treated as having
+// no usable content at all (typical of a JS-rendered page termscockpit can't
+// scrape statically, or a document with zero history).
 const MIN_VISIBLE_TEXT_LENGTH = 50;
 
 // Maximum number of historical snapshots kept per document: first, last, and
 // up to this many intermediate versions with the largest content change.
 const MAX_INTERMEDIATE_VERSIONS = 3;
 
-// Intermediate candidates are ranked by insertions+deletions, which scores a
-// scraper error page (e.g. a "page failed to load" placeholder) just as high
-// as a real content change, since replacing a full document with a stub is a
-// huge diff either way. Below this many characters of visible text, a
-// candidate is treated as a broken snapshot and skipped in favor of the next
-// highest-ranked one, rather than accepted as an "update".
-const MIN_SNAPSHOT_TEXT_LENGTH = 500;
+// An intermediate candidate is treated as broken/anomalous — not a real
+// content state — if its visible text is below this fraction of the
+// document's "first" snapshot length. A coarse floor: catches things like a
+// scraper error page without being sensitive to a document's size changing
+// a lot over years of real history.
+const MIN_SNAPSHOT_RATIO = 0.4;
+
+// When picking "last", a candidate is only trusted if its length roughly
+// agrees with its immediate predecessor's (neither is less than this
+// fraction of the other) — one real content state corroborated by its
+// neighbor, rather than a lone commit compared against a possibly
+// years-old "first". Catches e.g. a scraper hitting a login wall on the
+// most recent commit: the raw diff looks "big" and the absolute length can
+// still be a few thousand characters, but it doesn't match anything nearby.
+const LAST_NEIGHBOR_CONSISTENCY_RATIO = 0.5;
+
+// How many commits to walk back from the tip of the history looking for a
+// "last" snapshot that isn't broken, before giving up and accepting the tip
+// as a best-effort fallback.
+const MAX_LAST_BACKSCAN = 10;
 
 export interface SyncOptions {
   repos: string[];
@@ -54,15 +67,20 @@ interface SelectedVersion {
   deletions: number | null;
 }
 
-function contentHash(html: string): string {
-  return createHash('md5').update(html).digest('hex');
+function contentHash(text: string): string {
+  return createHash('md5').update(text).digest('hex');
 }
 
-function extractVisibleTextLength(html: string): number {
-  return html
+function extractVisibleTextLength(text: string): number {
+  return text
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim().length;
+}
+
+function documentTitle(documentName: string): string {
+  const base = documentName.split('/').pop() ?? documentName;
+  return base.replace(/\.(html?|md)$/i, '');
 }
 
 function labelForIndex(index: number, length: number): ContractVersionLabel {
@@ -81,16 +99,29 @@ function toSelected(c: DocumentChange, label: ContractVersionLabel): SelectedVer
   };
 }
 
+async function fetchContent(
+  client: TermsCockpitClient,
+  repoName: string,
+  documentName: string,
+  commitHash: string,
+  contentCache: Map<string, string>
+): Promise<string> {
+  const cached = contentCache.get(commitHash);
+  if (cached !== undefined) return cached;
+  const doc = await client.getDocumentContentAt(repoName, documentName, commitHash);
+  contentCache.set(commitHash, doc.content);
+  return doc.content;
+}
+
 /**
  * Ranks middle candidates by insertions+deletions (largest change first) and
  * fetches each one's content until `limit` candidates pass validation,
  * skipping two kinds of noise along the way:
- *  - broken snapshots (e.g. a scraper error page) that fail the visible-text
- *    length check;
+ *  - broken/anomalous snapshots (visible text below `minLen`);
  *  - candidates whose extracted visible content is byte-identical to a
- *    version already accepted (git-level insertions/deletions on the raw
- *    HTML — markup/script/whitespace churn — don't always change the
- *    readable text, so a "big diff" commit can still be a no-op update).
+ *    version already accepted (git-level diffs on the underlying file —
+ *    markup/token/whitespace churn — don't always change the readable text,
+ *    so a "big diff" commit can still be a no-op update).
  * Accepted content is cached so the caller doesn't re-fetch it.
  */
 async function pickValidatedIntermediates(
@@ -100,45 +131,77 @@ async function pickValidatedIntermediates(
   candidates: DocumentChange[],
   limit: number,
   contentCache: Map<string, string>,
-  seenHashes: Set<string>
+  seenHashes: Set<string>,
+  minLen: number
 ): Promise<DocumentChange[]> {
   const ranked = [...candidates].sort((a, b) => b.insertions + b.deletions - (a.insertions + a.deletions));
   const picked: DocumentChange[] = [];
 
   for (const candidate of ranked) {
     if (picked.length >= limit) break;
-    const readability = await client.getDocumentReadabilityAt(repoName, documentName, candidate.commit_hash);
-    if (extractVisibleTextLength(readability.content) < MIN_SNAPSHOT_TEXT_LENGTH) continue;
-    const hash = contentHash(readability.content);
+    const content = await fetchContent(client, repoName, documentName, candidate.commit_hash, contentCache);
+    if (extractVisibleTextLength(content) < minLen) continue;
+    const hash = contentHash(content);
     if (seenHashes.has(hash)) continue;
     seenHashes.add(hash);
-    contentCache.set(candidate.commit_hash, readability.content);
     picked.push(candidate);
   }
 
   return picked.sort((a, b) => a.timestamp - b.timestamp);
 }
 
+/**
+ * Picks up to 5 snapshots (first, last, up to 3 intermediates) out of a
+ * document's full change history. `changes` must be non-empty and sorted
+ * oldest-first.
+ */
 async function selectVersions(
   client: TermsCockpitClient,
   repoName: string,
   documentName: string,
   changes: DocumentChange[],
-  contentCache: Map<string, string>,
-  lastContent: string
+  contentCache: Map<string, string>
 ): Promise<SelectedVersion[]> {
-  if (changes.length <= 1 + MAX_INTERMEDIATE_VERSIONS + 1) {
-    return changes.map((c, i) => toSelected(c, labelForIndex(i, changes.length)));
+  if (changes.length === 1) {
+    await fetchContent(client, repoName, documentName, changes[0].commit_hash, contentCache);
+    return [toSelected(changes[0], 'last')];
   }
 
   const first = changes[0];
-  const last = changes[changes.length - 1];
-  const middle = changes.slice(1, -1);
+  const firstContent = await fetchContent(client, repoName, documentName, first.commit_hash, contentCache);
+  const minLen = Math.max(MIN_VISIBLE_TEXT_LENGTH, extractVisibleTextLength(firstContent) * MIN_SNAPSHOT_RATIO);
 
-  const firstReadability = await client.getDocumentReadabilityAt(repoName, documentName, first.commit_hash);
-  contentCache.set(first.commit_hash, firstReadability.content);
+  // Walk back from the tip looking for a "last" that isn't broken (e.g. the
+  // live document currently redirects to a login wall). A candidate is only
+  // trusted once its length roughly agrees with its immediate predecessor's —
+  // one real content state corroborated by a neighbor, not a lone outlier.
+  // Falls back to the literal tip if nothing in the backscan window qualifies.
+  let lastIndex = changes.length - 1;
+  let lastContent: string | null = null;
+  let nextContent = await fetchContent(client, repoName, documentName, changes[lastIndex].commit_hash, contentCache);
+  let nextLen = extractVisibleTextLength(nextContent);
 
-  const seenHashes = new Set([contentHash(firstReadability.content), contentHash(lastContent)]);
+  for (let attempts = 0; lastIndex > 0 && attempts < MAX_LAST_BACKSCAN; lastIndex -= 1, attempts += 1) {
+    const prevContent = await fetchContent(client, repoName, documentName, changes[lastIndex - 1].commit_hash, contentCache);
+    const prevLen = extractVisibleTextLength(prevContent);
+    const consistent = Math.min(nextLen, prevLen) / Math.max(nextLen, prevLen) >= LAST_NEIGHBOR_CONSISTENCY_RATIO;
+
+    if (nextLen >= minLen && consistent) {
+      lastContent = nextContent;
+      break;
+    }
+
+    nextContent = prevContent;
+    nextLen = prevLen;
+  }
+  if (lastContent === null) {
+    lastIndex = changes.length - 1;
+    lastContent = await fetchContent(client, repoName, documentName, changes[lastIndex].commit_hash, contentCache);
+  }
+
+  const last = changes[lastIndex];
+  const middle = changes.slice(1, lastIndex);
+  const seenHashes = new Set([contentHash(firstContent), contentHash(lastContent)]);
   const validMiddle = await pickValidatedIntermediates(
     client,
     repoName,
@@ -146,7 +209,8 @@ async function selectVersions(
     middle,
     MAX_INTERMEDIATE_VERSIONS,
     contentCache,
-    seenHashes
+    seenHashes,
+    minLen
   );
 
   const ordered = [first, ...validMiddle, last];
@@ -255,7 +319,7 @@ class TermsCockpitSyncService {
   }
 
   private buildContractSlug(repoName: string, documentPath: string): string {
-    const base = `${repoName} ${documentPath.replace(/\.html?$/i, '').replace(/\//g, ' ')}`;
+    const base = `${repoName} ${documentPath.replace(/\.(html?|md)$/i, '').replace(/\//g, ' ')}`;
     return generateSlug(base);
   }
 
@@ -286,30 +350,30 @@ class TermsCockpitSyncService {
       changes = [];
     }
 
-    const lastReadability =
-      changes.length === 0
-        ? await this.client.getDocumentReadability(repoName, doc.name)
-        : await this.client.getDocumentReadabilityAt(repoName, doc.name, changes[changes.length - 1].commit_hash);
+    const contentCache = new Map<string, string>();
+    let selected: SelectedVersion[];
 
-    if (extractVisibleTextLength(lastReadability.content) < MIN_VISIBLE_TEXT_LENGTH) {
+    if (changes.length === 0) {
+      const latest = await this.client.getDocumentContent(repoName, doc.name);
+      const commitHash = latest.commit ?? sourceVersion;
+      contentCache.set(commitHash, latest.content);
+      selected = [{ commitHash, capturedAt: new Date(), label: 'last', insertions: null, deletions: null }];
+    } else {
+      selected = await selectVersions(this.client, repoName, doc.name, changes, contentCache);
+    }
+
+    const lastSelected = selected[selected.length - 1];
+    const lastContent = contentCache.get(lastSelected.commitHash)!;
+
+    if (extractVisibleTextLength(lastContent) < MIN_VISIBLE_TEXT_LENGTH) {
       console.warn(
-        `Skipping '${repoName}/${doc.name}': readability extraction returned no usable text ` +
-          '(likely a JS-rendered page termscockpit cannot scrape statically).'
+        `Skipping '${repoName}/${doc.name}': extraction returned no usable text ` +
+          '(likely a JS-rendered page termscockpit cannot scrape statically, or the document is currently unreachable).'
       );
       return 'contractsEmptyContent';
     }
 
-    const lastCommitHash = changes.length === 0 ? lastReadability.commit ?? sourceVersion : changes[changes.length - 1].commit_hash;
-
-    const contentCache = new Map<string, string>([[lastCommitHash, lastReadability.content]]);
-    const selected: SelectedVersion[] =
-      changes.length === 0
-        ? [{ commitHash: lastCommitHash, capturedAt: new Date(), label: 'last', insertions: null, deletions: null }]
-        : await selectVersions(this.client, repoName, doc.name, changes, contentCache, lastReadability.content);
-
-    const lastSelected = selected[selected.length - 1];
-
-    const name = `${service} — ${lastReadability.short_title || lastReadability.title || doc.name}`;
+    const name = `${service} — ${documentTitle(doc.name)}`;
     const serviceDoc: any = await this.ensureService(collectionId, organizationId, service);
     const serviceId = serviceDoc.id ?? serviceDoc._id?.toString();
 
@@ -340,9 +404,7 @@ class TermsCockpitSyncService {
     let lastVersionDoc: any = null;
     for (const v of selected) {
       const isLast = v.commitHash === lastSelected.commitHash;
-      const content =
-        contentCache.get(v.commitHash) ??
-        (await this.client.getDocumentReadabilityAt(repoName, doc.name, v.commitHash)).content;
+      const content = await fetchContent(this.client, repoName, doc.name, v.commitHash, contentCache);
 
       const { version, reused } = await this.contractVersionService.upsertVersion(contractId, {
         commitHash: v.commitHash,
