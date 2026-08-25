@@ -21,14 +21,12 @@ services:
     volumes:
       - 'redis_data:/data'
   # unfair-tos-detector microservice (contract clause classification).
-  # Assumes it's checked out as a sibling repo: ../../../unfair-terms-detector-app
-  # relative to this file. Adjust the build context if your layout differs.
+  # Published from github.com/elenamolino/unfair-terms-detector-app via
+  # .github/workflows/publish.yml — no local checkout needed.
   # api/.env.testing points ANALYZER_SERVICE_URL at http://localhost:3010 (host
   # port below) -- 3000/3001 were already taken by other local containers.
   unfair-tos-detector:
-    build:
-      context: ../../../unfair-terms-detector-app/service
-      dockerfile: packages/api/Dockerfile
+    image: ghcr.io/elenamolino/unfair-tos-detector:latest
     ports:
       - "3010:3000"
     networks:

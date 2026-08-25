@@ -20,6 +20,30 @@ services:
       - 'redis_data:/data'
     networks:
       - sphere-network
+  # unfair-tos-detector microservice (contract clause classification).
+  # Published from github.com/elenamolino/unfair-terms-detector-app via
+  # .github/workflows/publish.yml.
+  unfair-tos-detector:
+    restart: always
+    image: ghcr.io/elenamolino/unfair-tos-detector:latest
+    networks:
+      - sphere-network
+  # tos-to-odrl microservice (ToS -> ODRL policy pipeline), backend only —
+  # ICAN never talks to its standalone Next.js report viewer. Published from
+  # github.com/elenamolino/AM-TOSL via .github/workflows/publish.yml. Job
+  # storage lives in ICAN's own `mongodb` service under a separate database
+  # (MONGODB_DB below) — no need for a second Mongo container. Secrets
+  # (Mongo URI + API keys) live in docker/production/.env.tos-to-odrl
+  # (gitignored — see .env.tos-to-odrl.example).
+  tos-to-odrl-backend:
+    restart: always
+    image: ghcr.io/elenamolino/tos-to-odrl:latest
+    env_file:
+      - .env.tos-to-odrl
+    depends_on:
+      - mongodb
+    networks:
+      - sphere-network
   mongo-express:
     image: mongo-express:latest
     restart: unless-stopped
@@ -49,9 +73,13 @@ services:
     depends_on:
       - mongodb
       - redis
+      - unfair-tos-detector
+      - tos-to-odrl-backend
     links:
       - mongodb
       - redis
+      - unfair-tos-detector
+      - tos-to-odrl-backend
     networks:
       - sphere-network
   client:
