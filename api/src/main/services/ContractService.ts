@@ -123,7 +123,7 @@ class ContractService {
   }
 
   async create(
-    data: { name: string; url?: string; content?: string; version?: string },
+    data: { name: string; url?: string; content?: string; version?: string; serviceId?: string },
     organizationId: string,
     isPrivate: boolean,
     reqUser: LeanUser,
@@ -160,6 +160,7 @@ class ContractService {
       slug,
       version: data.version,
       _collectionId: collectionId,
+      _serviceId: data.serviceId,
       _organizationId: organizationId,
       private: isPrivate,
       createdAt: new Date(),

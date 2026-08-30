@@ -6,7 +6,6 @@ import { authenticationMiddleware } from './AuthenticationMiddleware';
 import { authorizationMiddleware } from './AuthorizationMiddleware';
 
 const loadGlobalMiddlewares = (app: express.Application) => {
-  app.use(express.json());
   app.use(cors());
   app.use(
     helmet({

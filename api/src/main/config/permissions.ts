@@ -217,6 +217,15 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
 
   // ============================================
+  // Service Routes
+  // ============================================
+  {
+    path: '/services',
+    methods: ['GET'],
+    isPublic: true,
+  },
+
+  // ============================================
   // Contract Analysis Routes
   // ============================================
   {
