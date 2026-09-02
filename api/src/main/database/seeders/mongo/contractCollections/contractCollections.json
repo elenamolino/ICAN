@@ -1,12 +1,39 @@
 [
   {
-    "_id": { "$oid": "6a8b24393b9cca36319a186e" },
+    "_id": {
+      "$oid": "6a8b24393b9cca36319a186e"
+    },
     "name": "OpenTermsArchive-contrib",
     "slug": "contrib",
     "description": "OpenTermsArchive",
-    "_organizationId": { "$oid": "6a8b24393b9cca36319a1869" },
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
     "private": false,
-    "createdAt": { "$date": "2026-08-23T16:47:53.156Z" },
-    "updatedAt": { "$date": "2026-08-23T16:47:53.156Z" }
+    "createdAt": {
+      "$date": "2026-08-23T16:47:53.156Z"
+    },
+    "updatedAt": {
+      "$date": "2026-08-23T16:47:53.156Z"
+    }
+  },
+  {
+    "_id": {
+      "$oid": "6a96abd3a1b39c7cad1dc6a1"
+    },
+    "name": "My analyses",
+    "slug": "my-analyses",
+    "description": "AI Classify saved analyses (manual test)",
+    "_organizationId": {
+      "$oid": "63f74bf8eeed64058364b602"
+    },
+    "private": false,
+    "createdAt": {
+      "$date": "2026-09-01T10:41:23.507Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-01T10:41:23.507Z"
+    },
+    "__v": 0
   }
 ]

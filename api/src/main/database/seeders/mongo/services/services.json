@@ -1,0 +1,56 @@
+[
+  {
+    "_id": {
+      "$oid": "6a96a03bf2adc7838bdd38f1"
+    },
+    "name": "Google",
+    "slug": "google",
+    "_collectionId": "6a8b24393b9cca36319a186e",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-01T09:51:55.885Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-01T09:51:55.885Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6a96a4a7c9c3f5420bba30ad"
+    },
+    "name": "Microsoft",
+    "slug": "microsoft",
+    "_collectionId": "6a8b24393b9cca36319a186e",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-01T10:10:47.499Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-01T10:10:47.499Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6a96ac03a1b39c7cad1dc6b1"
+    },
+    "name": "Acme Test Co",
+    "slug": "acme-test-co",
+    "_collectionId": "6a96abd3a1b39c7cad1dc6a1",
+    "_organizationId": {
+      "$oid": "63f74bf8eeed64058364b602"
+    },
+    "createdAt": {
+      "$date": "2026-09-01T10:42:11.439Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-01T10:42:11.439Z"
+    },
+    "__v": 0
+  }
+]
