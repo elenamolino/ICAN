@@ -1,0 +1,56 @@
+[
+  {
+    "_id": {
+      "$oid": "6a97dabd51490f2b1ee2c06d"
+    },
+    "name": "Airbnb",
+    "slug": "airbnb",
+    "_collectionId": "6a97dabd51490f2b1ee2c05c",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-02T08:13:49.387Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-02T08:13:49.387Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6a97dc2d51490f2b1ee2c0bf"
+    },
+    "name": "Google",
+    "slug": "google",
+    "_collectionId": "6a97dabd51490f2b1ee2c05c",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-02T08:19:57.112Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-02T08:19:57.112Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6a97dd9151490f2b1ee2c0f9"
+    },
+    "name": "Spotify",
+    "slug": "spotify",
+    "_collectionId": "6a97dabd51490f2b1ee2c05c",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-02T08:25:53.104Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-02T08:25:53.104Z"
+    },
+    "__v": 0
+  }
+]

@@ -297,7 +297,7 @@ class TermsCockpitSyncService {
     if (existing) return existing;
 
     return this.contractCollectionRepository.create({
-      name: repoMeta.label,
+      name: `${repoMeta.group} - ${repoName}`,
       slug: repoName,
       description: repoMeta.group,
       _organizationId: organizationId,
