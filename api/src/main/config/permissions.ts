@@ -224,6 +224,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['GET'],
     isPublic: true,
   },
+  {
+    path: '/services/*',
+    methods: ['DELETE'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+  },
 
   // ============================================
   // Contract Analysis Routes

@@ -7,7 +7,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Iconify from '../../../core/components/iconify';
 import { useRouter } from '../../../core/hooks/useRouter';
+import { useAuth } from '../../../auth/hooks/useAuth';
 import { fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
+import customConfirm from '../../../core/utils/custom-confirm';
+import customAlert from '../../../core/utils/custom-alert';
 import {
   Contract,
   ContractVersionDetail,
@@ -15,6 +18,7 @@ import {
   getContract,
   getContractVersion,
   listContractVersions,
+  useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import SummaryStat from '../../../analysis/components/SummaryStat';
 import VersionSelector from '../../components/version-selector';
@@ -38,6 +42,8 @@ export default function ContractDetailPage() {
     contractSlug: string;
   }>();
   const router = useRouter();
+  const { authUser } = useAuth();
+  const { deleteContract, deleteContractVersion } = useContractCollectionsApi();
   const [contract, setContract] = useState<Contract | null>(null);
   const [versions, setVersions] = useState<ContractVersionListItem[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
@@ -96,6 +102,47 @@ export default function ContractDetailPage() {
       : '/contracts';
   const backLabel = collectionSlug || contract?.collection ? 'Back to collection' : 'Back to contracts';
 
+  const handleDeleteContract = async () => {
+    if (!organizationId || !contractSlug) return;
+    try {
+      await customConfirm(
+        'Delete this contract? This will also delete all of its saved versions. This cannot be undone.',
+        { danger: true, confirmLabel: 'Delete' }
+      );
+    } catch {
+      return;
+    }
+    try {
+      await deleteContract(organizationId, contractSlug);
+      router.push(backHref);
+    } catch (err: any) {
+      await customAlert(err.message || 'Failed to delete contract', 'error');
+    }
+  };
+
+  const handleDeleteVersion = async (versionId: string) => {
+    if (!organizationId || !contractSlug) return;
+    try {
+      await customConfirm('Delete this saved report? This cannot be undone.', {
+        danger: true,
+        confirmLabel: 'Delete',
+      });
+    } catch {
+      return;
+    }
+    try {
+      await deleteContractVersion(organizationId, contractSlug, versionId);
+      const updated = await listContractVersions(organizationId, contractSlug);
+      setVersions(updated);
+      if (selectedVersionId === versionId) {
+        const latest = updated.find((v) => v.label === 'last') ?? updated[updated.length - 1];
+        setSelectedVersionId(latest?.id ?? null);
+      }
+    } catch (err: any) {
+      await customAlert(err.message || 'Failed to delete version', 'error');
+    }
+  };
+
   const hasVersionHistory = versions.length > 0;
   const availableTabs: Tab[] = hasVersionHistory
     ? versions.length > 1
@@ -148,17 +195,29 @@ export default function ContractDetailPage() {
 
         <div className="flex items-start justify-between gap-4">
           <h1 className="font-display text-2xl font-normal text-tp-ink">{contract.name}</h1>
-          {contract.url && (
-            <a
-              href={contract.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-hairline-strong hover:text-tp-ink"
-            >
-              Source
-              <Iconify icon="mdi:open-in-new" width={14} />
-            </a>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {contract.url && (
+              <a
+                href={contract.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-hairline-strong hover:text-tp-ink"
+              >
+                Source
+                <Iconify icon="mdi:open-in-new" width={14} />
+              </a>
+            )}
+            {authUser.isAuthenticated && (
+              <button
+                type="button"
+                onClick={handleDeleteContract}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-severity-error hover:text-tp-severity-error"
+              >
+                <Iconify icon="mdi:trash-can-outline" width={14} />
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -177,6 +236,7 @@ export default function ContractDetailPage() {
               setSelectedVersionId(id);
               setTab('content');
             }}
+            onDelete={authUser.isAuthenticated ? handleDeleteVersion : undefined}
           />
 
           {selectedVersion?.summary && (

@@ -3,9 +3,18 @@ import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import Skeleton from 'react-loading-skeleton';
+import Iconify from '../../../core/components/iconify';
 import { useRouter } from '../../../core/hooks/useRouter';
+import { useAuth } from '../../../auth/hooks/useAuth';
 import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
-import { Contract, ContractCollectionSummary, getCollection } from '../../api/contractCollectionsApi';
+import customConfirm from '../../../core/utils/custom-confirm';
+import customAlert from '../../../core/utils/custom-alert';
+import {
+  Contract,
+  ContractCollectionSummary,
+  getCollection,
+  useContractCollectionsApi,
+} from '../../api/contractCollectionsApi';
 import ContractCard from '../../components/contract-card';
 
 const PER_PAGE = 12;
@@ -35,6 +44,8 @@ function groupByService(contracts: Contract[]): { label: string; contracts: Cont
 export default function CollectionDetailPage() {
   const { organizationId, collectionSlug } = useParams<{ organizationId: string; collectionSlug: string }>();
   const router = useRouter();
+  const { authUser } = useAuth();
+  const { deleteCollection } = useContractCollectionsApi();
   const [collection, setCollection] = useState<ContractCollectionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +61,26 @@ export default function CollectionDetailPage() {
   }, [organizationId, collectionSlug]);
 
   const contracts: Contract[] = collection?.contracts ?? [];
+
+  const handleDeleteCollection = async () => {
+    if (!organizationId || !collectionSlug) return;
+    try {
+      await customConfirm(
+        contracts.length > 0
+          ? `Delete this collection? This will also delete its ${contracts.length} ${contracts.length === 1 ? 'contract' : 'contracts'} and all their saved versions. This cannot be undone.`
+          : 'Delete this collection? This cannot be undone.',
+        { danger: true, confirmLabel: 'Delete' }
+      );
+    } catch {
+      return;
+    }
+    try {
+      await deleteCollection(organizationId, collectionSlug, true);
+      router.push('/collections');
+    } catch (err: any) {
+      await customAlert(err.message || 'Failed to delete collection', 'error');
+    }
+  };
 
   const groups = groupByService(contracts);
 
@@ -68,11 +99,25 @@ export default function CollectionDetailPage() {
           <span>/</span>
           <span className="text-tp-ink">{collection?.name || collectionSlug}</span>
         </div>
-        <h1 className="font-display text-2xl font-normal text-tp-ink">{collection?.name || collectionSlug}</h1>
-        <p className="mt-1 text-sm text-tp-steel">
-          {collection?.organization.displayName || collection?.organization.name}
-          {collection?.description && <span className="ml-1">· {collection.description}</span>}
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl font-normal text-tp-ink">{collection?.name || collectionSlug}</h1>
+            <p className="mt-1 text-sm text-tp-steel">
+              {collection?.organization.displayName || collection?.organization.name}
+              {collection?.description && <span className="ml-1">· {collection.description}</span>}
+            </p>
+          </div>
+          {authUser.isAuthenticated && collection && (
+            <button
+              type="button"
+              onClick={handleDeleteCollection}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-severity-error hover:text-tp-severity-error"
+            >
+              <Iconify icon="mdi:trash-can-outline" width={14} />
+              Delete
+            </button>
+          )}
+        </div>
       </motion.div>
 
       {error ? (

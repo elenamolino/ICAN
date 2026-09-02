@@ -1,7 +1,10 @@
 import container from '../config/container';
 import ContractVersionRepository from '../repositories/mongoose/ContractVersionRepository';
+import ContractRepository from '../repositories/mongoose/ContractRepository';
 import AnalysisService from './AnalysisService';
 import ContractService from './ContractService';
+import PermissionService from './PermissionService';
+import { PermissionEngine } from '../policies/PermissionEngine';
 import { LeanUser } from '../types/models/User';
 import { ContractVersionLabel } from '../types/models/ContractVersion';
 import { labelForIndex } from '../utils/contractVersionLabels';
@@ -34,13 +37,19 @@ export interface UpsertVersionInput {
 
 class ContractVersionService {
   private contractVersionRepository: ContractVersionRepository;
+  private contractRepository: ContractRepository;
   private analysisService: AnalysisService;
   private contractService: ContractService;
+  private permissionService: PermissionService;
+  private permissionEngine: PermissionEngine;
 
   constructor() {
     this.contractVersionRepository = container.resolve('contractVersionRepository');
+    this.contractRepository = container.resolve('contractRepository');
     this.analysisService = container.resolve('analysisService');
     this.contractService = container.resolve('contractService');
+    this.permissionService = container.resolve('permissionService');
+    this.permissionEngine = new PermissionEngine();
   }
 
   async resolveContractOrThrow(organizationId: string, contractSlug: string, reqUser?: LeanUser) {
@@ -135,6 +144,53 @@ class ContractVersionService {
       throw new Error('NOT FOUND: Contract version not found');
     }
     return version;
+  }
+
+  // Deleting a version is a destructive change to the contract's history, so
+  // it requires the same DELETE permission as deleting the contract itself.
+  async destroy(contract: any, versionId: string, reqUser: LeanUser): Promise<void> {
+    const contractId = contract.id ?? contract._id?.toString();
+    const version: any = await this.getById(contractId, versionId);
+
+    const organizationId = String(contract._organizationId);
+    const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
+    const batchCtx = await this.permissionService.buildBatchContext(
+      reqUser.id,
+      organizationId,
+      orgRole,
+      reqUser.role === 'ADMIN'
+    );
+    const entityPerms = batchCtx.entityPermissions.get(`contract:${contract.slug}`);
+
+    const result = this.permissionEngine.evaluate({
+      userId: reqUser.id,
+      organizationId,
+      entityType: 'contract',
+      entitySlug: contract.slug,
+      action: 'DELETE',
+      isPrivate: contract.private,
+      userOrgRole: orgRole,
+      isGlobalAdmin: reqUser.role === 'ADMIN',
+      entityPermissions: entityPerms,
+    });
+    if (!result.allowed) {
+      throw new Error(`PERMISSION ERROR: ${result.reason}`);
+    }
+
+    await this.contractVersionRepository.deleteById(String(version._id ?? version.id));
+    await this.relabelAllByDate(contractId);
+
+    const remaining: any[] = await this.listByContract(contractId);
+    const newLastSummary = remaining.find(v => v.label === 'last');
+    const newLast: any = newLastSummary
+      ? await this.getById(contractId, String(newLastSummary._id ?? newLastSummary.id))
+      : null;
+
+    await this.contractRepository.update(contractId, {
+      _latestVersionId: newLast ? (newLast._id ?? newLast.id) : null,
+      content: newLast ? newLast.content : '',
+      latestVersionSummary: newLast ? newLast.summary : null,
+    });
   }
 }
 

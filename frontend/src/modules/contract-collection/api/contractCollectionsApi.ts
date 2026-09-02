@@ -1,3 +1,4 @@
+import { useAuth } from '../../auth/hooks/useAuth';
 import { AnalysisSummary, ClauseAnalysis } from '../../analysis/api/analysisApi';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
@@ -125,4 +126,66 @@ export async function getContractVersion(
   const response = await fetch(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}`);
   if (!response.ok) throw new Error('Contract version not found');
   return response.json();
+}
+
+export function useContractCollectionsApi() {
+  const { fetchWithInterceptor } = useAuth();
+
+  async function createCollection(
+    organizationId: string,
+    data: { name: string }
+  ): Promise<ContractCollectionSummary> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contractCollections/${organizationId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to create collection');
+    }
+    return res.json();
+  }
+
+  async function deleteCollection(
+    organizationId: string,
+    collectionSlug: string,
+    cascade: boolean
+  ): Promise<void> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}?cascade=${cascade}`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to delete collection');
+    }
+  }
+
+  async function deleteContract(organizationId: string, contractSlug: string): Promise<void> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to delete contract');
+    }
+  }
+
+  async function deleteContractVersion(
+    organizationId: string,
+    contractSlug: string,
+    versionId: string
+  ): Promise<void> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}`,
+      { method: 'DELETE' }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to delete version');
+    }
+  }
+
+  return { createCollection, deleteCollection, deleteContract, deleteContractVersion };
 }

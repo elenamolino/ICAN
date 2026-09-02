@@ -7,6 +7,7 @@ const loadServiceRoutes = function (app: express.Application) {
   const baseUrl = (process.env.BASE_URL_PATH ?? '') + '/api/v1';
 
   app.route(baseUrl + '/services').get(serviceController.index);
+  app.route(baseUrl + '/services/:id').delete(serviceController.destroy);
 };
 
 export default loadServiceRoutes;

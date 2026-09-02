@@ -27,6 +27,11 @@ class ServiceRepository extends RepositoryBase {
     const service = await ServiceMongoose.create(data);
     return service.toObject();
   }
+
+  async deleteById(id: string) {
+    const result = await ServiceMongoose.deleteOne({ _id: id });
+    return result?.deletedCount === 1;
+  }
 }
 
 export default ServiceRepository;

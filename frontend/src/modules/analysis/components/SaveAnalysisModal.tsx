@@ -4,7 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
 import { Organization, useOrganizationsApi } from '../../organization/api/organizationsApi';
-import { listCollections, listContracts, ContractCollectionSummary } from '../../contract-collection/api/contractCollectionsApi';
+import {
+  listCollections,
+  listContracts,
+  ContractCollectionSummary,
+  useContractCollectionsApi,
+} from '../../contract-collection/api/contractCollectionsApi';
 import { listServices, ServiceSummary } from '../../contract-collection/api/servicesApi';
 import { useAnalysisApi, AnalyzeResponse } from '../api/analysisApi';
 import EntityPickerInput, { EntitySelection } from './EntityPickerInput';
@@ -35,10 +40,18 @@ function flattenOrganizations(orgs: Organization[]): Organization[] {
 export default function SaveAnalysisModal({ open, onClose, text, result }: SaveAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
+  const { createCollection } = useContractCollectionsApi();
 
+  const [orgs, setOrgs] = useState<Organization[]>([]);
   const [collections, setCollections] = useState<ContractCollectionSummary[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<ContractCollectionSummary | null>(null);
+
+  const [showCreateCollection, setShowCreateCollection] = useState(false);
+  const [newCollectionOrgId, setNewCollectionOrgId] = useState('');
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [creatingCollection, setCreatingCollection] = useState(false);
+  const [createCollectionError, setCreateCollectionError] = useState<string | null>(null);
 
   const [services, setServices] = useState<ServiceSummary[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -72,6 +85,9 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
     setError(null);
     setLoading(false);
     setSavedResult(null);
+    setShowCreateCollection(false);
+    setNewCollectionName('');
+    setCreateCollectionError(null);
   }, []);
 
   useEffect(() => {
@@ -85,6 +101,9 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
       try {
         const orgsData = await getMyOrganizations({ limit: 100 });
         const myOrgs = flattenOrganizations(Array.isArray(orgsData) ? orgsData : orgsData.items || []);
+        setOrgs(myOrgs);
+        setNewCollectionOrgId((prev) => prev || myOrgs.find((o) => o.isPersonal)?.id || myOrgs[0]?.id || '');
+
         const orgIds = myOrgs.map((o) => o.id);
         if (orgIds.length === 0) {
           setCollections([]);
@@ -92,6 +111,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
         }
         const { collections: myCollections } = await listCollections({ organizationIds: orgIds, limit: 100 });
         setCollections(myCollections);
+        setShowCreateCollection(myCollections.length === 0);
       } catch {
         setCollections([]);
       } finally {
@@ -99,6 +119,24 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
       }
     })();
   }, [open, getMyOrganizations, resetAll]);
+
+  const handleCreateCollection = async () => {
+    if (!newCollectionOrgId || !newCollectionName.trim()) return;
+
+    setCreatingCollection(true);
+    setCreateCollectionError(null);
+    try {
+      const collection = await createCollection(newCollectionOrgId, { name: newCollectionName.trim() });
+      setCollections((prev) => [...prev, collection]);
+      setSelectedCollection(collection);
+      setShowCreateCollection(false);
+      setNewCollectionName('');
+    } catch (err: any) {
+      setCreateCollectionError(err.message || 'Failed to create collection');
+    } finally {
+      setCreatingCollection(false);
+    }
+  };
 
   useEffect(() => {
     setServiceSelection(null);
@@ -234,28 +272,95 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
 
               <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-tp-ink">Collection</label>
-              <select
-                value={selectedCollection?.id ?? ''}
-                onChange={(e) =>
-                  setSelectedCollection(collections.find((c) => c.id === e.target.value) ?? null)
-                }
-                disabled={loadingCollections}
-                className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-              >
-                <option value="">
-                  {loadingCollections ? 'Loading collections…' : 'Select a collection'}
-                </option>
-                {collections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.organization.displayName} / {c.name}
+              <div className="mb-1 flex items-center justify-between">
+                <label className="block text-sm font-medium text-tp-ink">Collection</label>
+                {collections.length > 0 && !showCreateCollection && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateCollection(true)}
+                    className="cursor-pointer text-xs font-medium text-tp-primary hover:underline"
+                  >
+                    + New collection
+                  </button>
+                )}
+              </div>
+
+              {!showCreateCollection && (
+                <select
+                  value={selectedCollection?.id ?? ''}
+                  onChange={(e) =>
+                    setSelectedCollection(collections.find((c) => c.id === e.target.value) ?? null)
+                  }
+                  disabled={loadingCollections}
+                  className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                >
+                  <option value="">
+                    {loadingCollections ? 'Loading collections…' : 'Select a collection'}
                   </option>
-                ))}
-              </select>
-              {!loadingCollections && collections.length === 0 && (
-                <p className="mt-1 text-xs text-tp-steel">
-                  You have no collections yet. Create one under your organization first.
-                </p>
+                  {collections.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.organization.displayName} / {c.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {showCreateCollection && (
+                <div className="space-y-2 rounded-lg border border-tp-hairline bg-tp-surface p-3">
+                  {!loadingCollections && collections.length === 0 && (
+                    <p className="text-xs text-tp-steel">You have no collections yet — create one below.</p>
+                  )}
+                  {createCollectionError && (
+                    <BlockAlert variant="error" onDismiss={() => setCreateCollectionError(null)}>
+                      {createCollectionError}
+                    </BlockAlert>
+                  )}
+                  <div className="flex gap-2">
+                    {orgs.length > 1 && (
+                      <select
+                        value={newCollectionOrgId}
+                        onChange={(e) => setNewCollectionOrgId(e.target.value)}
+                        className="rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      >
+                        {orgs.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <input
+                      type="text"
+                      value={newCollectionName}
+                      onChange={(e) => setNewCollectionName(e.target.value)}
+                      placeholder="Collection name"
+                      className="flex-1 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    {collections.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCreateCollection(false);
+                          setNewCollectionName('');
+                          setCreateCollectionError(null);
+                        }}
+                        className="cursor-pointer rounded-lg px-3 py-1.5 text-xs text-tp-slate hover:bg-tp-canvas"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleCreateCollection}
+                      disabled={creatingCollection || !newCollectionOrgId || !newCollectionName.trim()}
+                      className="cursor-pointer rounded-lg bg-tp-primary px-3 py-1.5 text-xs font-medium text-tp-on-primary transition-colors hover:bg-tp-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {creatingCollection ? 'Creating…' : 'Create collection'}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 

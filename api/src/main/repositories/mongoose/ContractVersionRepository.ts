@@ -35,6 +35,11 @@ class ContractVersionRepository extends RepositoryBase {
     return version.toObject();
   }
 
+  async deleteById(id: string) {
+    const result = await ContractVersionMongoose.deleteOne({ _id: id });
+    return result?.deletedCount === 1;
+  }
+
   async deleteManyNotIn(contractId: string, keepCommitHashes: string[]) {
     return ContractVersionMongoose.deleteMany({
       _contractId: String(contractId),

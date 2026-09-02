@@ -8,6 +8,7 @@ class ServiceController {
   constructor() {
     this.serviceService = container.resolve('serviceService');
     this.index = this.index.bind(this);
+    this.destroy = this.destroy.bind(this);
   }
 
   async index(req: any, res: any) {
@@ -18,6 +19,19 @@ class ServiceController {
       }
       const services = await this.serviceService.listByCollection(collectionId as string);
       res.json({ services });
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async destroy(req: any, res: any) {
+    try {
+      const result = await this.serviceService.destroy(req.params.id, req.user);
+      if (!result) {
+        return res.status(404).send({ error: 'NOT FOUND: Service not found' });
+      }
+      res.status(200).json({ message: 'Service deleted successfully' });
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });

@@ -10,7 +10,8 @@ const loadContractVersionRoutes = function (app: express.Application) {
 
   app
     .route(baseUrl + '/contracts/:organizationId/:contractSlug/versions/:versionId')
-    .get(contractVersionController.show);
+    .get(contractVersionController.show)
+    .delete(contractVersionController.destroy);
 };
 
 export default loadContractVersionRoutes;

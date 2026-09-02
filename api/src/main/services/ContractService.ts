@@ -2,6 +2,7 @@ import container from '../config/container';
 import { ContractIndexQueryParams } from '../types/services/ContractService';
 import ContractCollectionService from './ContractCollectionService';
 import ContractRepository from '../repositories/mongoose/ContractRepository';
+import ContractVersionRepository from '../repositories/mongoose/ContractVersionRepository';
 import { LeanUser } from '../types/models/User';
 import { PermissionEngine } from '../policies/PermissionEngine';
 import { generateSlug, deduplicateSlug } from '../utils/slug-manager';
@@ -13,6 +14,7 @@ import PermissionService from './PermissionService';
 
 class ContractService {
   private contractRepository: ContractRepository;
+  private contractVersionRepository: ContractVersionRepository;
   private contractCollectionService: ContractCollectionService;
   private permissionEngine: PermissionEngine;
   private permissionService: PermissionService;
@@ -21,6 +23,7 @@ class ContractService {
 
   constructor() {
     this.contractRepository = container.resolve('contractRepository');
+    this.contractVersionRepository = container.resolve('contractVersionRepository');
     this.contractCollectionService = container.resolve('contractCollectionService');
     this.permissionEngine = new PermissionEngine();
     this.permissionService = container.resolve('permissionService');
@@ -319,6 +322,9 @@ class ContractService {
         'NOT FOUND: Either the contract does not exist or you are not a member of its organization'
       );
     }
+
+    await this.contractVersionRepository.deleteByContractIds([(contract as any).id ?? (contract as any)._id]);
+
     return true;
   }
 }
