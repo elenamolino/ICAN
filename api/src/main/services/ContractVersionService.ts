@@ -100,19 +100,35 @@ class ContractVersionService {
       }
     }
 
-    const version = await this.contractVersionRepository.create({
-      _contractId: contractId,
-      commitHash: input.commitHash,
-      capturedAt: input.capturedAt,
-      label: input.label,
-      content: input.content,
-      insertions: input.insertions ?? null,
-      deletions: input.deletions ?? null,
-      summary,
-      clauses,
-      analysisSkipped: analysisSkipped || summary === null,
-    });
-    return { version, reused: false };
+    try {
+      const version = await this.contractVersionRepository.create({
+        _contractId: contractId,
+        commitHash: input.commitHash,
+        capturedAt: input.capturedAt,
+        label: input.label,
+        content: input.content,
+        insertions: input.insertions ?? null,
+        deletions: input.deletions ?? null,
+        summary,
+        clauses,
+        analysisSkipped: analysisSkipped || summary === null,
+      });
+      return { version, reused: false };
+    } catch (err) {
+      // The findByContractAndCommit check above isn't atomic with this
+      // create -- two callers racing on the same (contractId, commitHash)
+      // (e.g. a re-run sync overlapping the previous one) can both pass the
+      // check and collide on the unique index. Rather than let the whole
+      // batch crash, treat that race the same as finding it already there.
+      if ((err as any)?.code === 11000) {
+        const raced = await this.contractVersionRepository.findByContractAndCommit(
+          contractId,
+          input.commitHash
+        );
+        if (raced) return { version: raced, reused: true };
+      }
+      throw err;
+    }
   }
 
   async pruneToSelection(contractId: string, keepCommitHashes: string[]) {

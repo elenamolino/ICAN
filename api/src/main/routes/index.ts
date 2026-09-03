@@ -13,7 +13,7 @@ const loadRoutes = async function (app: express.Application) {
     fs
       .readdirSync(__dirname)
       .filter(file => {
-        return file.indexOf('.') !== 0 && file !== basename && file.slice(-3) === (["development"].includes(process.env.ENVIRONMENT ?? "") ? '.ts' : '.js');
+        return file.indexOf('.') !== 0 && file !== basename && file.slice(-3) === (["development", "testing"].includes(process.env.ENVIRONMENT ?? "") ? '.ts' : '.js');
       })
       .map(async file => {
         return import(`./${file}`);

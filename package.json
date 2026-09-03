@@ -17,6 +17,7 @@
     "lint": "eslint .",
     "seed:mongo-local:small": "cd api && npx tsx --tsconfig tsconfig.json scripts/seedMongo.ts",
     "sync:termscockpit": "cd api && npx tsx --tsconfig tsconfig.json scripts/syncTermsCockpit.ts",
+    "sync:termscockpit:seed": "cd api && npx tsx --tsconfig tsconfig.json scripts/syncAndSeedTermsCockpit.ts",
     "prepare": "husky"
   },
   "devDependencies": {
