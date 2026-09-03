@@ -157,6 +157,8 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
 
   useEffect(() => {
     setContractSelection(null);
+    setProvider('');
+    setTitle('');
 
     if (!selectedCollection || !serviceSelection || serviceSelection.mode !== 'existing') {
       setContracts([]);
@@ -183,6 +185,18 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
     !!contractSelection &&
     !!date &&
     (!isNewContract || (provider.trim() && title.trim()));
+
+  const handleContractChange = (selection: EntitySelection | null) => {
+    setContractSelection(selection);
+    // A new contract's name is "<Provider> — <Title>", built from these two
+    // fields below (both freely editable) — not from this field directly.
+    // Prefill sensible starting points so nothing typed here is wasted: the
+    // service's name for Provider, and whatever was searched for Title.
+    if (selection?.mode === 'new') {
+      if (!provider) setProvider(serviceSelection?.name ?? '');
+      if (!title) setTitle(selection.name);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -383,35 +397,40 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
                 loading={loadingContracts}
                 disabled={!serviceSelection}
                 selection={contractSelection}
-                onChange={setContractSelection}
+                onChange={handleContractChange}
                 placeholder={serviceSelection ? 'Search or create a contract...' : 'Select a service first'}
               />
             </div>
 
             {isNewContract && contractSelection && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Provider</label>
-                  <input
-                    type="text"
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value)}
-                    placeholder="e.g. Google"
-                    className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-                    required
-                  />
+              <div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Provider</label>
+                    <input
+                      type="text"
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                      placeholder="e.g. Google"
+                      className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Title</label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Terms of Service"
+                      className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Title</label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Terms of Service"
-                    className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-                    required
-                  />
-                </div>
+                <p className="mt-1 text-xs text-tp-steel">
+                  Will be saved as "{provider.trim() || '…'} — {title.trim() || '…'}".
+                </p>
               </div>
             )}
 
