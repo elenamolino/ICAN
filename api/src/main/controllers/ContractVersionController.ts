@@ -9,6 +9,7 @@ class ContractVersionController {
     this.contractVersionService = container.resolve('contractVersionService');
     this.index = this.index.bind(this);
     this.show = this.show.bind(this);
+    this.destroy = this.destroy.bind(this);
   }
 
   async index(req: any, res: any) {
@@ -38,6 +39,21 @@ class ContractVersionController {
         req.params.versionId
       );
       res.json(version);
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async destroy(req: any, res: any) {
+    try {
+      const contract: any = await this.contractVersionService.resolveContractOrThrow(
+        req.params.organizationId,
+        req.params.contractSlug,
+        req.user
+      );
+      await this.contractVersionService.destroy(contract, req.params.versionId, req.user);
+      res.status(200).json({ message: 'Version deleted successfully' });
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });

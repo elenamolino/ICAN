@@ -8,6 +8,7 @@ import ServiceRepository from '../repositories/mongoose/ServiceRepository';
 import ContractVersionService from './ContractVersionService';
 import { generateSlug } from '../utils/slug-manager';
 import { ContractVersionLabel } from '../types/models/ContractVersion';
+import { labelForIndex } from '../utils/contractVersionLabels';
 
 const ORGANIZATION_NAME = 'terms-cockpit';
 
@@ -81,12 +82,6 @@ function extractVisibleTextLength(text: string): number {
 function documentTitle(documentName: string): string {
   const base = documentName.split('/').pop() ?? documentName;
   return base.replace(/\.(html?|md)$/i, '');
-}
-
-function labelForIndex(index: number, length: number): ContractVersionLabel {
-  if (index === 0) return 'first';
-  if (index === length - 1) return 'last';
-  return 'intermediate';
 }
 
 function toSelected(c: DocumentChange, label: ContractVersionLabel): SelectedVersion {

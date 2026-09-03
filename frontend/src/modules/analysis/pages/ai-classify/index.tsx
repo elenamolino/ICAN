@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useAnalysisApi, AnalyzeResponse } from '../../api/analysisApi';
 import ClauseResultsList from '../../components/ClauseResultsList';
+import SaveAnalysisModal from '../../components/SaveAnalysisModal';
 import FileUpload from '../../../core/components/file-upload-input';
 import ActionButton from '../../../core/components/action-button';
 import BlockAlert from '../../../core/components/block-alert';
@@ -16,6 +17,7 @@ export default function AiClassifyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   const handleFileSubmit = async (file: File) => {
     try {
@@ -117,11 +119,23 @@ export default function AiClassifyPage() {
 
           {result && (
             <div className="mt-8">
+              <div className="mb-4 flex justify-end">
+                <ActionButton text="Save analysis" onClick={() => setSaveModalOpen(true)} />
+              </div>
               <ClauseResultsList result={result} />
             </div>
           )}
         </div>
       </div>
+
+      {result && (
+        <SaveAnalysisModal
+          open={saveModalOpen}
+          onClose={() => setSaveModalOpen(false)}
+          text={text}
+          result={result}
+        />
+      )}
     </>
   );
 }

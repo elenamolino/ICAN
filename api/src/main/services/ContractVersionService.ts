@@ -1,9 +1,14 @@
 import container from '../config/container';
 import ContractVersionRepository from '../repositories/mongoose/ContractVersionRepository';
+import ContractRepository from '../repositories/mongoose/ContractRepository';
 import AnalysisService from './AnalysisService';
 import ContractService from './ContractService';
+import PermissionService from './PermissionService';
+import { PermissionEngine } from '../policies/PermissionEngine';
 import { LeanUser } from '../types/models/User';
 import { ContractVersionLabel } from '../types/models/ContractVersion';
+import { labelForIndex } from '../utils/contractVersionLabels';
+import { AnalysisSummary, ClauseAnalysis } from '../types/services/AnalysisService';
 
 // Below this many characters of visible text, the readability extraction is
 // treated as having failed (typical of JS-rendered pages or empty historical
@@ -24,17 +29,27 @@ export interface UpsertVersionInput {
   content: string;
   insertions?: number | null;
   deletions?: number | null;
+  // When provided, skips the analyzer call and stores this analysis as-is —
+  // used when the caller already ran AI Classify on this exact content (ad-hoc
+  // saves) and re-analyzing would just be a duplicate, billable call.
+  precomputedAnalysis?: { summary: AnalysisSummary; clauses: ClauseAnalysis[] } | null;
 }
 
 class ContractVersionService {
   private contractVersionRepository: ContractVersionRepository;
+  private contractRepository: ContractRepository;
   private analysisService: AnalysisService;
   private contractService: ContractService;
+  private permissionService: PermissionService;
+  private permissionEngine: PermissionEngine;
 
   constructor() {
     this.contractVersionRepository = container.resolve('contractVersionRepository');
+    this.contractRepository = container.resolve('contractRepository');
     this.analysisService = container.resolve('analysisService');
     this.contractService = container.resolve('contractService');
+    this.permissionService = container.resolve('permissionService');
+    this.permissionEngine = new PermissionEngine();
   }
 
   async resolveContractOrThrow(organizationId: string, contractSlug: string, reqUser?: LeanUser) {
@@ -60,21 +75,28 @@ class ContractVersionService {
       return { version: existing, reused: true };
     }
 
-    const visibleText = extractVisibleText(input.content);
-    const analysisSkipped = visibleText.length < MIN_VISIBLE_TEXT_LENGTH;
-
     let summary = null;
     let clauses = null;
-    if (!analysisSkipped) {
-      try {
-        const result = await this.analysisService.classify(visibleText);
-        summary = result.summary;
-        clauses = result.clauses;
-      } catch (err) {
-        console.warn(
-          `ContractVersionService: analysis failed for contract ${contractId} commit ${input.commitHash}:`,
-          (err as Error).message
-        );
+    let analysisSkipped = false;
+
+    if (input.precomputedAnalysis) {
+      summary = input.precomputedAnalysis.summary;
+      clauses = input.precomputedAnalysis.clauses;
+    } else {
+      const visibleText = extractVisibleText(input.content);
+      analysisSkipped = visibleText.length < MIN_VISIBLE_TEXT_LENGTH;
+
+      if (!analysisSkipped) {
+        try {
+          const result = await this.analysisService.classify(visibleText);
+          summary = result.summary;
+          clauses = result.clauses;
+        } catch (err) {
+          console.warn(
+            `ContractVersionService: analysis failed for contract ${contractId} commit ${input.commitHash}:`,
+            (err as Error).message
+          );
+        }
       }
     }
 
@@ -117,12 +139,74 @@ class ContractVersionService {
     return this.contractVersionRepository.findByContractId(contractId);
   }
 
+  // Re-derives first/intermediate/last across *all* of a contract's versions,
+  // sorted by capturedAt (not insertion order) — a version saved out of order
+  // (e.g. backfilling an older snapshot after a newer one already exists)
+  // must still land in the right slot.
+  async relabelAllByDate(contractId: string): Promise<void> {
+    const versions = await this.contractVersionRepository.findByContractId(contractId);
+    await Promise.all(
+      versions.map((v: any, index: number) => {
+        const label = labelForIndex(index, versions.length);
+        if (v.label === label) return null;
+        return this.contractVersionRepository.updateLabel(String(v._id ?? v.id), label);
+      })
+    );
+  }
+
   async getById(contractId: string, versionId: string) {
     const version = await this.contractVersionRepository.findById(versionId);
     if (!version || String((version as any)._contractId) !== String(contractId)) {
       throw new Error('NOT FOUND: Contract version not found');
     }
     return version;
+  }
+
+  // Deleting a version is a destructive change to the contract's history, so
+  // it requires the same DELETE permission as deleting the contract itself.
+  async destroy(contract: any, versionId: string, reqUser: LeanUser): Promise<void> {
+    const contractId = contract.id ?? contract._id?.toString();
+    const version: any = await this.getById(contractId, versionId);
+
+    const organizationId = String(contract._organizationId);
+    const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
+    const batchCtx = await this.permissionService.buildBatchContext(
+      reqUser.id,
+      organizationId,
+      orgRole,
+      reqUser.role === 'ADMIN'
+    );
+    const entityPerms = batchCtx.entityPermissions.get(`contract:${contract.slug}`);
+
+    const result = this.permissionEngine.evaluate({
+      userId: reqUser.id,
+      organizationId,
+      entityType: 'contract',
+      entitySlug: contract.slug,
+      action: 'DELETE',
+      isPrivate: contract.private,
+      userOrgRole: orgRole,
+      isGlobalAdmin: reqUser.role === 'ADMIN',
+      entityPermissions: entityPerms,
+    });
+    if (!result.allowed) {
+      throw new Error(`PERMISSION ERROR: ${result.reason}`);
+    }
+
+    await this.contractVersionRepository.deleteById(String(version._id ?? version.id));
+    await this.relabelAllByDate(contractId);
+
+    const remaining: any[] = await this.listByContract(contractId);
+    const newLastSummary = remaining.find(v => v.label === 'last');
+    const newLast: any = newLastSummary
+      ? await this.getById(contractId, String(newLastSummary._id ?? newLastSummary.id))
+      : null;
+
+    await this.contractRepository.update(contractId, {
+      _latestVersionId: newLast ? (newLast._id ?? newLast.id) : null,
+      content: newLast ? newLast.content : '',
+      latestVersionSummary: newLast ? newLast.summary : null,
+    });
   }
 }
 

@@ -192,6 +192,10 @@ class ContractRepository extends RepositoryBase {
     return ContractMongoose.updateMany({ _collectionId: collectionId }, { $unset: { _collectionId: 1 } });
   }
 
+  async removeContractsFromService(serviceId: string) {
+    return ContractMongoose.updateMany({ _serviceId: String(serviceId) }, { $unset: { _serviceId: 1 } });
+  }
+
   async destroyBySlugAndOrganization(slug: string, organizationId: string) {
     const result = await ContractMongoose.deleteOne({
       slug,

@@ -29,6 +29,8 @@ import TermsCockpitClient from '../services/clients/TermsCockpitClient';
 import TermsCockpitSyncService from '../services/TermsCockpitSyncService';
 import ContractVersionService from '../services/ContractVersionService';
 import OntologyAnalysisService from '../services/OntologyAnalysisService';
+import ServiceService from '../services/ServiceService';
+import AnalysisSaveService from '../services/AnalysisSaveService';
 
 dotenv.config();
 
@@ -78,6 +80,8 @@ function initContainer(databaseType: string): AwilixContainer {
     termsCockpitSyncService: asClass(TermsCockpitSyncService).singleton(),
     contractVersionService: asClass(ContractVersionService).singleton(),
     ontologyAnalysisService: asClass(OntologyAnalysisService).singleton(),
+    serviceService: asClass(ServiceService).singleton(),
+    analysisSaveService: asClass(AnalysisSaveService).singleton(),
   });
   return container;
 }
