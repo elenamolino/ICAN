@@ -89,6 +89,15 @@ jobs:
                 { role: "dbAdmin", db: "${{ vars.CI_MONGO_INITDB_DATABASE }}" }
               ]
             });
+            db = db.getSiblingDB("ican_test_db");
+            db.createUser({
+              user: "${{ vars.CI_DATABASE_USERNAME }}",
+              pwd: "${{ vars.CI_DATABASE_PASSWORD }}",
+              roles: [
+                { role: "readWrite", db: "ican_test_db" },
+                { role: "dbAdmin", db: "ican_test_db" }
+              ]
+            });
           '
 
       - name: Install MiniZinc (Official Bundle)
