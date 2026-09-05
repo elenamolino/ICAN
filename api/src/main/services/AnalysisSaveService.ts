@@ -70,7 +70,9 @@ class AnalysisSaveService {
             serviceId,
           },
           organizationId,
-          false,
+          // Inherit the collection's visibility: a contract saved into a private
+          // collection must not be readable through the public contract endpoints.
+          Boolean(collection.private),
           reqUser,
           payload.collectionId
         );

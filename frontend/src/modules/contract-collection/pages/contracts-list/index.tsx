@@ -6,12 +6,13 @@ import SearchInput from '../../../core/components/search-input';
 import FilterBar from '../../../core/components/filter-bar';
 import Pagination from '../../../core/components/pagination';
 import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
-import { Contract, listContracts } from '../../api/contractCollectionsApi';
+import { Contract, useContractCollectionsApi } from '../../api/contractCollectionsApi';
 import ContractCard from '../../components/contract-card';
 
 const PER_PAGE = 12;
 
 export default function ContractsListPage() {
+  const { listContracts } = useContractCollectionsApi();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);

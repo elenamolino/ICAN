@@ -7,7 +7,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Iconify from '../../../core/components/iconify';
 import { useRouter } from '../../../core/hooks/useRouter';
-import { useAuth } from '../../../auth/hooks/useAuth';
 import { fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
 import customConfirm from '../../../core/utils/custom-confirm';
 import customAlert from '../../../core/utils/custom-alert';
@@ -15,9 +14,6 @@ import {
   Contract,
   ContractVersionDetail,
   ContractVersionListItem,
-  getContract,
-  getContractVersion,
-  listContractVersions,
   useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import SummaryStat from '../../../analysis/components/SummaryStat';
@@ -42,8 +38,14 @@ export default function ContractDetailPage() {
     contractSlug: string;
   }>();
   const router = useRouter();
-  const { authUser } = useAuth();
-  const { deleteContract, deleteContractVersion } = useContractCollectionsApi();
+  const {
+    getContract,
+    getContractVersion,
+    listContractVersions,
+    updateContract,
+    deleteContract,
+    deleteContractVersion,
+  } = useContractCollectionsApi();
   const [contract, setContract] = useState<Contract | null>(null);
   const [versions, setVersions] = useState<ContractVersionListItem[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export default function ContractDetailPage() {
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('content');
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
 
   useEffect(() => {
     if (!organizationId || !contractSlug) return;
@@ -101,6 +104,25 @@ export default function ContractDetailPage() {
       ? `/collections/${organizationId}/${contract.collection.slug}`
       : '/contracts';
   const backLabel = collectionSlug || contract?.collection ? 'Back to collection' : 'Back to contracts';
+
+  const handleToggleVisibility = async () => {
+    if (!organizationId || !contractSlug || !contract) return;
+    setTogglingVisibility(true);
+    try {
+      const updated = await updateContract(organizationId, contractSlug, { private: !contract.private });
+      // The update endpoint answers with the contract alone — keep the permission
+      // flags already loaded so the controls do not disappear.
+      setContract((prev) =>
+        prev
+          ? { ...prev, ...updated, canEdit: updated.canEdit ?? prev.canEdit, canDelete: updated.canDelete ?? prev.canDelete }
+          : updated
+      );
+    } catch (err: any) {
+      await customAlert(err.message || 'Failed to update contract visibility', 'error');
+    } finally {
+      setTogglingVisibility(false);
+    }
+  };
 
   const handleDeleteContract = async () => {
     if (!organizationId || !contractSlug) return;
@@ -196,6 +218,50 @@ export default function ContractDetailPage() {
         <div className="flex items-start justify-between gap-4">
           <h1 className="font-display text-2xl font-normal text-tp-ink">{contract.name}</h1>
           <div className="flex shrink-0 items-center gap-2">
+            {/* A contract inside a collection takes its visibility from that collection,
+                so here it is only reported — the control lives on the collection page.
+                A contract with no collection has nothing to inherit from, so it gets
+                its own toggle. */}
+            {contract.collection ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel"
+                title={
+                  contract.private
+                    ? 'Private: only members of the organization can see it'
+                    : 'Public: anyone can see it'
+                }
+              >
+                <Iconify icon={contract.private ? 'mdi:lock-outline' : 'mdi:earth'} width={14} />
+                {contract.private ? 'Private' : 'Public'}
+                <span className="text-tp-muted">
+                  · from{' '}
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/collections/${organizationId}/${contract.collection!.slug}`)}
+                    className="cursor-pointer underline hover:text-tp-ink"
+                  >
+                    {contract.collection.name}
+                  </button>
+                </span>
+              </span>
+            ) : (
+              contract.canEdit && (
+                <button
+                  type="button"
+                  onClick={handleToggleVisibility}
+                  disabled={togglingVisibility}
+                  title={
+                    contract.private
+                      ? 'Only members of the organization can see this contract — click to make it public'
+                      : 'Anyone can see this contract — click to make it private'
+                  }
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Iconify icon={contract.private ? 'mdi:lock-outline' : 'mdi:earth'} width={14} />
+                  {togglingVisibility ? 'Updating…' : contract.private ? 'Private' : 'Public'}
+                </button>
+              )
+            )}
             {contract.url && (
               <a
                 href={contract.url}
@@ -207,7 +273,7 @@ export default function ContractDetailPage() {
                 <Iconify icon="mdi:open-in-new" width={14} />
               </a>
             )}
-            {authUser.isAuthenticated && (
+            {contract?.canDelete && (
               <button
                 type="button"
                 onClick={handleDeleteContract}
@@ -236,7 +302,7 @@ export default function ContractDetailPage() {
               setSelectedVersionId(id);
               setTab('content');
             }}
-            onDelete={authUser.isAuthenticated ? handleDeleteVersion : undefined}
+            onDelete={contract?.canDelete ? handleDeleteVersion : undefined}
           />
 
           {selectedVersion?.summary && (

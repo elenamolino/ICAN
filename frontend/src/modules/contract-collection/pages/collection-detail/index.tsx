@@ -5,14 +5,12 @@ import { Helmet } from 'react-helmet-async';
 import Skeleton from 'react-loading-skeleton';
 import Iconify from '../../../core/components/iconify';
 import { useRouter } from '../../../core/hooks/useRouter';
-import { useAuth } from '../../../auth/hooks/useAuth';
 import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
 import customConfirm from '../../../core/utils/custom-confirm';
 import customAlert from '../../../core/utils/custom-alert';
 import {
   Contract,
   ContractCollectionSummary,
-  getCollection,
   useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import ContractCard from '../../components/contract-card';
@@ -44,11 +42,11 @@ function groupByService(contracts: Contract[]): { label: string; contracts: Cont
 export default function CollectionDetailPage() {
   const { organizationId, collectionSlug } = useParams<{ organizationId: string; collectionSlug: string }>();
   const router = useRouter();
-  const { authUser } = useAuth();
-  const { deleteCollection } = useContractCollectionsApi();
+  const { getCollection, updateCollection, deleteCollection } = useContractCollectionsApi();
   const [collection, setCollection] = useState<ContractCollectionSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
 
   useEffect(() => {
     if (!organizationId || !collectionSlug) return;
@@ -82,6 +80,26 @@ export default function CollectionDetailPage() {
     }
   };
 
+  const handleToggleVisibility = async () => {
+    if (!organizationId || !collectionSlug || !collection) return;
+    const nextPrivate = !collection.private;
+    setTogglingVisibility(true);
+    try {
+      const updated = await updateCollection(organizationId, collectionSlug, { private: nextPrivate });
+      // The update endpoint answers with the collection alone — keep the contracts
+      // and the permission flag already loaded so the list does not blank out.
+      setCollection((prev) =>
+        prev
+          ? { ...prev, ...updated, contracts: updated.contracts ?? prev.contracts, canEdit: updated.canEdit ?? prev.canEdit }
+          : updated
+      );
+    } catch (err: any) {
+      await customAlert(err.message || 'Failed to update collection visibility', 'error');
+    } finally {
+      setTogglingVisibility(false);
+    }
+  };
+
   const groups = groupByService(contracts);
 
   return (
@@ -107,15 +125,35 @@ export default function CollectionDetailPage() {
               {collection?.description && <span className="ml-1">· {collection.description}</span>}
             </p>
           </div>
-          {authUser.isAuthenticated && collection && (
-            <button
-              type="button"
-              onClick={handleDeleteCollection}
-              className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-severity-error hover:text-tp-severity-error"
-            >
-              <Iconify icon="mdi:trash-can-outline" width={14} />
-              Delete
-            </button>
+          {collection && (collection.canEdit || collection.canDelete) && (
+            <div className="flex shrink-0 items-center gap-2">
+              {collection.canEdit && (
+                <button
+                  type="button"
+                  onClick={handleToggleVisibility}
+                  disabled={togglingVisibility}
+                  title={
+                    collection.private
+                      ? 'Only members of the organization can see this collection — click to make it public'
+                      : 'Anyone can see this collection — click to make it private'
+                  }
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Iconify icon={collection.private ? 'mdi:lock-outline' : 'mdi:earth'} width={14} />
+                  {togglingVisibility ? 'Updating…' : collection.private ? 'Private' : 'Public'}
+                </button>
+              )}
+              {collection.canDelete && (
+                <button
+                  type="button"
+                  onClick={handleDeleteCollection}
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-severity-error hover:text-tp-severity-error"
+                >
+                  <Iconify icon="mdi:trash-can-outline" width={14} />
+                  Delete
+                </button>
+              )}
+            </div>
           )}
         </div>
       </motion.div>

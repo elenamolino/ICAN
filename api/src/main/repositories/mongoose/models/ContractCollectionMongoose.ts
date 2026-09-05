@@ -16,7 +16,7 @@ const contractCollectionSchema = new Schema(
     slug: { type: String, required: true },
     description: { type: String, required: false },
     _organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: false },
-    private: { type: Boolean, required: true, default: false },
+    private: { type: Boolean, required: true, default: true },
   },
   {
     timestamps: true,

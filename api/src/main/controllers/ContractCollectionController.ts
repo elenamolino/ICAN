@@ -25,7 +25,7 @@ class ContractCollectionController {
   async index(req: any, res: any) {
     try {
       const queryParams: CollectionIndexQueryParams = this._transformIndexQueryParams(req.query);
-      const result = await this.contractCollectionService.index(queryParams);
+      const result = await this.contractCollectionService.index(queryParams, req.user);
       res.json(result);
     } catch (err: any) {
       const { status, message } = handleError(err);

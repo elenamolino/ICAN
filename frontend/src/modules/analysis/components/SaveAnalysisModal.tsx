@@ -5,8 +5,6 @@ import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
 import { Organization, useOrganizationsApi } from '../../organization/api/organizationsApi';
 import {
-  listCollections,
-  listContracts,
   ContractCollectionSummary,
   useContractCollectionsApi,
 } from '../../contract-collection/api/contractCollectionsApi';
@@ -40,7 +38,7 @@ function flattenOrganizations(orgs: Organization[]): Organization[] {
 export default function SaveAnalysisModal({ open, onClose, text, result }: SaveAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
-  const { createCollection } = useContractCollectionsApi();
+  const { listCollections, listContracts, createCollection } = useContractCollectionsApi();
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [collections, setCollections] = useState<ContractCollectionSummary[]>([]);
@@ -50,6 +48,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [newCollectionOrgId, setNewCollectionOrgId] = useState('');
   const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionPrivate, setNewCollectionPrivate] = useState(true);
   const [creatingCollection, setCreatingCollection] = useState(false);
   const [createCollectionError, setCreateCollectionError] = useState<string | null>(null);
 
@@ -87,6 +86,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
     setSavedResult(null);
     setShowCreateCollection(false);
     setNewCollectionName('');
+    setNewCollectionPrivate(true);
     setCreateCollectionError(null);
   }, []);
 
@@ -126,11 +126,15 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
     setCreatingCollection(true);
     setCreateCollectionError(null);
     try {
-      const collection = await createCollection(newCollectionOrgId, { name: newCollectionName.trim() });
+      const collection = await createCollection(newCollectionOrgId, {
+        name: newCollectionName.trim(),
+        private: newCollectionPrivate,
+      });
       setCollections((prev) => [...prev, collection]);
       setSelectedCollection(collection);
       setShowCreateCollection(false);
       setNewCollectionName('');
+      setNewCollectionPrivate(true);
     } catch (err: any) {
       setCreateCollectionError(err.message || 'Failed to create collection');
     } finally {
@@ -351,6 +355,15 @@ export default function SaveAnalysisModal({ open, onClose, text, result }: SaveA
                       className="flex-1 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
                     />
                   </div>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-tp-steel">
+                    <input
+                      type="checkbox"
+                      checked={newCollectionPrivate}
+                      onChange={(e) => setNewCollectionPrivate(e.target.checked)}
+                      className="cursor-pointer rounded border-tp-hairline text-tp-primary focus:ring-tp-primary"
+                    />
+                    Private collection (only members of the organization can see it)
+                  </label>
                   <div className="flex justify-end gap-2">
                     {collections.length > 0 && (
                       <button

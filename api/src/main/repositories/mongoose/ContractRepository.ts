@@ -192,6 +192,17 @@ class ContractRepository extends RepositoryBase {
     return ContractMongoose.updateMany({ _collectionId: collectionId }, { $unset: { _collectionId: 1 } });
   }
 
+  async setPrivacyForCollection(collectionId: string, isPrivate: boolean) {
+    return ContractMongoose.updateMany({ _collectionId: collectionId }, { $set: { private: isPrivate } });
+  }
+
+  async setPrivacyBySlugAndOrganization(slug: string, organizationId: string, isPrivate: boolean) {
+    return ContractMongoose.updateOne(
+      { slug, _organizationId: new mongoose.Types.ObjectId(organizationId) },
+      { $set: { private: isPrivate } }
+    );
+  }
+
   async removeContractsFromService(serviceId: string) {
     return ContractMongoose.updateMany({ _serviceId: String(serviceId) }, { $unset: { _serviceId: 1 } });
   }

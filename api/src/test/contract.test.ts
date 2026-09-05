@@ -106,8 +106,8 @@ describe('Contracts API integration', () => {
 
       const { user: member } = await createAndLoginUser('USER', `member_${randomSuffix()}`);
       await createMembership(member.id, organizationId, 'MEMBER');
-      // Entity-scoped grants are enforced on listing endpoints; being an org member
-      // is sufficient to read a single private contract by slug.
+      // Membership alone is not enough for a private contract: it takes an explicit
+      // GET grant (or being OWNER/ADMIN of the organization).
       await createEntityScopedPermission(
         member.id,
         organizationId,
@@ -121,6 +121,59 @@ describe('Contracts API integration', () => {
         .set('Authorization', `Bearer ${member.token}`);
 
       expect(response.status).toBe(200);
+    });
+
+    it('hides a private contract from an org member without an explicit grant', async () => {
+      const { user, organizationId } = await createAndLoginUser('USER', `privowner3_${randomSuffix()}`);
+      const createResponse = await request(app)
+        .post(`${BASE_PATH}/contracts/${organizationId}`)
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({ name: `PrivateContract3_${randomSuffix()}`, private: true });
+      contractsToDelete.add(createResponse.body._id ?? createResponse.body.id);
+
+      const { user: member } = await createAndLoginUser('USER', `plainmember_${randomSuffix()}`);
+      await createMembership(member.id, organizationId, 'MEMBER');
+
+      const response = await request(app)
+        .get(`${BASE_PATH}/contracts/${organizationId}/${createResponse.body.slug}`)
+        .set('Authorization', `Bearer ${member.token}`);
+
+      expect(response.status).toBe(404);
+    });
+
+    it('reports canEdit/canDelete for the owner, and denies them to a read-only member', async () => {
+      const { user, organizationId } = await createAndLoginUser('USER', `flagsowner_${randomSuffix()}`);
+      const createResponse = await request(app)
+        .post(`${BASE_PATH}/contracts/${organizationId}`)
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({ name: `Flags_${randomSuffix()}`, private: true });
+      contractsToDelete.add(createResponse.body._id ?? createResponse.body.id);
+
+      const ownerView = await request(app)
+        .get(`${BASE_PATH}/contracts/${organizationId}/${createResponse.body.slug}`)
+        .set('Authorization', `Bearer ${user.token}`);
+
+      expect(ownerView.status).toBe(200);
+      expect(ownerView.body.canEdit).toBe(true);
+      expect(ownerView.body.canDelete).toBe(true);
+
+      const { user: reader } = await createAndLoginUser('USER', `reader_${randomSuffix()}`);
+      await createMembership(reader.id, organizationId, 'MEMBER');
+      await createEntityScopedPermission(
+        reader.id,
+        organizationId,
+        createResponse.body.slug,
+        'contract',
+        { GET: true, PUT: false, DELETE: false, CREATE: false }
+      );
+
+      const readerView = await request(app)
+        .get(`${BASE_PATH}/contracts/${organizationId}/${createResponse.body.slug}`)
+        .set('Authorization', `Bearer ${reader.token}`);
+
+      expect(readerView.status).toBe(200);
+      expect(readerView.body.canEdit).toBe(false);
+      expect(readerView.body.canDelete).toBe(false);
     });
   });
 
