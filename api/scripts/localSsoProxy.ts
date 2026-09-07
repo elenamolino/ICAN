@@ -1,17 +1,17 @@
 /**
- * Local HTTPS proxy that impersonates https://sphere.score.us.es on THIS machine,
+ * Local HTTPS proxy that impersonates https://ican.score.us.es on THIS machine,
  * so the real US CAS flow can be tested end-to-end without deploying:
  *
- *   browser → ssopre.us.es (real login) → redirect to sphere.score.us.es/...callback
+ *   browser → ssopre.us.es (real login) → redirect to ican.score.us.es/...callback
  *           → resolved locally to 127.0.0.1 → this proxy → local API on :8081
  *
  * Setup:
  *   1. Generate a self-signed cert (once):
  *        openssl req -x509 -newkey rsa:2048 -nodes -days 30 \
  *          -keyout scripts/.local-sso.key -out scripts/.local-sso.crt \
- *          -subj "/CN=sphere.score.us.es"
+ *          -subj "/CN=ican.score.us.es"
  *   2. Add to C:\Windows\System32\drivers\etc\hosts (as admin):
- *        127.0.0.1 sphere.score.us.es
+ *        127.0.0.1 ican.score.us.es
  *      (REMOVE IT AFTERWARDS or you will not reach the real deployment!)
  *   3. Run: npx tsx scripts/localSsoProxy.ts   (listens on :443)
  *
@@ -47,5 +47,5 @@ const server = https.createServer({ key, cert }, (req, res) => {
 });
 
 server.listen(LISTEN_PORT, () => {
-  console.log(`[local-sso-proxy] https://sphere.score.us.es (local :${LISTEN_PORT}) → http://127.0.0.1:${TARGET_PORT}`);
+  console.log(`[local-sso-proxy] https://ican.score.us.es (local :${LISTEN_PORT}) → http://127.0.0.1:${TARGET_PORT}`);
 });
