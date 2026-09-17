@@ -15,6 +15,10 @@ export interface ContractCollectionSummary {
   name: string;
   slug: string;
   description?: string | null;
+  private: boolean;
+  /** Server-computed, only on the detail endpoint: what the current user may do. */
+  canEdit?: boolean;
+  canDelete?: boolean;
   organization: ContractCollectionOrganization;
   contracts?: Contract[];
 }
@@ -34,6 +38,9 @@ export interface Contract {
   url?: string;
   content?: string;
   private: boolean;
+  /** Server-computed, only on the detail endpoint: what the current user may do. */
+  canEdit?: boolean;
+  canDelete?: boolean;
   organization?: ContractCollectionOrganization;
   collection?: { id: string; name: string; slug: string } | null;
   service?: ContractServiceRef | null;
@@ -58,82 +65,87 @@ export interface ContractVersionDetail extends ContractVersionListItem {
   clauses: ClauseAnalysis[] | null;
 }
 
-export async function listCollections(params?: {
-  name?: string;
-  limit?: number;
-  offset?: number;
-  organizationIds?: string[];
-}): Promise<{ collections: ContractCollectionSummary[]; total: number }> {
+function buildQuery(params: Record<string, string | number | string[] | undefined>): string {
   const qs = new URLSearchParams();
-  if (params?.name) qs.set('name', params.name);
-  if (params?.limit !== undefined) qs.set('limit', String(params.limit));
-  if (params?.offset !== undefined) qs.set('offset', String(params.offset));
-  if (params?.organizationIds?.length) qs.set('organizationIds', params.organizationIds.join(','));
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      if (value.length) qs.set(key, value.join(','));
+      continue;
+    }
+    qs.set(key, String(value));
+  }
   const query = qs.toString();
-
-  const response = await fetch(`${BASE_URL}/contractCollections${query ? `?${query}` : ''}`);
-  if (!response.ok) throw new Error('Failed to fetch collections');
-  const data = await response.json();
-  return { collections: data.collections ?? [], total: data.total ?? 0 };
+  return query ? `?${query}` : '';
 }
 
-export async function getCollection(organizationId: string, collectionSlug: string): Promise<ContractCollectionSummary> {
-  const response = await fetch(`${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}`);
-  if (!response.ok) throw new Error('Collection not found');
-  return response.json();
-}
-
-export async function getContract(organizationId: string, contractSlug: string): Promise<Contract> {
-  const response = await fetch(`${BASE_URL}/contracts/${organizationId}/${contractSlug}`);
-  if (!response.ok) throw new Error('Contract not found');
-  return response.json();
-}
-
-export async function listContracts(params?: {
-  name?: string;
-  limit?: number;
-  offset?: number;
-  collection?: string;
-}): Promise<{ contracts: Contract[]; total: number }> {
-  const qs = new URLSearchParams();
-  if (params?.name) qs.set('name', params.name);
-  if (params?.limit !== undefined) qs.set('limit', String(params.limit));
-  if (params?.offset !== undefined) qs.set('offset', String(params.offset));
-  if (params?.collection) qs.set('collection', params.collection);
-  const query = qs.toString();
-
-  const response = await fetch(`${BASE_URL}/contracts${query ? `?${query}` : ''}`);
-  if (!response.ok) throw new Error('Failed to fetch contracts');
-  const data = await response.json();
-  return { contracts: data.contracts ?? [], total: data.total ?? 0 };
-}
-
-export async function listContractVersions(
-  organizationId: string,
-  contractSlug: string
-): Promise<ContractVersionListItem[]> {
-  const response = await fetch(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions`);
-  if (!response.ok) throw new Error('Failed to fetch contract versions');
-  const data = await response.json();
-  return data.versions ?? [];
-}
-
-export async function getContractVersion(
-  organizationId: string,
-  contractSlug: string,
-  versionId: string
-): Promise<ContractVersionDetail> {
-  const response = await fetch(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}`);
-  if (!response.ok) throw new Error('Contract version not found');
-  return response.json();
-}
-
+// Every read below goes through fetchWithInterceptor: private collections and
+// contracts are only returned when the caller's token identifies them as someone
+// with access, and an anonymous caller still gets the public ones.
 export function useContractCollectionsApi() {
   const { fetchWithInterceptor } = useAuth();
 
+  async function listCollections(params?: {
+    name?: string;
+    limit?: number;
+    offset?: number;
+    organizationIds?: string[];
+  }): Promise<{ collections: ContractCollectionSummary[]; total: number }> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contractCollections${buildQuery({ ...params })}`);
+    if (!res.ok) throw new Error('Failed to fetch collections');
+    const data = await res.json();
+    return { collections: data.collections ?? [], total: data.total ?? 0 };
+  }
+
+  async function getCollection(organizationId: string, collectionSlug: string): Promise<ContractCollectionSummary> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}`);
+    if (!res.ok) throw new Error('Collection not found');
+    return res.json();
+  }
+
+  async function listContracts(params?: {
+    name?: string;
+    limit?: number;
+    offset?: number;
+    collection?: string;
+  }): Promise<{ contracts: Contract[]; total: number }> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts${buildQuery({ ...params })}`);
+    if (!res.ok) throw new Error('Failed to fetch contracts');
+    const data = await res.json();
+    return { contracts: data.contracts ?? [], total: data.total ?? 0 };
+  }
+
+  async function getContract(organizationId: string, contractSlug: string): Promise<Contract> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}`);
+    if (!res.ok) throw new Error('Contract not found');
+    return res.json();
+  }
+
+  async function listContractVersions(
+    organizationId: string,
+    contractSlug: string
+  ): Promise<ContractVersionListItem[]> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions`);
+    if (!res.ok) throw new Error('Failed to fetch contract versions');
+    const data = await res.json();
+    return data.versions ?? [];
+  }
+
+  async function getContractVersion(
+    organizationId: string,
+    contractSlug: string,
+    versionId: string
+  ): Promise<ContractVersionDetail> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}`
+    );
+    if (!res.ok) throw new Error('Contract version not found');
+    return res.json();
+  }
+
   async function createCollection(
     organizationId: string,
-    data: { name: string }
+    data: { name: string; private?: boolean }
   ): Promise<ContractCollectionSummary> {
     const res = await fetchWithInterceptor(`${BASE_URL}/contractCollections/${organizationId}`, {
       method: 'POST',
@@ -143,6 +155,40 @@ export function useContractCollectionsApi() {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || 'Failed to create collection');
+    }
+    return res.json();
+  }
+
+  async function updateCollection(
+    organizationId: string,
+    collectionSlug: string,
+    data: { private?: boolean; name?: string; description?: string }
+  ): Promise<ContractCollectionSummary> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to update collection');
+    }
+    return res.json();
+  }
+
+  async function updateContract(
+    organizationId: string,
+    contractSlug: string,
+    data: { private?: boolean; name?: string }
+  ): Promise<Contract> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to update contract');
     }
     return res.json();
   }
@@ -187,5 +233,18 @@ export function useContractCollectionsApi() {
     }
   }
 
-  return { createCollection, deleteCollection, deleteContract, deleteContractVersion };
+  return {
+    listCollections,
+    getCollection,
+    listContracts,
+    getContract,
+    listContractVersions,
+    getContractVersion,
+    createCollection,
+    updateCollection,
+    updateContract,
+    deleteCollection,
+    deleteContract,
+    deleteContractVersion,
+  };
 }

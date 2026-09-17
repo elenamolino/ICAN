@@ -32,15 +32,19 @@ class ContractService {
   }
 
   async index(queryParams: ContractIndexQueryParams, reqUser?: LeanUser) {
-    const isAdmin = reqUser && reqUser.role === 'ADMIN';
+    // Same as collections: without the real permission context an authenticated user
+    // is filtered like an anonymous one and never sees their own private contracts.
+    const permissions = reqUser
+      ? await this.permissionService.buildUserPermissionsContext(reqUser)
+      : {
+          orgRole: null,
+          contracts: [],
+          collections: [],
+          isGlobalAdmin: false,
+          adminOrgIds: [],
+        };
 
-    return this.contractRepository.findAll(queryParams, {
-      orgRole: null,
-      contracts: [],
-      collections: [],
-      isGlobalAdmin: isAdmin ?? false,
-      adminOrgIds: [],
-    });
+    return this.contractRepository.findAll(queryParams, permissions);
   }
 
   async indexByOrganizationId(
@@ -112,17 +116,64 @@ class ContractService {
     reqUser?: LeanUser,
     queryParams: { collectionSlug?: string; includePrivate: boolean } = { includePrivate: false }
   ) {
-    if (reqUser) {
-      const role = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
-      queryParams.includePrivate = reqUser.role === 'ADMIN' || role !== null;
-    }
-
-    const contract = await this.contractRepository.findOne(slug, organizationId, queryParams);
+    // Fetch regardless of the flag and let the policy engine decide: filtering here
+    // would make "private" mean "hidden from every non-member", which is looser than
+    // the declared policy (owner/admin of the org, or an explicit GET grant).
+    const contract = await this.contractRepository.findOne(slug, organizationId, {
+      ...queryParams,
+      includePrivate: true,
+    });
     if (!contract) {
       throw new Error('NOT FOUND: Contract not found');
     }
 
-    return contract;
+    const isPrivate = Boolean((contract as any).private);
+
+    // A caller who may not read a private contract is told it does not exist, rather
+    // than that it exists and is forbidden — its very name can be sensitive.
+    if (!reqUser) {
+      if (isPrivate) {
+        throw new Error('NOT FOUND: Contract not found');
+      }
+      return { ...contract, canEdit: false, canDelete: false };
+    }
+
+    const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
+    const batchCtx = await this.permissionService.buildBatchContext(
+      reqUser.id,
+      organizationId,
+      orgRole,
+      reqUser.role === 'ADMIN'
+    );
+    const collectionSlug = (contract as any).collection?.slug;
+    const evaluationContext = {
+      userId: reqUser.id,
+      organizationId,
+      entityType: 'contract' as const,
+      entitySlug: (contract as any).slug,
+      isPrivate,
+      userOrgRole: orgRole,
+      isGlobalAdmin: reqUser.role === 'ADMIN',
+      entityPermissions: batchCtx.entityPermissions.get(`contract:${(contract as any).slug}`),
+      // A grant on the parent collection carries over to the contracts inside it.
+      collectionSlug,
+      collectionPermissions: collectionSlug
+        ? batchCtx.entityPermissions.get(`contractCollection:${collectionSlug}`)
+        : undefined,
+    };
+
+    if (isPrivate) {
+      const readResult = this.permissionEngine.evaluate({ ...evaluationContext, action: 'GET' });
+      if (!readResult.allowed) {
+        throw new Error('NOT FOUND: Contract not found');
+      }
+    }
+
+    // Exposed so the UI can hide affordances it would only get a 403 from.
+    const canEdit = this.permissionEngine.evaluate({ ...evaluationContext, action: 'PUT' }).allowed;
+    const canDelete = this.permissionEngine.evaluate({ ...evaluationContext, action: 'DELETE' }).allowed;
+
+    return { ...contract, canEdit, canDelete };
   }
 
   async create(
@@ -231,6 +282,14 @@ class ContractService {
     }
 
     await this.contractRepository.addContractToCollection(contractSlug, organizationId, collection.id);
+
+    // Contracts are filtered by their own flag, so moving one into a private
+    // collection has to make it private too. The reverse is deliberately not done:
+    // adding a private contract to a public collection must not expose it.
+    if (collection.private && !contract.private) {
+      await this.contractRepository.setPrivacyBySlugAndOrganization(contractSlug, organizationId, true);
+    }
+
     return true;
   }
 
