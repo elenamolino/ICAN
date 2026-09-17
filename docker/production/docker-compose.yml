@@ -1,6 +1,6 @@
 services:
   mongodb:
-      image: mongo:7.0.16
+      image: mongo:4.4
       ports:
         - "27017:27017"
       env_file:
@@ -26,6 +26,11 @@ services:
   unfair-tos-detector:
     restart: always
     image: ghcr.io/elenamolino/unfair-tos-detector:latest
+    environment:
+      HTTP_PROXY: http://proxy.int.local:3128
+      HTTPS_PROXY: http://proxy.int.local:3128
+      NO_PROXY: 127.0.0.1,localhost,192.168.20.59,.int.local
+      NODE_USE_ENV_PROXY: "1"
     networks:
       - sphere-network
   # tos-to-odrl microservice (ToS -> ODRL policy pipeline), backend only —
@@ -38,6 +43,10 @@ services:
   tos-to-odrl-backend:
     restart: always
     image: ghcr.io/elenamolino/tos-to-odrl:latest
+    environment:
+      HTTP_PROXY: http://proxy.int.local:3128
+      HTTPS_PROXY: http://proxy.int.local:3128
+      NO_PROXY: 127.0.0.1,localhost,mongodb,unfair-tos-detector,.int.local
     env_file:
       - .env.tos-to-odrl
     depends_on:

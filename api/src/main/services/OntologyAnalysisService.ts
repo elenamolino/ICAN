@@ -43,7 +43,7 @@ class OntologyAnalysisService {
 
   async submitJob(file: UploadedFile, meta: SubmitJobMeta): Promise<{ jobId: string }> {
     const form = new FormData();
-    form.append('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+    form.append('file', new Blob([new Uint8Array(file.buffer)], { type: file.mimetype }), file.originalname);    
     if (meta.provider) form.append('provider', meta.provider);
     if (meta.title) form.append('title', meta.title);
     if (meta.date) form.append('date', meta.date);
