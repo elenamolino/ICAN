@@ -4,7 +4,7 @@ import Iconify from '../../core/components/iconify';
 import SummaryStat from './SummaryStat';
 
 function unfairCount(clause: ClauseReportItem) {
-  return Object.values(clause.unfair_terms).reduce((sum, entries) => sum + entries.length, 0);
+  return Object.values(clause.unfair_terms ?? {}).reduce((sum, entries) => sum + entries.length, 0);
 }
 
 function totalWords(clauses: ClauseReportItem[]) {
@@ -46,7 +46,7 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
   const [open, setOpen] = useState(false);
   const [showTtl, setShowTtl] = useState(false);
   const unfair = unfairCount(clause);
-  const unfairCategories = Object.entries(clause.unfair_terms)
+  const unfairCategories = Object.entries(clause.unfair_terms ?? {})
     .filter(([, entries]) => entries.length > 0)
     .map(([category]) => category.replace(/_/g, ' '));
 
@@ -226,7 +226,7 @@ export default function OntologyReport({ report }: { report: JobReport }) {
           <h3 className="mb-3 font-semibold text-tp-severity-warning">⚠ Potentially unfair terms</h3>
           <ul className="space-y-2">
             {unfairClauses.map((c) => {
-              const categories = Object.entries(c.unfair_terms)
+              const categories = Object.entries(c.unfair_terms ?? {})
                 .filter(([, entries]) => entries.length > 0)
                 .map(([category]) => category.replace(/_/g, ' '));
               return (

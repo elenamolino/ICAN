@@ -1,5 +1,6 @@
 import { useAuth } from '../../auth/hooks/useAuth';
 import { AnalysisSummary, ClauseAnalysis } from '../../analysis/api/analysisApi';
+import { JobReport } from '../../analysis/api/ontologyAnalysisApi';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -57,12 +58,14 @@ export interface ContractVersionListItem {
   insertions: number | null;
   deletions: number | null;
   summary: AnalysisSummary | null;
+  hasOntologyReport: boolean;
   analysisSkipped: boolean;
 }
 
 export interface ContractVersionDetail extends ContractVersionListItem {
   content: string;
   clauses: ClauseAnalysis[] | null;
+  ontologyReport: JobReport | null;
 }
 
 function buildQuery(params: Record<string, string | number | string[] | undefined>): string {

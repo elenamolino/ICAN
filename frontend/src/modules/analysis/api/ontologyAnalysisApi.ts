@@ -81,6 +81,26 @@ export interface SubmitJobMeta {
   runEvaluation?: boolean;
 }
 
+export interface SaveOntologyAnalysisPayload {
+  collectionId: string;
+  serviceId?: string;
+  serviceName?: string;
+  contractId?: string;
+  contractName?: string;
+  versionId?: string;
+  provider?: string;
+  title?: string;
+  date: string;
+  text?: string | null;
+  report: JobReport;
+}
+
+export interface SaveOntologyAnalysisResult {
+  organizationId: string;
+  contractSlug: string;
+  versionId: string;
+}
+
 export function useOntologyAnalysisApi() {
   const { fetchWithInterceptor } = useAuth();
 
@@ -131,5 +151,21 @@ export function useOntologyAnalysisApi() {
     return res.json();
   }, [fetchWithInterceptor]);
 
-  return { listModels, submitJob, getStatus, getReport };
+  const saveOntologyAnalysis = useCallback(
+    async (organizationId: string, payload: SaveOntologyAnalysisPayload): Promise<SaveOntologyAnalysisResult> => {
+      const res = await fetchWithInterceptor(`${BASE_PATH}/contracts/${organizationId}/ontology-analysis/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to save analysis');
+      }
+      return res.json();
+    },
+    [fetchWithInterceptor]
+  );
+
+  return { listModels, submitJob, getStatus, getReport, saveOntologyAnalysis };
 }

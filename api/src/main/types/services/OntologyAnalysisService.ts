@@ -81,3 +81,22 @@ export type UploadedFile = {
   originalname: string;
   mimetype: string;
 };
+
+export interface SaveOntologyAnalysisPayload {
+  collectionId: string;
+  serviceId?: string;
+  serviceName?: string;
+  contractId?: string;
+  contractName?: string;
+  // When set (only valid alongside contractId), attaches this report to an
+  // already-existing version of that contract instead of creating/reusing a
+  // version keyed by content hash.
+  versionId?: string;
+  provider?: string;
+  title?: string;
+  date: string;
+  // Original file text, when the client could read it (not possible for PDFs)
+  // — falls back to reconstructing content from the report's clauses.
+  text?: string | null;
+  report: JobReport;
+}

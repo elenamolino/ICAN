@@ -8,11 +8,26 @@ class ContractAnalysisController {
   constructor() {
     this.analysisSaveService = container.resolve('analysisSaveService');
     this.save = this.save.bind(this);
+    this.saveOntology = this.saveOntology.bind(this);
   }
 
   async save(req: any, res: any) {
     try {
       const result = await this.analysisSaveService.saveAiClassifyResult(
+        req.params.organizationId,
+        req.user,
+        req.body
+      );
+      res.status(201).json(result);
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async saveOntology(req: any, res: any) {
+    try {
+      const result = await this.analysisSaveService.saveOntologyAnalysisResult(
         req.params.organizationId,
         req.user,
         req.body

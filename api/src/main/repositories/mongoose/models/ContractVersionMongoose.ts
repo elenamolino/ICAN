@@ -20,10 +20,18 @@ const contractVersionSchema = new Schema(
       default: null,
     },
     clauses: { type: Schema.Types.Mixed, required: false, default: null },
+    ontologyReport: { type: Schema.Types.Mixed, required: false, default: null },
     analysisSkipped: { type: Boolean, required: true, default: false },
   },
   {
     timestamps: true,
+    // Mongoose's default `minimize: true` strips empty plain objects ({})
+    // anywhere in the document, including inside Mixed fields. ontologyReport
+    // stores an externally-defined report verbatim (e.g. a clause with no
+    // unfair terms has `unfair_terms: {}`) — losing that key on save breaks
+    // consumers that assume it's always present. Keep the document exactly
+    // as received.
+    minimize: false,
     toObject: {
       getters: true,
       virtuals: true,

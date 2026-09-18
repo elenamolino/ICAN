@@ -17,16 +17,18 @@ import {
   useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import SummaryStat from '../../../analysis/components/SummaryStat';
+import OntologyReport from '../../../analysis/components/OntologyReport';
 import VersionSelector from '../../components/version-selector';
 import FilterableClauseList from '../../components/filterable-clause-list';
 import VersionEvolutionChart from '../../components/version-evolution-chart';
 import VersionComparison from '../../components/version-comparison';
 
-type Tab = 'content' | 'clauses' | 'evolution' | 'compare';
+type Tab = 'content' | 'clauses' | 'ontology' | 'evolution' | 'compare';
 
 const TAB_LABELS: Record<Tab, string> = {
   content: 'Content',
   clauses: 'Clauses',
+  ontology: 'Ontology',
   evolution: 'Evolution',
   compare: 'Compare',
 };
@@ -166,11 +168,31 @@ export default function ContractDetailPage() {
   };
 
   const hasVersionHistory = versions.length > 0;
+  const selectedVersionListItem = versions.find((v) => v.id === selectedVersionId) ?? null;
+  const hasClassifyData = !!selectedVersionListItem?.summary;
+  const hasOntologyData = !!selectedVersionListItem?.hasOntologyReport;
+  // Only show the tabs that apply to whichever analyses this specific version
+  // actually has — a version saved from just one of AI Classify / Ontology
+  // Analysis shouldn't show an empty tab for the other.
+  const versionTabs: Tab[] = [
+    ...(hasClassifyData || !hasOntologyData ? (['content', 'clauses'] as Tab[]) : []),
+    ...(hasOntologyData ? (['ontology'] as Tab[]) : []),
+  ];
   const availableTabs: Tab[] = hasVersionHistory
     ? versions.length > 1
-      ? ['content', 'clauses', 'evolution', 'compare']
-      : ['content', 'clauses']
+      ? [...versionTabs, 'evolution', 'compare']
+      : versionTabs
     : ['content'];
+
+  useEffect(() => {
+    if (!availableTabs.includes(tab)) {
+      setTab(availableTabs[0] ?? 'content');
+    }
+    // Only re-run when the selected version (and thus availableTabs) changes,
+    // not on every render — `tab` itself is intentionally excluded so a
+    // manual tab click isn't immediately overridden.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVersionId, hasClassifyData, hasOntologyData]);
 
   if (isLoading) {
     return (
@@ -298,10 +320,7 @@ export default function ContractDetailPage() {
           <VersionSelector
             versions={versions}
             selectedId={selectedVersionId ?? ''}
-            onSelect={(id) => {
-              setSelectedVersionId(id);
-              setTab('content');
-            }}
+            onSelect={setSelectedVersionId}
             onDelete={contract?.canDelete ? handleDeleteVersion : undefined}
           />
 
@@ -368,6 +387,15 @@ export default function ContractDetailPage() {
             ) : (
               <p className="text-sm text-tp-steel">
                 No clause analysis available for this version (the snapshot had no usable text).
+              </p>
+            ))}
+
+          {tab === 'ontology' &&
+            (selectedVersion?.ontologyReport ? (
+              <OntologyReport report={selectedVersion.ontologyReport} />
+            ) : (
+              <p className="text-sm text-tp-steel">
+                No ontology analysis available for this version.
               </p>
             ))}
 

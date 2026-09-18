@@ -10,19 +10,18 @@ import {
   useContractCollectionsApi,
 } from '../../contract-collection/api/contractCollectionsApi';
 import { listServices, ServiceSummary } from '../../contract-collection/api/servicesApi';
-import { useAnalysisApi, AnalyzeResponse } from '../api/analysisApi';
+import { useOntologyAnalysisApi, JobReport } from '../api/ontologyAnalysisApi';
 import EntityPickerInput, { EntitySelection } from './EntityPickerInput';
 
-interface SaveAnalysisModalProps {
+interface SaveOntologyAnalysisModalProps {
   open: boolean;
   onClose: () => void;
-  text: string;
-  result: AnalyzeResponse;
-  // Set upfront on the AI Classify page (before analyzing) and fixed here —
-  // this modal never asks for them again.
-  provider: string;
-  title: string;
-  date: string;
+  report: JobReport;
+  text: string | null;
+}
+
+function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 // getMyOrganizations returns a tree (subOrganizations nested) — flatten it so
@@ -37,9 +36,9 @@ function flattenOrganizations(orgs: Organization[]): Organization[] {
   }, []);
 }
 
-export default function SaveAnalysisModal({ open, onClose, text, result, provider, title, date }: SaveAnalysisModalProps) {
+export default function SaveOntologyAnalysisModal({ open, onClose, report, text }: SaveOntologyAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
-  const { saveAnalysis } = useAnalysisApi();
+  const { saveOntologyAnalysis } = useOntologyAnalysisApi();
   const { listCollections, listContracts, listContractVersions, createCollection } = useContractCollectionsApi();
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -66,6 +65,10 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [attachVersionId, setAttachVersionId] = useState('');
 
+  const [provider, setProvider] = useState('');
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState(todayIsoDate());
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedResult, setSavedResult] = useState<{
@@ -82,6 +85,9 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
     setContractSelection(null);
     setExistingVersions([]);
     setAttachVersionId('');
+    setProvider('');
+    setTitle('');
+    setDate(todayIsoDate());
     setError(null);
     setLoading(false);
     setSavedResult(null);
@@ -162,6 +168,8 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
 
   useEffect(() => {
     setContractSelection(null);
+    setProvider('');
+    setTitle('');
 
     if (!selectedCollection || !serviceSelection || serviceSelection.mode !== 'existing') {
       setContracts([]);
@@ -206,7 +214,24 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
   }, [selectedCollection, contractSelection, contracts]);
 
   const isNewContract = !contractSelection || contractSelection.mode === 'new';
-  const canSubmit = !!selectedCollection && !!serviceSelection && !!contractSelection;
+  const canSubmit =
+    !!selectedCollection &&
+    !!serviceSelection &&
+    !!contractSelection &&
+    !!date &&
+    (!isNewContract || (provider.trim() && title.trim()));
+
+  const handleContractChange = (selection: EntitySelection | null) => {
+    setContractSelection(selection);
+    // A new contract's name is "<Provider> — <Title>", built from these two
+    // fields below (both freely editable) — not from this field directly.
+    // Prefill sensible starting points so nothing typed here is wasted: the
+    // service's name for Provider, and whatever was searched for Title.
+    if (selection?.mode === 'new') {
+      if (!provider) setProvider(serviceSelection?.name ?? '');
+      if (!title) setTitle(selection.name);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,7 +240,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
     setLoading(true);
     setError(null);
     try {
-      const result_ = await saveAnalysis(selectedCollection.organization.id, {
+      const result_ = await saveOntologyAnalysis(selectedCollection.organization.id, {
         collectionId: selectedCollection.id,
         ...(serviceSelection.mode === 'existing'
           ? { serviceId: serviceSelection.id }
@@ -225,8 +250,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
           : { contractName: contractSelection.name, provider: provider.trim(), title: title.trim() }),
         date: new Date(date).toISOString(),
         text,
-        summary: result.summary,
-        clauses: result.clauses,
+        report,
       });
       setSavedResult({
         organizationId: result_.organizationId,
@@ -262,7 +286,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
             <div className="flex flex-col items-center gap-4 py-4 text-center">
               <MdCheckCircle className="h-10 w-10 text-tp-severity-success" />
               <div>
-                <p className="text-base font-semibold text-tp-ink">Analysis saved</p>
+                <p className="text-base font-semibold text-tp-ink">Ontology report saved</p>
                 <p className="mt-1 text-sm text-tp-steel">
                   Saved to "{savedResult.collectionName}".
                 </p>
@@ -286,7 +310,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
             </div>
           ) : (
             <>
-              <h2 className="mb-4 text-lg font-semibold text-tp-ink">Save analysis</h2>
+              <h2 className="mb-4 text-lg font-semibold text-tp-ink">Save ontology report</h2>
 
               {error && (
                 <BlockAlert variant="error" className="mb-4" onDismiss={() => setError(null)}>
@@ -416,7 +440,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
                 loading={loadingContracts}
                 disabled={!serviceSelection}
                 selection={contractSelection}
-                onChange={setContractSelection}
+                onChange={handleContractChange}
                 placeholder={serviceSelection ? 'Search or create a contract...' : 'Select a service first'}
               />
             </div>
@@ -438,17 +462,55 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-tp-steel">
-                  Attaching adds this analysis to that version alongside whatever it already has,
+                  Attaching adds this report to that version alongside whatever it already has,
                   instead of creating a new one.
                 </p>
               </div>
             )}
 
             {isNewContract && contractSelection && (
-              <p className="text-xs text-tp-steel">
-                Will be saved as "{provider} — {title}", dated {date}.
-              </p>
+              <div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Provider</label>
+                    <input
+                      type="text"
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                      placeholder="e.g. Google"
+                      className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Title</label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. Terms of Service"
+                      className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      required
+                    />
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-tp-steel">
+                  Will be saved as "{provider.trim() || '…'} — {title.trim() || '…'}".
+                </p>
+              </div>
             )}
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-tp-ink">Contract Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                max={todayIsoDate()}
+                className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                required
+              />
+            </div>
 
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -463,7 +525,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
                 disabled={loading || !canSubmit}
                 className="cursor-pointer rounded-lg bg-tp-primary px-4 py-2 text-sm font-medium text-tp-on-primary transition-colors hover:bg-tp-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? 'Saving…' : 'Save analysis'}
+                {loading ? 'Saving…' : 'Save ontology report'}
               </button>
             </div>
               </form>
