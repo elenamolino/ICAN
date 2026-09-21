@@ -6,10 +6,9 @@ import Skeleton from 'react-loading-skeleton';
 import Iconify from '../../../core/components/iconify';
 import SearchInput from '../../../core/components/search-input';
 import FilterBar from '../../../core/components/filter-bar';
-import Pagination from '../../../core/components/pagination';
 import { useRouter } from '../../../core/hooks/useRouter';
 import { useAuth } from '../../../auth/hooks/useAuth';
-import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
+import { transitionDefault } from '../../../core/utils/motion-variants';
 import customConfirm from '../../../core/utils/custom-confirm';
 import customAlert from '../../../core/utils/custom-alert';
 import {
@@ -19,9 +18,10 @@ import {
   useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import { listServices, ServiceSummary } from '../../api/servicesApi';
-import ServiceTreeNode from '../../components/service-tree-node';
+import CollectionTree from '../../components/collection-tree';
+import DocumentList from '../../components/document-list';
+import { buildServiceTree, findCategory, firstCategory } from '../../components/collection-tree/model';
 
-const SERVICES_PER_PAGE = 8;
 const UNASSIGNED_SERVICE: ServiceSummary = { id: '__unassigned__', name: 'Unassigned documents', slug: '__unassigned__' };
 
 type PolicyType = 'terms-of-service' | 'privacy-policy' | 'acceptable-use-policy' | 'service-level-agreement' | 'data-security-policy' | 'other-policy';
@@ -68,6 +68,17 @@ function matchesCaptureAge(contract: Contract, ages: CaptureAge[], now: number):
   ));
 }
 
+function NoResults({ documents = false }: { documents?: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+      <p className="text-sm font-medium text-tp-ink">
+        {documents ? 'No documents to show' : 'No services match your search'}
+      </p>
+      <p className="mt-1 text-xs text-tp-steel">Try another service name or change the filters.</p>
+    </div>
+  );
+}
+
 export default function CollectionDetailPage() {
   const { organizationId, collectionSlug } = useParams<{ organizationId: string; collectionSlug: string }>();
   const router = useRouter();
@@ -77,7 +88,9 @@ export default function CollectionDetailPage() {
   const [services, setServices] = useState<ServiceSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // Below lg the two panels are separate screens: the tree first, then the list.
+  const [mobileView, setMobileView] = useState<'tree' | 'list'>('tree');
   const [textFilter, setTextFilter] = useState('');
   const [serviceFilters, setServiceFilters] = useState<string[]>([]);
   const [policyTypeFilters, setPolicyTypeFilters] = useState<PolicyType[]>([]);
@@ -138,9 +151,7 @@ export default function CollectionDetailPage() {
         && matchesReviewState(contract, reviewFilters)
         && matchesCaptureAge(contract, captureAgeFilters, now)
       ));
-      const matchesText = !normalizedFilter
-        || service.name.toLocaleLowerCase().includes(normalizedFilter)
-        || visibleContracts.some((contract) => contract.name.toLocaleLowerCase().includes(normalizedFilter));
+      const matchesText = !normalizedFilter || service.name.toLocaleLowerCase().includes(normalizedFilter);
       const matchesDocumentFilter = serviceFilters.length === 0
         || (serviceFilters.includes('with-documents') && serviceContracts.length > 0)
         || (serviceFilters.includes('empty') && serviceContracts.length === 0);
@@ -152,8 +163,16 @@ export default function CollectionDetailPage() {
     });
   }, [captureAgeFilters, policyTypeFilters, reviewFilters, serviceFilters, serviceNodes, textFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredServiceNodes.length / SERVICES_PER_PAGE));
-  const visibleServiceNodes = filteredServiceNodes.slice((page - 1) * SERVICES_PER_PAGE, page * SERVICES_PER_PAGE);
+  const filteredTree = useMemo(() => buildServiceTree(filteredServiceNodes), [filteredServiceNodes]);
+  // Keep the chosen category while it survives the filters; otherwise fall back to the first visible one.
+  const selection = useMemo(
+    () => findCategory(filteredTree, selectedKey) ?? firstCategory(filteredTree),
+    [filteredTree, selectedKey]
+  );
+  const selectCategory = (key: string) => {
+    setSelectedKey(key);
+    setMobileView('list');
+  };
   const filterOptions = useMemo(() => [
     { label: 'With documents', value: 'with-documents', count: serviceNodes.filter(({ contracts: items }) => items.length > 0).length },
     { label: 'Empty services', value: 'empty', count: serviceNodes.filter(({ contracts: items }) => items.length === 0).length },
@@ -184,7 +203,6 @@ export default function CollectionDetailPage() {
     setPolicyTypeFilters([]);
     setReviewFilters([]);
     setCaptureAgeFilters([]);
-    setPage(1);
   };
 
   const handleDeleteCollection = async () => {
@@ -263,40 +281,44 @@ export default function CollectionDetailPage() {
             <div>
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="w-full sm:max-w-[24rem]">
-                  <SearchInput placeholder="Search services or policies..." onSearch={(value) => { setTextFilter(value); setPage(1); }} />
+                  <SearchInput placeholder="Search services..." onSearch={setTextFilter} live />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <FilterBar
                     label="Policy type"
                     options={policyTypeOptions}
                     selected={policyTypeFilters}
-                    onChange={(filters) => { setPolicyTypeFilters(filters as PolicyType[]); setPage(1); }}
-                    onClear={() => { setPolicyTypeFilters([]); setPage(1); }}
+                    onChange={(filters) => { setPolicyTypeFilters(filters as PolicyType[]) }}
+                    onClear={() => { setPolicyTypeFilters([]) }}
                     showClear={false}
+                    openOnHover
                   />
                   <FilterBar
                     label="Review"
                     options={reviewOptions}
                     selected={reviewFilters}
-                    onChange={(filters) => { setReviewFilters(filters as ReviewState[]); setPage(1); }}
-                    onClear={() => { setReviewFilters([]); setPage(1); }}
+                    onChange={(filters) => { setReviewFilters(filters as ReviewState[]) }}
+                    onClear={() => { setReviewFilters([]) }}
                     showClear={false}
+                    openOnHover
                   />
                   <FilterBar
                     label="Captured"
                     options={captureAgeOptions}
                     selected={captureAgeFilters}
-                    onChange={(filters) => { setCaptureAgeFilters(filters as CaptureAge[]); setPage(1); }}
-                    onClear={() => { setCaptureAgeFilters([]); setPage(1); }}
+                    onChange={(filters) => { setCaptureAgeFilters(filters as CaptureAge[]) }}
+                    onClear={() => { setCaptureAgeFilters([]) }}
                     showClear={false}
+                    openOnHover
                   />
                   <FilterBar
                     label="Documents"
                     options={filterOptions}
                     selected={serviceFilters}
-                    onChange={(filters) => { setServiceFilters(filters); setPage(1); }}
-                    onClear={() => { setServiceFilters([]); setPage(1); }}
+                    onChange={(filters) => { setServiceFilters(filters) }}
+                    onClear={() => { setServiceFilters([]) }}
                     showClear={false}
+                    openOnHover
                   />
                   {hasActiveFilters && (
                     <button
@@ -314,26 +336,41 @@ export default function CollectionDetailPage() {
               </div>
 
               <p className="mb-3 text-xs text-tp-steel">
-                {filteredServiceNodes.length} {filteredServiceNodes.length === 1 ? 'service' : 'services'} shown
+                {filteredTree.length} {filteredTree.length === 1 ? 'service' : 'services'} shown
               </p>
 
-              {visibleServiceNodes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-tp-hairline bg-tp-canvas py-12 text-center">
-                  <p className="text-sm font-medium text-tp-ink">No services match these filters</p>
-                  <p className="mt-1 text-xs text-tp-steel">Try another service, policy name or policy type.</p>
-                </div>
-              ) : (
-                <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-3">
-                  {visibleServiceNodes.map(({ service, contracts: serviceContracts }, index) => (
-                    <motion.div key={service.id} variants={fadeInUp} transition={transitionDefault}>
-                      <ServiceTreeNode service={service} contracts={serviceContracts} collection={collection!} defaultExpanded={page === 1 && index === 0} />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
+              <div className="grid items-start gap-4 lg:grid-cols-[1fr_2fr]">
+                <aside
+                  aria-label="Collection navigation"
+                  className={`${mobileView === 'list' ? 'hidden' : 'block'} min-h-0 overflow-y-auto rounded-xl border border-tp-hairline bg-tp-canvas p-2 lg:block lg:max-h-[min(30rem,calc(100vh-14rem))]`}
+                >
+                  {filteredTree.length === 0 ? (
+                    <NoResults />
+                  ) : (
+                    <CollectionTree tree={filteredTree} selection={selection} onSelect={selectCategory} />
+                  )}
+                </aside>
 
-              <div className="mt-6">
-                <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+                {/* Fits its content and stays in view while the tree scrolls. */}
+                <section
+                  aria-label="Documents"
+                  className={`${mobileView === 'tree' ? 'hidden' : 'block'} rounded-xl border border-tp-hairline bg-tp-canvas p-4 lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto`}
+                >
+                  {selection && collection ? (
+                    <DocumentList selection={selection} collection={collection} onBack={() => setMobileView('tree')} />
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setMobileView('tree')}
+                        className="mb-3 inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-tp-steel hover:text-tp-ink lg:hidden"
+                      >
+                        ← Back
+                      </button>
+                      <NoResults documents />
+                    </>
+                  )}
+                </section>
               </div>
             </div>
           )}

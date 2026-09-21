@@ -3,9 +3,11 @@ import { useState, type KeyboardEvent } from 'react';
 interface Props {
   placeholder?: string;
   onSearch: (value: string) => void;
+  /** Call onSearch on every keystroke instead of only on Enter. */
+  live?: boolean;
 }
 
-export default function SearchInput({ placeholder = 'Search...', onSearch }: Props) {
+export default function SearchInput({ placeholder = 'Search...', onSearch, live = false }: Props) {
   const [value, setValue] = useState('');
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -28,7 +30,10 @@ export default function SearchInput({ placeholder = 'Search...', onSearch }: Pro
       <input
         type="text"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => {
+          setValue(e.target.value);
+          if (live) onSearch(e.target.value);
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="h-9 w-full rounded-lg border border-tp-input-border bg-tp-input-bg pl-9 pr-3 text-sm text-tp-ink placeholder-tp-muted transition-colors focus:border-tp-primary focus:outline-none"
