@@ -29,15 +29,19 @@ class ContractCollectionService {
   }
 
   async index(queryParams: CollectionIndexQueryParams, reqUser?: LeanUser) {
-    const isAdmin = reqUser && reqUser.role === 'ADMIN';
+    // Anonymous callers only ever see public collections. For everyone else the real
+    // permission context is needed, or their own private collections are filtered out.
+    const permissions = reqUser
+      ? await this.permissionService.buildUserPermissionsContext(reqUser)
+      : {
+          orgRole: null,
+          contracts: [],
+          collections: [],
+          isGlobalAdmin: false,
+          adminOrgIds: [],
+        };
 
-    return this.contractCollectionRepository.findAll(queryParams, {
-      orgRole: null,
-      contracts: [],
-      collections: [],
-      isGlobalAdmin: isAdmin ?? false,
-      adminOrgIds: [],
-    });
+    return this.contractCollectionRepository.findAll(queryParams, permissions);
   }
 
   async indexByOrganizationId(
@@ -121,35 +125,48 @@ class ContractCollectionService {
       throw new Error('NOT FOUND: Contract collection not found');
     }
 
-    if ((collection as any).private) {
-      if (!reqUser) {
-        throw new Error('PERMISSION ERROR: You are not a member of this organization');
-      }
-      const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
-      const batchCtx = await this.permissionService.buildBatchContext(
-        reqUser.id,
-        organizationId,
-        orgRole,
-        reqUser.role === 'ADMIN'
-      );
-      const entityPerms = batchCtx.entityPermissions.get(`contractCollection:${(collection as any).slug}`);
-      const evalResult = this.permissionEngine.evaluate({
-        userId: reqUser.id,
-        organizationId,
-        entityType: 'contractCollection',
-        entitySlug: (collection as any).slug,
-        action: 'GET',
-        isPrivate: true,
-        userOrgRole: orgRole,
-        isGlobalAdmin: reqUser.role === 'ADMIN',
-        entityPermissions: entityPerms,
-      });
+    const isPrivate = Boolean((collection as any).private);
+
+    if (isPrivate && !reqUser) {
+      throw new Error('PERMISSION ERROR: You are not a member of this organization');
+    }
+
+    // Anonymous callers only ever reach public collections, and can never change them.
+    if (!reqUser) {
+      return { ...collection, canEdit: false, canDelete: false };
+    }
+
+    const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
+    const batchCtx = await this.permissionService.buildBatchContext(
+      reqUser.id,
+      organizationId,
+      orgRole,
+      reqUser.role === 'ADMIN'
+    );
+    const entityPerms = batchCtx.entityPermissions.get(`contractCollection:${(collection as any).slug}`);
+    const evaluationContext = {
+      userId: reqUser.id,
+      organizationId,
+      entityType: 'contractCollection' as const,
+      entitySlug: (collection as any).slug,
+      isPrivate,
+      userOrgRole: orgRole,
+      isGlobalAdmin: reqUser.role === 'ADMIN',
+      entityPermissions: entityPerms,
+    };
+
+    if (isPrivate) {
+      const evalResult = this.permissionEngine.evaluate({ ...evaluationContext, action: 'GET' });
       if (!evalResult.allowed) {
         throw new Error(`PERMISSION ERROR: ${evalResult.reason}`);
       }
     }
 
-    return collection;
+    // Exposed so the UI can hide affordances it would only get a 403 from.
+    const canEdit = this.permissionEngine.evaluate({ ...evaluationContext, action: 'PUT' }).allowed;
+    const canDelete = this.permissionEngine.evaluate({ ...evaluationContext, action: 'DELETE' }).allowed;
+
+    return { ...collection, canEdit, canDelete };
   }
 
   async create(newCollection: Record<string, any>, organizationId: string, reqUser: LeanUser) {
@@ -233,6 +250,13 @@ class ContractCollectionService {
     }
 
     await this.contractCollectionRepository.update((collection as any).id, data);
+
+    // Contract visibility is filtered by the contract's own flag, with no inheritance
+    // at query time — so hiding a collection has to hide the contracts inside it too,
+    // or they stay listed and readable through the public contract endpoints.
+    if (typeof data.private === 'boolean' && data.private !== Boolean((collection as any).private)) {
+      await this.contractRepository.setPrivacyForCollection((collection as any).id, data.private);
+    }
 
     const updatedCollection = await this.contractCollectionRepository.findById((collection as any).id);
     if (!updatedCollection) {

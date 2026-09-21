@@ -1,0 +1,18 @@
+[
+  {
+    "_id": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "name": "terms-cockpit",
+    "displayName": "terms-cockpit PERSONAL",
+    "description": "Organization holding documents imported from OpenTermsArchive via termscockpit.",
+    "avatar": null,
+    "isPersonal": false,
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    }
+  }
+]

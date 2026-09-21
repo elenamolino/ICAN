@@ -51,4 +51,4 @@ EOF
 RUN pnpm run build
 RUN pnpm add -D serve
 
-CMD ["pnpm", "exec", "serve", "-s", "./dist", "-l", "5173"]
+CMD ["pnpm", "exec", "serve", "-s", "./dist", "-l", "tcp://0.0.0.0:5173"]

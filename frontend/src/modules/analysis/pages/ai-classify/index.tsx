@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useAuth } from '../../../auth/hooks/useAuth';
 import { useAnalysisApi, AnalyzeResponse } from '../../api/analysisApi';
 import ClauseResultsList from '../../components/ClauseResultsList';
 import SaveAnalysisModal from '../../components/SaveAnalysisModal';
@@ -12,6 +14,7 @@ type InputMode = 'paste' | 'upload';
 
 export default function AiClassifyPage() {
   const { classify } = useAnalysisApi();
+  const { authUser } = useAuth();
   const [mode, setMode] = useState<InputMode>('paste');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -120,7 +123,17 @@ export default function AiClassifyPage() {
           {result && (
             <div className="mt-8">
               <div className="mb-4 flex justify-end">
-                <ActionButton text="Save analysis" onClick={() => setSaveModalOpen(true)} />
+                {authUser.isAuthenticated ? (
+                  <ActionButton text="Save analysis" onClick={() => setSaveModalOpen(true)} />
+                ) : (
+                  <p className="text-sm text-tp-steel">
+                    Save your report once you're{' '}
+                    <Link to="/authentication" className="font-medium text-tp-primary hover:underline">
+                      logged in
+                    </Link>
+                    .
+                  </p>
+                )}
               </div>
               <ClauseResultsList result={result} />
             </div>

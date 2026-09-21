@@ -1,0 +1,1424 @@
+[
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc0"
+    },
+    "name": "Airbnb",
+    "slug": "airbnb",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc1"
+    },
+    "name": "Amazon Web Services",
+    "slug": "amazon-web-services",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc2"
+    },
+    "name": "Amazon.com",
+    "slug": "amazoncom",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc3"
+    },
+    "name": "Apple",
+    "slug": "apple",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc4"
+    },
+    "name": "Binance",
+    "slug": "binance",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc5"
+    },
+    "name": "Bing",
+    "slug": "bing",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc6"
+    },
+    "name": "Bluesky",
+    "slug": "bluesky",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc7"
+    },
+    "name": "Booking.com",
+    "slug": "bookingcom",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc8"
+    },
+    "name": "Chrome and Chrome OS",
+    "slug": "chrome-and-chrome-os",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffc9"
+    },
+    "name": "Cloudflare",
+    "slug": "cloudflare",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffca"
+    },
+    "name": "Coinbase",
+    "slug": "coinbase",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffcb"
+    },
+    "name": "Coursera",
+    "slug": "coursera",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffcc"
+    },
+    "name": "Discord",
+    "slug": "discord",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffcd"
+    },
+    "name": "DuckDuckGo",
+    "slug": "duckduckgo",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffce"
+    },
+    "name": "Facebook",
+    "slug": "facebook",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffcf"
+    },
+    "name": "Firefox",
+    "slug": "firefox",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd0"
+    },
+    "name": "GitHub",
+    "slug": "github",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd1"
+    },
+    "name": "GitLab",
+    "slug": "gitlab",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd2"
+    },
+    "name": "Gmail",
+    "slug": "gmail",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd3"
+    },
+    "name": "Google",
+    "slug": "google",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd4"
+    },
+    "name": "Google Drive",
+    "slug": "google-drive",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd5"
+    },
+    "name": "Google Maps",
+    "slug": "google-maps",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd6"
+    },
+    "name": "Google Play",
+    "slug": "google-play",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd7"
+    },
+    "name": "Grammarly",
+    "slug": "grammarly",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd8"
+    },
+    "name": "Hugging Face",
+    "slug": "hugging-face",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffd9"
+    },
+    "name": "IMDb",
+    "slug": "imdb",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffda"
+    },
+    "name": "Instagram",
+    "slug": "instagram",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffdb"
+    },
+    "name": "LinkedIn",
+    "slug": "linkedin",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffdc"
+    },
+    "name": "Lyft",
+    "slug": "lyft",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffdd"
+    },
+    "name": "Microsoft",
+    "slug": "microsoft",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffde"
+    },
+    "name": "Netflix",
+    "slug": "netflix",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffdf"
+    },
+    "name": "OnlyFans",
+    "slug": "onlyfans",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe0"
+    },
+    "name": "PayPal",
+    "slug": "paypal",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe1"
+    },
+    "name": "Pinterest",
+    "slug": "pinterest",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe2"
+    },
+    "name": "Quora",
+    "slug": "quora",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe3"
+    },
+    "name": "Reddit",
+    "slug": "reddit",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe4"
+    },
+    "name": "Roblox",
+    "slug": "roblox",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe5"
+    },
+    "name": "Signal",
+    "slug": "signal",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe6"
+    },
+    "name": "Snapchat",
+    "slug": "snapchat",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe7"
+    },
+    "name": "SoundCloud",
+    "slug": "soundcloud",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe8"
+    },
+    "name": "Spotify",
+    "slug": "spotify",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffe9"
+    },
+    "name": "Stack Overflow",
+    "slug": "stack-overflow",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffea"
+    },
+    "name": "Steam",
+    "slug": "steam",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffeb"
+    },
+    "name": "Substack",
+    "slug": "substack",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffec"
+    },
+    "name": "Telegram",
+    "slug": "telegram",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffed"
+    },
+    "name": "The Guardian",
+    "slug": "the-guardian",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffee"
+    },
+    "name": "The New York Times",
+    "slug": "the-new-york-times",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69ffef"
+    },
+    "name": "TikTok",
+    "slug": "tiktok",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff0"
+    },
+    "name": "Tinder",
+    "slug": "tinder",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff1"
+    },
+    "name": "Tumblr",
+    "slug": "tumblr",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff2"
+    },
+    "name": "Twitch",
+    "slug": "twitch",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff3"
+    },
+    "name": "Twitter",
+    "slug": "twitter",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff4"
+    },
+    "name": "Vimeo",
+    "slug": "vimeo",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff5"
+    },
+    "name": "WhatsApp",
+    "slug": "whatsapp",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff6"
+    },
+    "name": "Wikipedia",
+    "slug": "wikipedia",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff7"
+    },
+    "name": "Yahoo",
+    "slug": "yahoo",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff8"
+    },
+    "name": "YouTube",
+    "slug": "youtube",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fff9"
+    },
+    "name": "Zoom",
+    "slug": "zoom",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaa8470c006c8a13f69fffa"
+    },
+    "name": "eBay",
+    "slug": "ebay",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T11:58:40Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabc6b7965b7164b206cab"
+    },
+    "name": "Brave",
+    "slug": "brave",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T15:57:31.071Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T15:57:31.071Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabc847965b7164b206cc9"
+    },
+    "name": "Bumble",
+    "slug": "bumble",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T15:57:56.310Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T15:57:56.310Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabd1e7965b7164b206d1f"
+    },
+    "name": "Ethereum",
+    "slug": "ethereum",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:00:30.131Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:00:30.131Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabd4f7965b7164b206d75"
+    },
+    "name": "Flickr",
+    "slug": "flickr",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:01:19.564Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:01:19.564Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabdbb7965b7164b206dcb"
+    },
+    "name": "Glassdoor",
+    "slug": "glassdoor",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:03:07.883Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:03:07.883Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabe5e7965b7164b206e21"
+    },
+    "name": "Goodreads",
+    "slug": "goodreads",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:05:50.186Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:05:50.186Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabe6f7965b7164b206e4b"
+    },
+    "name": "happn",
+    "slug": "happn",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:06:07.976Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:06:07.976Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabf007965b7164b206ea1"
+    },
+    "name": "Imgur",
+    "slug": "imgur",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:08:32.349Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:08:32.349Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabf0d7965b7164b206ecb"
+    },
+    "name": "Kraken",
+    "slug": "kraken",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:08:45.710Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:08:45.710Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabfc77965b7164b206f1d"
+    },
+    "name": "Mullvad",
+    "slug": "mullvad",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:11:51.805Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:11:51.805Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaabfcf7965b7164b206f4f"
+    },
+    "name": "Nextdoor",
+    "slug": "nextdoor",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:11:59.213Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:11:59.213Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac1f4aea19f943c77ca48"
+    },
+    "name": "NordVPN",
+    "slug": "nordvpn",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:21:08.663Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:21:08.663Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac251aea19f943c77ca82"
+    },
+    "name": "OpenSea",
+    "slug": "opensea",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:22:41.150Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:22:41.150Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac277aea19f943c77caa8"
+    },
+    "name": "ProtonMail",
+    "slug": "protonmail",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:23:19.658Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:23:19.658Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac292aea19f943c77cada"
+    },
+    "name": "ProtonVPN",
+    "slug": "protonvpn",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:23:46.731Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:23:46.731Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac29faea19f943c77cb00"
+    },
+    "name": "Solana",
+    "slug": "solana",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:23:59.336Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:23:59.336Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac2ceaea19f943c77cb36"
+    },
+    "name": "Viber",
+    "slug": "viber",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:24:46.329Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:24:46.329Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac37eaea19f943c77cb8c"
+    },
+    "name": "WeTransfer",
+    "slug": "wetransfer",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:27:42.873Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:27:42.873Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac475aea19f943c77cc26"
+    },
+    "name": "Wire",
+    "slug": "wire",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:31:49.659Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:31:49.659Z"
+    },
+    "__v": 0
+  },
+  {
+    "_id": {
+      "$oid": "6aaac4f7aea19f943c77cc7c"
+    },
+    "name": "Wise",
+    "slug": "wise",
+    "_collectionId": "6aaa8470c006c8a13f69ffbf",
+    "_organizationId": {
+      "$oid": "6a8b24393b9cca36319a1869"
+    },
+    "createdAt": {
+      "$date": "2026-09-16T16:33:59.373Z"
+    },
+    "updatedAt": {
+      "$date": "2026-09-16T16:33:59.373Z"
+    },
+    "__v": 0
+  }
+]

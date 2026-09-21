@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import {
   ContractVersionDetail,
   ContractVersionListItem,
-  getContractVersion,
+  useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import { CATEGORY_LABELS, CATEGORY_KEYS, RELEVANCE_THRESHOLD } from '../../../analysis/constants/clauseCategories';
 import Iconify from '../../../core/components/iconify';
@@ -60,6 +60,7 @@ export default function VersionComparison({
   contractSlug: string;
   versions: ContractVersionListItem[];
 }) {
+  const { getContractVersion } = useContractCollectionsApi();
   const [beforeId, setBeforeId] = useState(versions[0]?.id ?? '');
   const [afterId, setAfterId] = useState(versions[versions.length - 1]?.id ?? '');
   const [before, setBefore] = useState<ContractVersionDetail | null>(null);
