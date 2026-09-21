@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { AggregateStats, ClauseReportItem, JobReport } from '../api/ontologyAnalysisApi';
 import Iconify from '../../core/components/iconify';
 import SummaryStat from './SummaryStat';
@@ -231,7 +231,7 @@ function unfairCategoriesOf(clause: ClauseReportItem) {
 }
 
 // Same filter card, count line and card spacing as the AI Classify clause list.
-function ClauseList({ clauses }: { clauses: ClauseReportItem[] }) {
+function ClauseList({ clauses, summary }: { clauses: ClauseReportItem[]; summary: ReactNode }) {
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [category, setCategory] = useState('all');
@@ -299,6 +299,8 @@ function ClauseList({ clauses }: { clauses: ClauseReportItem[] }) {
         </div>
       </div>
 
+      {summary}
+
       <p className="text-xs text-tp-steel">
         {filtered.length} of {clauses.length} clauses
       </p>
@@ -322,7 +324,6 @@ export default function OntologyReport({
   embedded?: boolean;
 }) {
   const { aggregate, clauses } = report;
-  const unfairClauses = clauses.filter((c) => unfairCount(c) > 0);
 
   return (
     <div className="space-y-6">
@@ -335,29 +336,10 @@ export default function OntologyReport({
         </div>
       )}
 
-      <AggregateSummary aggregate={aggregate} words={totalWords(clauses)} embedded={embedded} />
-
-      {unfairClauses.length > 0 && (
-        <div className="rounded-lg border border-tp-severity-warning-border bg-tp-severity-warning-bg p-4">
-          <h3 className="mb-3 font-semibold text-tp-severity-warning">⚠ Potentially unfair terms</h3>
-          <ul className="space-y-2">
-            {unfairClauses.map((c) => {
-              const categories = Object.entries(c.unfair_terms ?? {})
-                .filter(([, entries]) => entries.length > 0)
-                .map(([category]) => ontologyCategoryLabel(category));
-              return (
-                <li key={c.clause_id} className="text-sm">
-                  <span className="text-tp-severity-warning">{c.clause_id}:</span>{' '}
-                  <span className="text-tp-slate">{categories.join(', ')}</span>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-tp-steel">{c.clause_text}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      <ClauseList clauses={clauses} />
+      <ClauseList
+        clauses={clauses}
+        summary={<AggregateSummary aggregate={aggregate} words={totalWords(clauses)} embedded={embedded} />}
+      />
     </div>
   );
 }
