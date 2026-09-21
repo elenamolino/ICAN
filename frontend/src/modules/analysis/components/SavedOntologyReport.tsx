@@ -1,17 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { AggregateStats, ClauseReportItem, JobReport } from '../api/ontologyAnalysisApi';
 import Iconify from '../../core/components/iconify';
 import SummaryStat from './SummaryStat';
+import { ONTOLOGY_CATEGORY_LABELS, ontologyCategoryLabel } from '../constants/clauseCategories';
+import { CHIP_CLASS, SELECT_CLASS, pillClass } from './filterStyles';
 
 function unfairCount(clause: ClauseReportItem) {
   return Object.values(clause.unfair_terms ?? {}).reduce((sum, entries) => sum + entries.length, 0);
-}
-
-function totalWords(clauses: ClauseReportItem[]) {
-  return clauses.reduce(
-    (sum, c) => sum + c.clause_text.trim().split(/\s+/).filter(Boolean).length,
-    0
-  );
 }
 
 function simColor(v: number | null) {
@@ -48,7 +43,7 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
   const unfair = unfairCount(clause);
   const unfairCategories = Object.entries(clause.unfair_terms ?? {})
     .filter(([, entries]) => entries.length > 0)
-    .map(([category]) => category.replace(/_/g, ' '));
+    .map(([category]) => ontologyCategoryLabel(category));
 
   return (
     <div className="rounded-lg border border-tp-hairline bg-tp-canvas">
@@ -57,10 +52,17 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full cursor-pointer items-start gap-3 p-4 text-left transition-colors hover:bg-tp-surface"
       >
-        <span className="mt-0.5 shrink-0 rounded-full bg-tp-surface px-2 py-0.5 text-xs font-medium text-tp-slate">
-          {clause.type || 'other'}
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm text-tp-ink">{clause.clause_text}</span>
+          <span className="mt-3 flex flex-wrap gap-2">
+            <span className={CHIP_CLASS}>{clause.type || 'other'}</span>
+            {unfairCategories.map((category) => (
+              <span key={category} className={CHIP_CLASS}>
+                {category}
+              </span>
+            ))}
+          </span>
         </span>
-        <span className="flex-1 text-sm text-tp-ink">{clause.clause_text}</span>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -183,72 +185,122 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
   );
 }
 
-function AggregateSummary({
-  aggregate,
-  words,
-}: {
-  aggregate: AggregateStats;
-  words: number;
-}) {
+// The saved version already shows the contract's details and its own summary, so the report
+// leaves out the header and the Clauses / Potentially unfair / Words figures.
+function AggregateSummary({ aggregate }: { aggregate: AggregateStats }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <SummaryStat label="Clauses" value={aggregate.total_clauses} />
-      <SummaryStat label="Potentially unfair" value={aggregate.unfair_count} />
-      <SummaryStat label="Words" value={words} />
+      <SummaryStat label="Permissions" value={aggregate.permissions} />
+      <SummaryStat label="Prohibitions" value={aggregate.prohibitions} />
+      <SummaryStat label="Duties" value={aggregate.duties} />
       <SummaryStat
         label="Semantic sim."
         value={aggregate.mean_semantic_sim !== null ? aggregate.mean_semantic_sim.toFixed(2) : 'N/A'}
       />
-      <SummaryStat label="Permissions" value={aggregate.permissions} />
-      <SummaryStat label="Prohibitions" value={aggregate.prohibitions} />
-      <SummaryStat label="Duties" value={aggregate.duties} />
     </div>
   );
 }
 
-export default function OntologyReport({ report }: { report: JobReport }) {
+type ViewMode = 'all' | 'unfair';
+type SortMode = 'default' | 'unfair-first' | 'lowest-sim';
+
+function unfairCategoriesOf(clause: ClauseReportItem) {
+  return Object.entries(clause.unfair_terms ?? {})
+    .filter(([, entries]) => entries.length > 0)
+    .map(([category]) => category);
+}
+
+// Same filter card, count line and card spacing as the AI Classify clause list.
+function ClauseList({ clauses, summary }: { clauses: ClauseReportItem[]; summary: ReactNode }) {
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('default');
+  const [category, setCategory] = useState('all');
+  const [type, setType] = useState('all');
+
+  const types = useMemo(() => [...new Set(clauses.map((c) => c.type || 'other'))].sort(), [clauses]);
+
+  const filtered = useMemo(() => {
+    let list = clauses;
+    if (viewMode === 'unfair') list = list.filter((c) => unfairCount(c) > 0);
+    if (category !== 'all') list = list.filter((c) => unfairCategoriesOf(c).includes(category));
+    if (type !== 'all') list = list.filter((c) => (c.type || 'other') === type);
+    if (sortMode === 'unfair-first') list = [...list].sort((a, b) => unfairCount(b) - unfairCount(a));
+    if (sortMode === 'lowest-sim') {
+      list = [...list].sort((a, b) => (a.semantic_sim ?? Infinity) - (b.semantic_sim ?? Infinity));
+    }
+    return list;
+  }, [clauses, viewMode, category, type, sortMode]);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-tp-steel">Filters</h2>
+
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setViewMode('all')} className={pillClass(viewMode === 'all')}>
+            View all
+          </button>
+          <button type="button" onClick={() => setViewMode('unfair')} className={pillClass(viewMode === 'unfair')}>
+            Unfair terms
+          </button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-xs text-tp-steel">Sort</label>
+            <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} className={SELECT_CLASS}>
+              <option value="default">Default order</option>
+              <option value="unfair-first">Unfair first</option>
+              <option value="lowest-sim">Lowest similarity first</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-tp-steel">Unfairness type</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className={SELECT_CLASS}>
+              <option value="all">All categories</option>
+              {Object.entries(ONTOLOGY_CATEGORY_LABELS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-tp-steel">Clause type</label>
+            <select value={type} onChange={(e) => setType(e.target.value)} className={SELECT_CLASS}>
+              <option value="all">All types</option>
+              {types.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {summary}
+
+      <p className="text-xs text-tp-steel">
+        {filtered.length} of {clauses.length} clauses
+      </p>
+
+      <div className="space-y-3">
+        {filtered.map((clause) => (
+          <ClauseCard key={clause.clause_id} clause={clause} />
+        ))}
+        {filtered.length === 0 && <p className="text-sm text-tp-steel">No clauses match the current filters.</p>}
+      </div>
+    </div>
+  );
+}
+
+export default function SavedOntologyReport({ report }: { report: JobReport }) {
   const { aggregate, clauses } = report;
-  const unfairClauses = clauses.filter((c) => unfairCount(c) > 0);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-tp-ink">{report.title || 'Untitled contract'}</h2>
-        <p className="text-sm text-tp-steel">
-          {report.provider || 'Unknown provider'} · {report.date || 'Unknown date'}
-        </p>
-      </div>
-
-      <AggregateSummary aggregate={aggregate} words={totalWords(clauses)} />
-
-      {unfairClauses.length > 0 && (
-        <div className="rounded-lg border border-tp-severity-warning-border bg-tp-severity-warning-bg p-4">
-          <h3 className="mb-3 font-semibold text-tp-severity-warning">⚠ Potentially unfair terms</h3>
-          <ul className="space-y-2">
-            {unfairClauses.map((c) => {
-              const categories = Object.entries(c.unfair_terms ?? {})
-                .filter(([, entries]) => entries.length > 0)
-                .map(([category]) => category.replace(/_/g, ' '));
-              return (
-                <li key={c.clause_id} className="text-sm">
-                  <span className="text-tp-severity-warning">{c.clause_id}:</span>{' '}
-                  <span className="text-tp-slate">{categories.join(', ')}</span>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-tp-steel">{c.clause_text}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      <div>
-        <h3 className="mb-3 font-semibold text-tp-ink">All clauses</h3>
-        <div className="space-y-2">
-          {clauses.map((clause) => (
-            <ClauseCard key={clause.clause_id} clause={clause} />
-          ))}
-        </div>
-      </div>
+      <ClauseList clauses={clauses} summary={<AggregateSummary aggregate={aggregate} />} />
     </div>
   );
 }

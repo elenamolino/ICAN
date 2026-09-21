@@ -17,7 +17,7 @@ import {
   useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
 import SummaryStat from '../../../analysis/components/SummaryStat';
-import OntologyReport from '../../../analysis/components/OntologyReport';
+import SavedOntologyReport from '../../../analysis/components/SavedOntologyReport';
 import VersionSelector from '../../components/version-selector';
 import FilterableClauseList from '../../components/filterable-clause-list';
 import VersionEvolutionChart from '../../components/version-evolution-chart';
@@ -392,7 +392,7 @@ export default function ContractDetailPage() {
 
           {tab === 'ontology' &&
             (selectedVersion?.ontologyReport ? (
-              <OntologyReport report={selectedVersion.ontologyReport} embedded />
+              <SavedOntologyReport report={selectedVersion.ontologyReport} />
             ) : (
               <p className="text-sm text-tp-steel">
                 No ontology analysis available for this version.
