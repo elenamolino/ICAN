@@ -13,9 +13,10 @@ interface Props {
   selected: string[];
   onChange: (selected: string[]) => void;
   onClear: () => void;
+  showClear?: boolean;
 }
 
-export default function FilterBar({ label, options, selected, onChange, onClear }: Props) {
+export default function FilterBar({ label, options, selected, onChange, onClear, showClear = true }: Props) {
   const [open, setOpen] = useState(false);
 
   const toggle = (value: string) => {
@@ -80,7 +81,7 @@ export default function FilterBar({ label, options, selected, onChange, onClear 
         </AnimatePresence>
       </div>
 
-      {selected.length > 0 && (
+      {showClear && selected.length > 0 && (
         <button
           type="button"
           onClick={onClear}
