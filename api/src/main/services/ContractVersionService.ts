@@ -9,6 +9,7 @@ import { LeanUser } from '../types/models/User';
 import { ContractVersionLabel } from '../types/models/ContractVersion';
 import { labelForIndex } from '../utils/contractVersionLabels';
 import { AnalysisSummary, ClauseAnalysis } from '../types/services/AnalysisService';
+import { JobReport } from '../types/services/OntologyAnalysisService';
 
 // Below this many characters of visible text, the readability extraction is
 // treated as having failed (typical of JS-rendered pages or empty historical
@@ -33,6 +34,10 @@ export interface UpsertVersionInput {
   // used when the caller already ran AI Classify on this exact content (ad-hoc
   // saves) and re-analyzing would just be a duplicate, billable call.
   precomputedAnalysis?: { summary: AnalysisSummary; clauses: ClauseAnalysis[] } | null;
+  // Same idea as precomputedAnalysis, but for an already-computed Ontology
+  // Analysis report (tos-to-odrl) — stored as-is in its own field rather than
+  // forced into the AI-Classify summary/clauses shape.
+  precomputedOntologyReport?: JobReport | null;
 }
 
 class ContractVersionService {
@@ -65,14 +70,32 @@ class ContractVersionService {
       input.commitHash
     );
     if (existing) {
+      const updates: Record<string, any> = {};
+
       // The commit's content never changes, but which slot it plays
       // (first/intermediate/last) can shift between syncs as new commits
       // land or the selection logic improves — keep the label current.
       if (existing.label !== input.label) {
-        const relabeled = await this.contractVersionRepository.updateLabel(String(existing._id), input.label);
-        return { version: relabeled ?? existing, reused: true };
+        updates.label = input.label;
       }
-      return { version: existing, reused: true };
+
+      // AI Classify and Ontology Analysis are independent analyses that can
+      // both apply to the same content — if this version already has one but
+      // not the other, backfill the missing one instead of discarding it.
+      if (!existing.summary && !existing.clauses && input.precomputedAnalysis) {
+        updates.summary = input.precomputedAnalysis.summary;
+        updates.clauses = input.precomputedAnalysis.clauses;
+        updates.analysisSkipped = false;
+      }
+      if (!existing.ontologyReport && input.precomputedOntologyReport) {
+        updates.ontologyReport = input.precomputedOntologyReport;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return { version: existing, reused: true };
+      }
+      const updated = await this.contractVersionRepository.updateById(String(existing._id), updates);
+      return { version: updated ?? existing, reused: true };
     }
 
     let summary = null;
@@ -82,6 +105,9 @@ class ContractVersionService {
     if (input.precomputedAnalysis) {
       summary = input.precomputedAnalysis.summary;
       clauses = input.precomputedAnalysis.clauses;
+    } else if (input.precomputedOntologyReport) {
+      // Ontology Analysis is a distinct, separately-run pipeline — don't also
+      // run AI Classify's auto-analysis on top of it.
     } else {
       const visibleText = extractVisibleText(input.content);
       analysisSkipped = visibleText.length < MIN_VISIBLE_TEXT_LENGTH;
@@ -111,6 +137,7 @@ class ContractVersionService {
         deletions: input.deletions ?? null,
         summary,
         clauses,
+        ontologyReport: input.precomputedOntologyReport ?? null,
         analysisSkipped: analysisSkipped || summary === null,
       });
       return { version, reused: false };
@@ -129,6 +156,41 @@ class ContractVersionService {
       }
       throw err;
     }
+  }
+
+  // Explicitly attaches an analysis to a version the caller picked by hand
+  // (from the save modal), regardless of whether its content matches what was
+  // just analyzed. Unlike upsertVersion's automatic backfill-if-missing, this
+  // is a deliberate user action, so it overwrites whichever slot applies
+  // (summary/clauses or ontologyReport) even if it was already filled.
+  async attachAnalysis(
+    contractId: string,
+    versionId: string,
+    analysis: {
+      // The text that was actually just analyzed. Since this is a deliberate
+      // attach action, the version's displayed "Content" is refreshed to it
+      // rather than staying frozen on whatever text originally created the
+      // version — otherwise attaching AI Classify's result to a version
+      // created from a differently-formatted Ontology Analysis upload would
+      // silently keep showing the old text under "Content".
+      content: string;
+      precomputedAnalysis?: { summary: AnalysisSummary; clauses: ClauseAnalysis[] };
+      precomputedOntologyReport?: JobReport;
+    }
+  ) {
+    await this.getById(contractId, versionId);
+
+    const updates: Record<string, any> = { content: analysis.content };
+    if (analysis.precomputedAnalysis) {
+      updates.summary = analysis.precomputedAnalysis.summary;
+      updates.clauses = analysis.precomputedAnalysis.clauses;
+      updates.analysisSkipped = false;
+    }
+    if (analysis.precomputedOntologyReport) {
+      updates.ontologyReport = analysis.precomputedOntologyReport;
+    }
+
+    return this.contractVersionRepository.updateById(versionId, updates);
   }
 
   async pruneToSelection(contractId: string, keepCommitHashes: string[]) {

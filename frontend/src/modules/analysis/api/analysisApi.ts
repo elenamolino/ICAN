@@ -34,6 +34,7 @@ export interface SaveAnalysisPayload {
   serviceName?: string;
   contractId?: string;
   contractName?: string;
+  versionId?: string;
   provider?: string;
   title?: string;
   date: string;

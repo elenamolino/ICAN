@@ -11,6 +11,10 @@ const loadContractAnalysisRoutes = function (app: express.Application) {
   app
     .route(baseUrl + '/contracts/:organizationId/ai-classify/save')
     .post(ContractAnalysisValidator.save, handleValidation, contractAnalysisController.save);
+
+  app
+    .route(baseUrl + '/contracts/:organizationId/ontology-analysis/save')
+    .post(ContractAnalysisValidator.saveOntology, handleValidation, contractAnalysisController.saveOntology);
 };
 
 export default loadContractAnalysisRoutes;

@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
+import { splitIntoClauses } from '../utils/splitClauses';
 import {
   ModelPreset,
   JobStatus,
   JobReport,
   SubmitJobMeta,
-  UploadedFile,
 } from '../types/services/OntologyAnalysisService';
 
 dotenv.config();
@@ -41,12 +41,28 @@ class OntologyAnalysisService {
     return requestJson<ModelPreset[]>(`${getBaseUrl()}/api/models`);
   }
 
-  async submitJob(file: UploadedFile, meta: SubmitJobMeta): Promise<{ jobId: string }> {
+  // The text is cut into clauses here, with the same splitter AI Classify uses, and sent to
+  // tos-to-odrl as an already-structured contract so it skips its own (LLM) clause splitting.
+  async submitJob(text: string, meta: SubmitJobMeta): Promise<{ jobId: string }> {
+    const useCases: Record<string, { description: string }> = {};
+    splitIntoClauses(text)
+      .map((clause) => clause.trim())
+      .filter(Boolean)
+      .forEach((clause, index) => {
+        useCases[`use_case_${index + 1}`] = { description: clause };
+      });
+
+    const contract = {
+      PROVIDER: meta.provider || 'Unknown',
+      SOURCE: 'Unknown',
+      TITLE: meta.title || '',
+      DATE: meta.date || 'Unknown',
+      DESCRIPTION: '',
+      USE_CASE_DESCRIPTIONS: useCases,
+    };
+
     const form = new FormData();
-    form.append('file', new Blob([new Uint8Array(file.buffer)], { type: file.mimetype }), file.originalname);    
-    if (meta.provider) form.append('provider', meta.provider);
-    if (meta.title) form.append('title', meta.title);
-    if (meta.date) form.append('date', meta.date);
+    form.append('file', new Blob([JSON.stringify(contract)], { type: 'application/json' }), 'contract.json');
     if (meta.model) form.append('model', meta.model);
     // Always send base_url explicitly (even empty) so an OpenAI preset
     // (base_url="") isn't silently replaced by the pipeline's own default.

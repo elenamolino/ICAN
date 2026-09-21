@@ -6,7 +6,15 @@ class ContractVersionRepository extends RepositoryBase {
     const versions = await ContractVersionMongoose.find({ _contractId: String(contractId) })
       .select('-content -clauses')
       .sort({ capturedAt: 1 });
-    return versions.map(v => v.toObject());
+    // ontologyReport is fetched to know whether it's present, but never sent
+    // back wholesale in a list response (it's the heaviest field on the
+    // document) — only a cheap boolean flag is exposed.
+    return versions.map(v => {
+      const obj: any = v.toObject();
+      obj.hasOntologyReport = Boolean(obj.ontologyReport);
+      delete obj.ontologyReport;
+      return obj;
+    });
   }
 
   async findById(id: string) {
@@ -26,6 +34,11 @@ class ContractVersionRepository extends RepositoryBase {
 
   async updateLabel(id: string, label: string) {
     const version = await ContractVersionMongoose.findByIdAndUpdate(id, { label }, { new: true });
+    return version ? version.toObject() : null;
+  }
+
+  async updateById(id: string, data: Record<string, any>) {
+    const version = await ContractVersionMongoose.findByIdAndUpdate(id, data, { new: true });
     return version ? version.toObject() : null;
   }
 

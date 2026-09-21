@@ -30,7 +30,7 @@ function categoryForContract(contract: Contract): CategoryName {
   const name = contract.name.toLocaleLowerCase();
   if (name.includes('service level') || name.includes(' sla')) return 'Service Level Agreement';
   if (name.includes('guidelines')) return 'Guidelines';
-  if (/(terms|conditions|imprint|privacy|acceptable use|policy|policies|data|content|security|tracker)/.test(name)) {
+  if (/(terms|conditions|agreement|licen[cs]e|imprint|privacy|acceptable use|policy|policies|data|content|security|tracker)/.test(name)) {
     return 'Terms and Policies';
   }
   return 'Other documents';

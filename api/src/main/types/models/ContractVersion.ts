@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { AnalysisSummary, ClauseAnalysis } from '../services/AnalysisService';
+import { JobReport } from '../services/OntologyAnalysisService';
 
 export type ContractVersionLabel = 'first' | 'intermediate' | 'last';
 
@@ -14,6 +15,7 @@ export interface LeanContractVersion {
   deletions?: number | null;
   summary?: AnalysisSummary | null;
   clauses?: ClauseAnalysis[] | null;
+  ontologyReport?: JobReport | null;
   analysisSkipped: boolean;
   createdAt?: Date;
   updatedAt?: Date;

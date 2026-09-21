@@ -27,6 +27,11 @@ const save = [
     .isString()
     .withMessage('The contractName field must be a string')
     .trim(),
+  check('versionId')
+    .optional()
+    .isString()
+    .withMessage('The versionId field must be a string')
+    .trim(),
   check('provider')
     .optional()
     .isString()
@@ -68,8 +73,85 @@ const save = [
     if (!body.contractId && (!body.provider || !body.title)) {
       throw new Error('provider and title are required when creating a new contract');
     }
+    if (body.versionId && !body.contractId) {
+      throw new Error('versionId requires contractId');
+    }
     return true;
   }),
 ];
 
-export { save };
+const saveOntology = [
+  check('collectionId')
+    .exists({ checkNull: true, checkFalsy: true })
+    .withMessage('The collectionId field is required')
+    .isString()
+    .withMessage('The collectionId field must be a string')
+    .trim(),
+  check('serviceId')
+    .optional()
+    .isString()
+    .withMessage('The serviceId field must be a string')
+    .trim(),
+  check('serviceName')
+    .optional()
+    .isString()
+    .withMessage('The serviceName field must be a string')
+    .trim(),
+  check('contractId')
+    .optional()
+    .isString()
+    .withMessage('The contractId field must be a string')
+    .trim(),
+  check('contractName')
+    .optional()
+    .isString()
+    .withMessage('The contractName field must be a string')
+    .trim(),
+  check('versionId')
+    .optional()
+    .isString()
+    .withMessage('The versionId field must be a string')
+    .trim(),
+  check('provider')
+    .optional()
+    .isString()
+    .withMessage('The provider field must be a string')
+    .trim(),
+  check('title')
+    .optional()
+    .isString()
+    .withMessage('The title field must be a string')
+    .trim(),
+  check('date')
+    .exists({ checkNull: true, checkFalsy: true })
+    .withMessage('The date field is required')
+    .isISO8601()
+    .withMessage('The date field must be a valid ISO8601 date'),
+  check('text')
+    .optional({ nullable: true })
+    .isString()
+    .withMessage('The text field must be a string'),
+  check('report')
+    .exists({ checkNull: true })
+    .withMessage('The report field is required')
+    .isObject()
+    .withMessage('The report field must be an object'),
+  check('collectionId').custom((value, { req }) => {
+    const body = req.body ?? {};
+    if (!body.serviceId && !body.serviceName) {
+      throw new Error('Either serviceId or serviceName is required');
+    }
+    if (!body.contractId && !body.contractName) {
+      throw new Error('Either contractId or contractName is required');
+    }
+    if (!body.contractId && (!body.provider || !body.title)) {
+      throw new Error('provider and title are required when creating a new contract');
+    }
+    if (body.versionId && !body.contractId) {
+      throw new Error('versionId requires contractId');
+    }
+    return true;
+  }),
+];
+
+export { save, saveOntology };

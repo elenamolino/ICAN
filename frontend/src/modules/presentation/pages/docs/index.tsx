@@ -261,7 +261,8 @@ export default function DocsPage() {
             </ul>
 
             <p>
-              The two analysers can flag different clauses, because “potentially unfair” does not
+              Both analysers read the same clauses: ICAN cuts the text into sentences once and gives
+              them to each. They can still flag different ones, because “potentially unfair” does not
               mean the same thing in each. AI Classify flags a clause when the model scores it above
               0.5 in one of the eight categories. Ontology Analysis flags a right, obligation or
               prohibition when one of its SPARQL queries matches it in the graph. This is expected,

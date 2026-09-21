@@ -22,6 +22,11 @@ export default function AiClassifyPage() {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
+  const [provider, setProvider] = useState('');
+  const [title, setTitle] = useState('');
+  const [date, setDate] = useState('');
+  const metadataComplete = provider.trim() !== '' && title.trim() !== '' && date.trim() !== '';
+
   const handleFileSubmit = async (file: File) => {
     try {
       const content = await file.text();
@@ -62,62 +67,107 @@ export default function AiClassifyPage() {
             </p>
           </div>
 
-          <div className="mb-4 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setMode('paste')}
-              className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                mode === 'paste'
-                  ? 'bg-tp-primary text-tp-on-primary'
-                  : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
-              }`}
-            >
-              Paste text
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('upload')}
-              className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                mode === 'upload'
-                  ? 'bg-tp-primary text-tp-on-primary'
-                  : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
-              }`}
-            >
-              Upload file
-            </button>
+          <div className="mb-4 space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-tp-steel">
+              Contract metadata
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs text-tp-steel">Provider</label>
+                <input
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                  placeholder="Acme Inc."
+                  required
+                  className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-tp-steel">Title</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Terms of Service"
+                  required
+                  className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-tp-steel">Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  max={new Date().toISOString().slice(0, 10)}
+                  required
+                  className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                />
+              </div>
+            </div>
           </div>
 
-          {mode === 'paste' ? (
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={12}
-              placeholder="Paste the contract's Terms of Service text here..."
-              className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas p-3 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-            />
-          ) : (
-            <FileUpload
-              onSubmit={handleFileSubmit}
-              submitButtonText="Load file"
-              accept={{ 'text/plain': ['.txt'], 'text/markdown': ['.md'] }}
-              isNotDragActiveText="Drag and drop a .txt or .md file here"
-              isDragActiveText="Drop the file here"
-            />
-          )}
+          <div className="space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('paste')}
+                className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  mode === 'paste'
+                    ? 'bg-tp-primary text-tp-on-primary'
+                    : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
+                }`}
+              >
+                Paste text
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('upload')}
+                className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                  mode === 'upload'
+                    ? 'bg-tp-primary text-tp-on-primary'
+                    : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
+                }`}
+              >
+                Upload file
+              </button>
+            </div>
+
+            {mode === 'paste' ? (
+              <>
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={12}
+                  placeholder="Paste the contract's Terms of Service text here..."
+                  className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas p-3 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                />
+                <ActionButton
+                  text={loading ? 'Analyzing…' : 'Analyze contract'}
+                  onClick={handleAnalyze}
+                  disabled={loading || !text.trim() || !metadataComplete}
+                  className="w-full font-bold"
+                />
+                {!metadataComplete && (
+                  <p className="text-xs text-tp-steel">
+                    Fill in the provider, title and date above before analyzing.
+                  </p>
+                )}
+              </>
+            ) : (
+              <FileUpload
+                onSubmit={handleFileSubmit}
+                submitButtonText="Load file"
+                accept={{ 'text/plain': ['.txt'], 'text/markdown': ['.md'] }}
+                isNotDragActiveText="Drag and drop a .txt or .md file here"
+                isDragActiveText="Drop the file here"
+              />
+            )}
+          </div>
 
           {error && (
             <BlockAlert variant="error" className="mt-4" onDismiss={() => setError(null)}>
               {error}
             </BlockAlert>
-          )}
-
-          {mode === 'paste' && (
-            <ActionButton
-              text={loading ? 'Analyzing…' : 'Analyze contract'}
-              onClick={handleAnalyze}
-              disabled={loading || !text.trim()}
-              className="mt-4 font-bold"
-            />
           )}
 
           {result && (
@@ -147,6 +197,9 @@ export default function AiClassifyPage() {
           onClose={() => setSaveModalOpen(false)}
           text={text}
           result={result}
+          provider={provider.trim()}
+          title={title.trim()}
+          date={date}
         />
       )}
     </>

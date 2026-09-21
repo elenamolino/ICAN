@@ -10,6 +10,7 @@ import PermissionService from './PermissionService';
 import { PermissionEngine } from '../policies/PermissionEngine';
 import { LeanUser } from '../types/models/User';
 import { AnalysisSummary, ClauseAnalysis } from '../types/services/AnalysisService';
+import { SaveOntologyAnalysisPayload } from '../types/services/OntologyAnalysisService';
 
 function contentHash(text: string): string {
   return createHash('md5').update(text).digest('hex');
@@ -21,6 +22,11 @@ export interface SaveAnalysisPayload {
   serviceName?: string;
   contractId?: string;
   contractName?: string;
+  // When set (only valid alongside contractId), attaches this analysis to an
+  // already-existing version of that contract instead of creating/reusing a
+  // version keyed by content hash — lets the same version carry both an AI
+  // Classify and an Ontology Analysis result even if the two texts differ.
+  versionId?: string;
   provider?: string;
   title?: string;
   date: string;
@@ -78,23 +84,94 @@ class AnalysisSaveService {
         );
     const contractId = contract.id ?? contract._id?.toString();
 
-    const commitHash = contentHash(payload.text);
-    await this.contractVersionService.upsertVersion(contractId, {
-      commitHash,
-      capturedAt: new Date(payload.date),
-      label: 'last',
-      content: payload.text,
-      precomputedAnalysis: { summary: payload.summary, clauses: payload.clauses },
-    });
+    if (payload.versionId) {
+      await this.contractVersionService.attachAnalysis(contractId, payload.versionId, {
+        content: payload.text,
+        precomputedAnalysis: { summary: payload.summary, clauses: payload.clauses },
+      });
+    } else {
+      const commitHash = contentHash(payload.text);
+      await this.contractVersionService.upsertVersion(contractId, {
+        commitHash,
+        capturedAt: new Date(payload.date),
+        label: 'last',
+        content: payload.text,
+        precomputedAnalysis: { summary: payload.summary, clauses: payload.clauses },
+      });
+      await this.contractVersionService.relabelAllByDate(contractId);
+    }
 
-    await this.contractVersionService.relabelAllByDate(contractId);
+    return this._finalizeSave(organizationId, contractId);
+  }
 
+  async saveOntologyAnalysisResult(
+    organizationId: string,
+    reqUser: LeanUser,
+    payload: SaveOntologyAnalysisPayload
+  ) {
+    const collection: any = await this.contractCollectionRepository.findById(payload.collectionId);
+    if (!collection || String(collection.organization?.id) !== String(organizationId)) {
+      throw new Error('NOT FOUND: Collection not found in this organization');
+    }
+
+    const service: any = payload.serviceId
+      ? await this._resolveExistingService(payload.serviceId, payload.collectionId)
+      : await this.serviceService.findOrCreate(payload.collectionId, organizationId, payload.serviceName!);
+    const serviceId = service.id ?? service._id?.toString();
+
+    const contract: any = payload.contractId
+      ? await this._resolveExistingContract(payload.contractId, organizationId, payload.collectionId, reqUser)
+      : await this.contractService.create(
+          {
+            name: `${payload.provider} — ${payload.title}`,
+            content: payload.text ?? payload.report.clauses.map(c => c.clause_text).join('\n\n'),
+            serviceId,
+          },
+          organizationId,
+          Boolean(collection.private),
+          reqUser,
+          payload.collectionId
+        );
+    const contractId = contract.id ?? contract._id?.toString();
+    const content = payload.text?.trim()
+      ? payload.text
+      : payload.report.clauses.map(c => c.clause_text).join('\n\n');
+
+    if (payload.versionId) {
+      await this.contractVersionService.attachAnalysis(contractId, payload.versionId, {
+        content,
+        precomputedOntologyReport: payload.report,
+      });
+    } else {
+      const commitHash = contentHash(content);
+      await this.contractVersionService.upsertVersion(contractId, {
+        commitHash,
+        capturedAt: new Date(payload.date),
+        label: 'last',
+        content,
+        precomputedOntologyReport: payload.report,
+      });
+      await this.contractVersionService.relabelAllByDate(contractId);
+    }
+
+    return this._finalizeSave(organizationId, contractId);
+  }
+
+  // Shared close-out for both save flows: refresh the contract's denormalized
+  // "latest version" snapshot from whatever version is actually labeled
+  // 'last' right now (not necessarily the one just written — e.g. attaching
+  // to an explicitly-picked older version, or backfilling an older snapshot,
+  // leaves a different version as 'last').
+  private async _finalizeSave(organizationId: string, contractId: string) {
     const versions: any[] = await this.contractVersionService.listByContract(contractId);
-    const lastVersion = versions.find(v => v.label === 'last') ?? versions[versions.length - 1];
+    const lastVersionSummary = versions.find(v => v.label === 'last') ?? versions[versions.length - 1];
+    const lastVersion: any = lastVersionSummary
+      ? await this.contractVersionService.getById(contractId, String(lastVersionSummary._id ?? lastVersionSummary.id))
+      : null;
 
     if (lastVersion) {
       await this.contractRepository.update(contractId, {
-        content: payload.text,
+        content: lastVersion.content,
         _latestVersionId: lastVersion._id ?? lastVersion.id,
         latestVersionSummary: lastVersion.summary ?? undefined,
       });
