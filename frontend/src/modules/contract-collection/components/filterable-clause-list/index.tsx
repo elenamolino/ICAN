@@ -1,18 +1,10 @@
 import { useMemo, useState } from 'react';
 import { ClauseAnalysis } from '../../../analysis/api/analysisApi';
+import { CHIP_CLASS, SELECT_CLASS, pillClass } from '../../../analysis/components/filterStyles';
 import { CATEGORY_LABELS, CATEGORY_KEYS, topCategories } from '../../../analysis/constants/clauseCategories';
 
 type ViewMode = 'all' | 'unfair';
 type SortMode = 'default' | 'high-to-low';
-
-const SELECT_CLASS =
-  'w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none';
-
-function pillClass(active: boolean) {
-  return `cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-    active ? 'bg-tp-primary text-tp-on-primary' : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
-  }`;
-}
 
 function scoreFor(clause: ClauseAnalysis, category: string) {
   if (category === 'all') {
@@ -41,7 +33,7 @@ function ClauseCard({ clause, threshold }: { clause: ClauseAnalysis; threshold: 
       {relevantCategories.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {relevantCategories.map(({ key, label, score }) => (
-            <span key={key} className="rounded-full bg-tp-surface px-2 py-0.5 text-xs text-tp-slate" title={label}>
+            <span key={key} className={CHIP_CLASS} title={label}>
               {label} · {Math.round(score * 100)}%
             </span>
           ))}
