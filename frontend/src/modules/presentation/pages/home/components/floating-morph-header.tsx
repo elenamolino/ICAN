@@ -8,6 +8,7 @@ type Props = {
 
 export default function FloatingMorphHeader({ navItems, onNavigate }: Props) {
   const [openDesktopDropdown, setOpenDesktopDropdown] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const headerMorphRef = useRef<HTMLDivElement | null>(null);
   const headerMorphTargetRef = useRef(0);
   const headerMorphCurrentRef = useRef(0);
@@ -71,6 +72,20 @@ export default function FloatingMorphHeader({ navItems, onNavigate }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileOpen]);
+
+  const navigateAndClose = (to: string) => {
+    setMobileOpen(false);
+    onNavigate(to);
+  };
+
   const headerStyle: CSSProperties = {
     ['--header-morph' as string]: 0,
     marginTop: 'calc(24px * (1 - var(--header-morph)))',
@@ -92,7 +107,7 @@ export default function FloatingMorphHeader({ navItems, onNavigate }: Props) {
 
   return (
     <header ref={headerMorphRef} style={headerStyle} className="fixed inset-x-0 top-0 z-30 flex justify-center will-change-transform">
-      <div style={barStyle} className="flex w-full items-center justify-between border border-black/10 py-3 backdrop-blur-3xl">
+      <div style={barStyle} className="relative flex w-full items-center justify-between border border-black/10 py-3 backdrop-blur-3xl">
         <button
           type="button"
           onClick={() => onNavigate('/')}
@@ -144,7 +159,7 @@ export default function FloatingMorphHeader({ navItems, onNavigate }: Props) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="hidden items-center gap-3 md:flex">
           <button
             type="button"
             onClick={() => onNavigate('/authentication')}
@@ -163,6 +178,76 @@ export default function FloatingMorphHeader({ navItems, onNavigate }: Props) {
             </span>
           </button>
         </div>
+
+        <button
+          type="button"
+          aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={mobileOpen}
+          aria-controls="public-mobile-nav"
+          onClick={() => setMobileOpen(o => !o)}
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-black/15 bg-white text-[#334155] transition-colors hover:text-[#0f172a] md:hidden"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            {mobileOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5" />
+            )}
+          </svg>
+        </button>
+
+        {mobileOpen ? (
+          <nav
+            id="public-mobile-nav"
+            aria-label="Main navigation"
+            className="absolute inset-x-0 top-full mt-2 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-2xl border border-black/10 bg-white p-3 shadow-[0_14px_34px_rgba(15,23,42,0.12)] md:hidden"
+          >
+            {navItems.map(item => (
+              <div key={item.label} className="py-1">
+                {item.children ? (
+                  <>
+                    <p className="px-3 pb-1 pt-2 text-[11px] uppercase tracking-[0.16em] text-[#94a3b8]">{item.label}</p>
+                    {item.children.map(child => (
+                      <button
+                        key={child.label}
+                        type="button"
+                        onClick={() => navigateAndClose(child.to)}
+                        className="block w-full cursor-pointer rounded-xl px-3 py-2 text-left text-xs uppercase tracking-[0.12em] text-[#334155] hover:bg-[#f8fafc] hover:text-[#0f172a]"
+                      >
+                        {child.label}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => item.to && navigateAndClose(item.to)}
+                    className="block w-full cursor-pointer rounded-xl px-3 py-2 text-left text-xs uppercase tracking-[0.12em] text-[#334155] hover:bg-[#f8fafc] hover:text-[#0f172a]"
+                  >
+                    {item.label}
+                  </button>
+                )}
+              </div>
+            ))}
+
+            <div className="mt-2 flex gap-2 border-t border-black/10 pt-3">
+              <button
+                type="button"
+                onClick={() => navigateAndClose('/authentication')}
+                className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-full border border-black/15 bg-white text-xs uppercase tracking-[0.14em] text-[#334155] hover:text-[#0f172a]"
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateAndClose('/authentication?view=register')}
+                className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center rounded-full border border-black/10 bg-[#0f172a] text-xs uppercase tracking-[0.14em] text-white hover:bg-[#1e293b]"
+              >
+                Register
+              </button>
+            </div>
+          </nav>
+        ) : null}
       </div>
     </header>
   );
