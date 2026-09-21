@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    gh \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -32,7 +31,6 @@ COPY package.json pnpm-lock.yaml .
 RUN pnpm install
 
 # Copy the rest of the application source code to the container
-COPY ./scripts ./scripts
 COPY ./src ./src
 COPY ./public ./public
 
@@ -42,11 +40,6 @@ COPY ./.env.testing .env
 
 ENV VITE_HARVEY_URL=https://sphere.score.us.es/harvey-api
 
-RUN --mount=type=secret,id=gh_token,required <<EOF
-export GH_TOKEN=$(cat /run/secrets/gh_token)
-node ./scripts/generate-changelog.js pricing-int
-node ./scripts/generate-changelog.js sphere
-EOF
 # Build your application
 RUN pnpm run build
 RUN pnpm add -D serve

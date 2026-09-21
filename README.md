@@ -70,7 +70,6 @@ Before running `docker compose up -d` in `docker/production/`, the deploy machin
 
 - `docker/production/.env` — copy from `.env.example` and fill in.
 - `docker/production/.env.tos-to-odrl` — copy from `.env.tos-to-odrl.example` and fill in the model API keys.
-- `docker/gh_pat.txt` — a single line with a read-only GitHub PAT, used to fetch the changelog when building the frontend image.
 - `nginx/production/ssl/fullchain.pem` and `privkey.pem` — a TLS cert for the deploy domain.
 
 And these already-tracked values need real secrets filled in on the deploy machine (currently blank or dev-grade placeholders in `api/.env.production`):
