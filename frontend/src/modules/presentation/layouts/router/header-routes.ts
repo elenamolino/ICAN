@@ -21,9 +21,4 @@ export const headerRoutes: HeaderRoute[] = [
     disabled: false,
     to: '/research',
   },
-  {
-    name: 'Changelog',
-    disabled: false,
-    to: '/changelog',
-  },
 ];

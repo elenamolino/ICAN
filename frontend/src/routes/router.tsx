@@ -19,7 +19,6 @@ export const OntologyAnalysisPage = lazy(() => import('../modules/analysis/pages
 
 import ResearchPage from '../modules/presentation/pages/research';
 import ContributionsPage from '../modules/presentation/pages/contributions';
-import ChangelogPage from '../modules/presentation/pages/changelog';
 import DocsPage from '../modules/presentation/pages/docs';
 import AuthenticationPage from '../modules/auth/pages/authentication-page';
 import SsoCallbackPage from '../modules/auth/pages/sso-callback';
@@ -85,7 +84,6 @@ export default function Router() {
         { element: <TeamPage />, path: '/team' },
         { element: <ResearchPage />, path: '/research' },
         { element: <ContributionsPage />, path: '/contributions' },
-        { element: <ChangelogPage />, path: '/changelog' },
         { element: <ContractsListPage />, path: '/contracts' },
         { element: <ContractDetailPage />, path: '/contracts/:organizationId/:contractSlug' },
         { element: <CollectionsListPage />, path: '/collections' },
