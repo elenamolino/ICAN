@@ -276,6 +276,20 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
 
   // ============================================
+  // API documentation (Public)
+  // ============================================
+  {
+    path: '/docs',
+    methods: ['GET'],
+    isPublic: true,
+  },
+  {
+    path: '/docs/openapi.json',
+    methods: ['GET'],
+    isPublic: true,
+  },
+
+  // ============================================
   // Health Check (Public)
   // ============================================
   {
