@@ -20,6 +20,7 @@ export const OntologyAnalysisPage = lazy(() => import('../modules/analysis/pages
 import ResearchPage from '../modules/presentation/pages/research';
 import ContributionsPage from '../modules/presentation/pages/contributions';
 import ChangelogPage from '../modules/presentation/pages/changelog';
+import DocsPage from '../modules/presentation/pages/docs';
 import AuthenticationPage from '../modules/auth/pages/authentication-page';
 import SsoCallbackPage from '../modules/auth/pages/sso-callback';
 import OrganizationsListPage from '../modules/organization/pages/organizations-list';
@@ -28,7 +29,6 @@ import OrganizationDetailPage from '../modules/organization/pages/organization-d
 import OrganizationJoinPage from '../modules/organization/pages/organization-join';
 import SettingsPage from '../modules/settings/pages/SettingsPage';
 import ApiKeysPage from '../modules/api-keys/pages/ApiKeysPage';
-import PlaceholderPage from '../modules/core/pages/placeholder';
 import CollectionsListPage from '../modules/contract-collection/pages/collections-list';
 import CollectionDetailPage from '../modules/contract-collection/pages/collection-detail';
 import ContractDetailPage from '../modules/contract-collection/pages/contract-detail';
@@ -91,7 +91,7 @@ export default function Router() {
         { element: <CollectionsListPage />, path: '/collections' },
         { element: <CollectionDetailPage />, path: '/collections/:organizationId/:collectionSlug' },
         { element: <ContractDetailPage />, path: '/collections/:organizationId/:collectionSlug/:contractSlug' },
-        { element: <PlaceholderPage title="Docs" />, path: '/docs' },
+        { element: <DocsPage />, path: '/docs' },
         {
           path: '/analyse/ai-classify',
           element: (
