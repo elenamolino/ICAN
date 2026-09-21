@@ -28,6 +28,15 @@ docker/production/.env.tos-to-odrl
 
 deno.lock
 
+# Datasheet de OpenTermsArchive: el export completo (data/, csv/, texts/,
+# README, generador...) vive en Hugging Face
+# (https://huggingface.co/datasets/franciiscocg/ican-openterms-clauses), no
+# en el repo -- pesa cientos de MB. Solo se trackea la poblacion lista para
+# Mongo, que es pequeña comparada con el resto y util para levantar un dev
+# local sin depender de HF.
+datasheet/*
+!datasheet/poblacion-ICAN/
+
 # Locally uploaded pricings
 api/public/static/pricings/uploaded/
 api/public/static/collections

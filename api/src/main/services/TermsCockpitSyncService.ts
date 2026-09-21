@@ -42,6 +42,12 @@ const LAST_NEIGHBOR_CONSISTENCY_RATIO = 0.5;
 // as a best-effort fallback.
 const MAX_LAST_BACKSCAN = 10;
 
+// Same idea walking forward from the start of the history for "first": some
+// documents are tracked before they have real content (the earliest commit
+// is an empty placeholder, filled in later), which used to reach Mongoose as
+// an empty `content` field and crash the whole sync run.
+const MAX_FIRST_FORWARD_SCAN = 10;
+
 export interface SyncOptions {
   repos: string[];
   services?: string[];
@@ -162,8 +168,29 @@ async function selectVersions(
     return [toSelected(changes[0], 'last')];
   }
 
-  const first = changes[0];
-  const firstContent = await fetchContent(client, repoName, documentName, first.commit_hash, contentCache);
+  // Walk forward from the start of the history looking for a "first" that
+  // isn't broken (e.g. the document was added to tracking before it had
+  // real content, or the earliest capture hit a scraper error). Falls back
+  // to the literal earliest commit if nothing in the scan window qualifies
+  // -- symmetric to the "last" backscan below.
+  let firstIndex = 0;
+  let firstContent = await fetchContent(client, repoName, documentName, changes[firstIndex].commit_hash, contentCache);
+  for (
+    let attempts = 0;
+    extractVisibleTextLength(firstContent) < MIN_VISIBLE_TEXT_LENGTH &&
+    firstIndex < changes.length - 1 &&
+    attempts < MAX_FIRST_FORWARD_SCAN;
+    firstIndex += 1, attempts += 1
+  ) {
+    firstContent = await fetchContent(client, repoName, documentName, changes[firstIndex + 1].commit_hash, contentCache);
+  }
+  if (extractVisibleTextLength(firstContent) < MIN_VISIBLE_TEXT_LENGTH) {
+    // Nothing in the scan window qualified -- fall back to the literal
+    // earliest commit rather than silently reordering history.
+    firstIndex = 0;
+    firstContent = await fetchContent(client, repoName, documentName, changes[firstIndex].commit_hash, contentCache);
+  }
+  const first = changes[firstIndex];
   const minLen = Math.max(MIN_VISIBLE_TEXT_LENGTH, extractVisibleTextLength(firstContent) * MIN_SNAPSHOT_RATIO);
 
   // Walk back from the tip looking for a "last" that isn't broken (e.g. the
@@ -195,7 +222,7 @@ async function selectVersions(
   }
 
   const last = changes[lastIndex];
-  const middle = changes.slice(1, lastIndex);
+  const middle = changes.slice(firstIndex + 1, lastIndex);
   const seenHashes = new Set([contentHash(firstContent), contentHash(lastContent)]);
   const validMiddle = await pickValidatedIntermediates(
     client,
