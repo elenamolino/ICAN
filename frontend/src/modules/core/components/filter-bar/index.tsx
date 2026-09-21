@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface FilterOption {
@@ -13,10 +13,74 @@ interface Props {
   selected: string[];
   onChange: (selected: string[]) => void;
   onClear: () => void;
+  showClear?: boolean;
+  /** Mouse users open the menu by hovering (with a small delay); click, touch and keyboard still work. */
+  openOnHover?: boolean;
 }
 
-export default function FilterBar({ label, options, selected, onChange, onClear }: Props) {
+const OPEN_DELAY_MS = 150;
+const CLOSE_DELAY_MS = 300;
+
+export default function FilterBar({ label, options, selected, onChange, onClear, showClear = true, openOnHover = false }: Props) {
   const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  // A click on a hover-opened menu pins it, so it does not close when the pointer leaves.
+  const pinnedRef = useRef(false);
+
+  const clearTimer = () => clearTimeout(timerRef.current);
+  const close = () => {
+    clearTimer();
+    pinnedRef.current = false;
+    setOpen(false);
+  };
+
+  useEffect(() => clearTimer, []);
+
+  // Close on a press outside the menu (mouse or touch).
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: globalThis.PointerEvent) => {
+      if (wrapperRef.current?.contains(event.target as Node)) return;
+      clearTimeout(timerRef.current);
+      pinnedRef.current = false;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [open]);
+
+  const handlePointerEnter = (event: PointerEvent) => {
+    if (!openOnHover || event.pointerType !== 'mouse') return;
+    clearTimer();
+    if (!open) timerRef.current = setTimeout(() => setOpen(true), OPEN_DELAY_MS);
+  };
+
+  const handlePointerLeave = (event: PointerEvent) => {
+    if (!openOnHover || event.pointerType !== 'mouse') return;
+    clearTimer();
+    if (open && !pinnedRef.current) timerRef.current = setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  };
+
+  const handleButtonClick = (event: MouseEvent) => {
+    clearTimer();
+    const byMouse = openOnHover && (event.nativeEvent as globalThis.PointerEvent).pointerType === 'mouse';
+    if (byMouse) {
+      if (open && pinnedRef.current) return close();
+      pinnedRef.current = true;
+      return setOpen(true);
+    }
+    pinnedRef.current = false;
+    setOpen(!open);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && open) {
+      close();
+      buttonRef.current?.focus();
+    }
+  };
 
   const toggle = (value: string) => {
     onChange(selected.includes(value) ? selected.filter(v => v !== value) : [...selected, value]);
@@ -26,10 +90,19 @@ export default function FilterBar({ label, options, selected, onChange, onClear 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative">
+      <div
+        ref={wrapperRef}
+        className="relative"
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        onKeyDown={handleKeyDown}
+      >
         <button
+          ref={buttonRef}
           type="button"
-          onClick={() => setOpen(!open)}
+          aria-haspopup="true"
+          aria-expanded={open}
+          onClick={handleButtonClick}
           className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
             selected.length > 0
               ? 'border-tp-primary/30 bg-tp-primary/5 text-tp-primary'
@@ -80,7 +153,7 @@ export default function FilterBar({ label, options, selected, onChange, onClear 
         </AnimatePresence>
       </div>
 
-      {selected.length > 0 && (
+      {showClear && selected.length > 0 && (
         <button
           type="button"
           onClick={onClear}
