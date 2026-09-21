@@ -110,25 +110,23 @@ export function useOntologyAnalysisApi() {
     return res.json();
   }, [fetchWithInterceptor]);
 
-  const submitJob = useCallback(async (file: File, meta: SubmitJobMeta): Promise<{ jobId: string }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (meta.provider) formData.append('provider', meta.provider);
-    if (meta.title) formData.append('title', meta.title);
-    if (meta.date) formData.append('date', meta.date);
-    if (meta.model) formData.append('model', meta.model);
-    formData.append('baseUrl', meta.baseUrl ?? '');
-    if (meta.runEvaluation !== undefined) {
-      formData.append('runEvaluation', String(meta.runEvaluation));
-    }
-
+  const submitJob = useCallback(async (text: string, meta: SubmitJobMeta): Promise<{ jobId: string }> => {
     const res = await fetchWithInterceptor(`${BASE_PATH}/analysis/ontology-analysis`, {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        provider: meta.provider,
+        title: meta.title,
+        date: meta.date,
+        model: meta.model,
+        baseUrl: meta.baseUrl ?? '',
+        runEvaluation: meta.runEvaluation,
+      }),
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || 'Failed to submit the document for analysis');
+      throw new Error(body.error || 'Failed to submit the contract for analysis');
     }
     return res.json();
   }, [fetchWithInterceptor]);

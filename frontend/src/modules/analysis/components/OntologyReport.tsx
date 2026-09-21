@@ -186,40 +186,55 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
 function AggregateSummary({
   aggregate,
   words,
+  embedded,
 }: {
   aggregate: AggregateStats;
   words: number;
+  embedded: boolean;
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <SummaryStat label="Clauses" value={aggregate.total_clauses} />
-      <SummaryStat label="Potentially unfair" value={aggregate.unfair_count} />
-      <SummaryStat label="Words" value={words} />
+      {!embedded && (
+        <>
+          <SummaryStat label="Clauses" value={aggregate.total_clauses} />
+          <SummaryStat label="Potentially unfair" value={aggregate.unfair_count} />
+          <SummaryStat label="Words" value={words} />
+        </>
+      )}
+      <SummaryStat label="Permissions" value={aggregate.permissions} />
+      <SummaryStat label="Prohibitions" value={aggregate.prohibitions} />
+      <SummaryStat label="Duties" value={aggregate.duties} />
       <SummaryStat
         label="Semantic sim."
         value={aggregate.mean_semantic_sim !== null ? aggregate.mean_semantic_sim.toFixed(2) : 'N/A'}
       />
-      <SummaryStat label="Permissions" value={aggregate.permissions} />
-      <SummaryStat label="Prohibitions" value={aggregate.prohibitions} />
-      <SummaryStat label="Duties" value={aggregate.duties} />
     </div>
   );
 }
 
-export default function OntologyReport({ report }: { report: JobReport }) {
+export default function OntologyReport({
+  report,
+  embedded = false,
+}: {
+  report: JobReport;
+  /** Shown inside a saved version, which already displays the contract's details and summary. */
+  embedded?: boolean;
+}) {
   const { aggregate, clauses } = report;
   const unfairClauses = clauses.filter((c) => unfairCount(c) > 0);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-tp-ink">{report.title || 'Untitled contract'}</h2>
-        <p className="text-sm text-tp-steel">
-          {report.provider || 'Unknown provider'} · {report.date || 'Unknown date'}
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2 className="text-lg font-semibold text-tp-ink">{report.title || 'Untitled contract'}</h2>
+          <p className="text-sm text-tp-steel">
+            {report.provider || 'Unknown provider'} · {report.date || 'Unknown date'}
+          </p>
+        </div>
+      )}
 
-      <AggregateSummary aggregate={aggregate} words={totalWords(clauses)} />
+      <AggregateSummary aggregate={aggregate} words={totalWords(clauses)} embedded={embedded} />
 
       {unfairClauses.length > 0 && (
         <div className="rounded-lg border border-tp-severity-warning-border bg-tp-severity-warning-bg p-4">

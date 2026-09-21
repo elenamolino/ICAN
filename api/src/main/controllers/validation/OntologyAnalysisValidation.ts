@@ -1,6 +1,13 @@
 import { check } from 'express-validator';
 
 const submit = [
+  check('text')
+    .exists({ checkNull: true })
+    .withMessage('The text field is required')
+    .isString()
+    .withMessage('The text field must be a string')
+    .custom((value: string) => value.trim().length > 0)
+    .withMessage('The text field must not be empty'),
   check('provider')
     .optional()
     .isString()

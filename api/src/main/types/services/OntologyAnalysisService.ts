@@ -76,12 +76,6 @@ export type SubmitJobMeta = {
   runEvaluation?: boolean;
 };
 
-export type UploadedFile = {
-  buffer: Buffer;
-  originalname: string;
-  mimetype: string;
-};
-
 export interface SaveOntologyAnalysisPayload {
   collectionId: string;
   serviceId?: string;

@@ -13,7 +13,6 @@ const loadOntologyAnalysisRoutes = function (app: express.Application) {
   app
     .route(baseUrl + '/analysis/ontology-analysis')
     .post(
-      ontologyAnalysisController.uploadMiddleware,
       OntologyAnalysisValidator.submit,
       handleValidation,
       ontologyAnalysisController.submit

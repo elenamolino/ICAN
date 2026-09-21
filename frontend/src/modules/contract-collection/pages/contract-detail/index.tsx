@@ -26,9 +26,9 @@ import VersionComparison from '../../components/version-comparison';
 type Tab = 'content' | 'clauses' | 'ontology' | 'evolution' | 'compare';
 
 const TAB_LABELS: Record<Tab, string> = {
-  content: 'Content',
-  clauses: 'Clauses',
-  ontology: 'Ontology',
+  content: 'Text',
+  clauses: 'AI analysis result',
+  ontology: 'Ontology analysis result',
   evolution: 'Evolution',
   compare: 'Compare',
 };
@@ -392,7 +392,7 @@ export default function ContractDetailPage() {
 
           {tab === 'ontology' &&
             (selectedVersion?.ontologyReport ? (
-              <OntologyReport report={selectedVersion.ontologyReport} />
+              <OntologyReport report={selectedVersion.ontologyReport} embedded />
             ) : (
               <p className="text-sm text-tp-steel">
                 No ontology analysis available for this version.

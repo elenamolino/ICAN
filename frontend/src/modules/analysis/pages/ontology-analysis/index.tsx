@@ -12,14 +12,11 @@ import OntologyJobProgress from '../../components/OntologyJobProgress';
 import OntologyReport from '../../components/OntologyReport';
 import SaveOntologyAnalysisModal from '../../components/SaveOntologyAnalysisModal';
 import FileUpload from '../../../core/components/file-upload-input';
+import customAlert from '../../../core/utils/custom-alert';
 import ActionButton from '../../../core/components/action-button';
 import BlockAlert from '../../../core/components/block-alert';
 
-// Text-ish types we can read as a string on the client to preserve as the
-// ContractVersion's original content. PDFs have no client-side extraction
-// here, so they fall back to a reconstruction from the report's clauses
-// (done server-side) instead of blocking the save.
-const TEXT_READABLE_TYPES = ['application/json', 'text/plain'];
+type InputMode = 'paste' | 'upload';
 
 type Stage = 'idle' | 'submitting' | 'polling' | 'done' | 'error';
 
@@ -29,7 +26,8 @@ export default function OntologyAnalysisPage() {
   const { listModels, submitJob, getStatus, getReport } = useOntologyAnalysisApi();
   const { authUser } = useAuth();
 
-  const [sourceText, setSourceText] = useState<string | null>(null);
+  const [mode, setMode] = useState<InputMode>('paste');
+  const [text, setText] = useState('');
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
   const [presets, setPresets] = useState<ModelPreset[]>([]);
@@ -92,16 +90,25 @@ export default function OntologyAnalysisPage() {
   }, [stage, jobId, getStatus, getReport]);
 
   const handleFileSubmit = async (file: File) => {
+    try {
+      setText(await file.text());
+      setMode('paste');
+    } catch {
+      customAlert('Could not read the uploaded file as text', 'warning');
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!text.trim()) return;
     setError(null);
     setReport(null);
     setJobStatus(null);
-    setSourceText(TEXT_READABLE_TYPES.includes(file.type) ? await file.text().catch(() => null) : null);
     setStage('submitting');
     try {
       const preset = presets.find((p) => p.id === presetId);
-      const { jobId: newJobId } = await submitJob(file, {
-        provider: provider || undefined,
-        title: title || undefined,
+      const { jobId: newJobId } = await submitJob(text, {
+        provider: provider.trim() || undefined,
+        title: title.trim() || undefined,
         date: date || undefined,
         model: preset?.model,
         baseUrl: preset?.base_url,
@@ -110,7 +117,7 @@ export default function OntologyAnalysisPage() {
       setJobId(newJobId);
       setStage('polling');
     } catch (err: any) {
-      setError(err.message || 'Failed to submit the document for analysis');
+      setError(err.message || 'Failed to submit the contract for analysis');
       setStage('error');
     }
   };
@@ -121,7 +128,6 @@ export default function OntologyAnalysisPage() {
     setJobStatus(null);
     setReport(null);
     setError(null);
-    setSourceText(null);
   };
 
   const isBusy = stage === 'submitting' || stage === 'polling';
@@ -137,9 +143,10 @@ export default function OntologyAnalysisPage() {
             <div>
               <h1 className="font-display text-2xl text-tp-ink">Ontology Analysis</h1>
               <p className="mt-1 text-sm text-tp-steel">
-                Upload a contract (.json, .txt or .pdf) to convert it into ODRL
+                Paste a contract's text or upload a plain-text file to convert it into ODRL
                 permissions, prohibitions and duties, flag unfair terms, and evaluate
-                semantic fidelity, powered by the tos-to-odrl pipeline.
+                semantic fidelity, powered by the tos-to-odrl pipeline. The text is cut into
+                the same clauses AI Classify analyses.
               </p>
             </div>
             {stage !== 'idle' && (
@@ -185,8 +192,9 @@ export default function OntologyAnalysisPage() {
                       <label className="mb-1 block text-xs text-tp-steel">Date</label>
                       <input
                         value={date}
+                        type="date"
                         onChange={(e) => setDate(e.target.value)}
-                        placeholder="2024"
+                        max={new Date().toISOString().slice(0, 10)}
                         required
                         className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
                       />
@@ -226,22 +234,52 @@ export default function OntologyAnalysisPage() {
               </div>
 
               <div className="space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
-                <FileUpload
-                  onSubmit={handleFileSubmit}
-                  submitButtonText={stage === 'submitting' ? 'Starting analysis…' : 'Analyze'}
-                  accept={{
-                    'application/json': ['.json'],
-                    'text/plain': ['.txt'],
-                    'application/pdf': ['.pdf'],
-                  }}
-                  isNotDragActiveText="Drag and drop a .json, .txt or .pdf file here"
-                  isDragActiveText="Drop the file here"
-                  disabled={stage === 'submitting' || !metadataComplete}
-                />
-                {!metadataComplete && (
-                  <p className="text-xs text-tp-steel">
-                    Fill in the provider, title and date above before analyzing a file.
-                  </p>
+                <div className="flex gap-2">
+                  {(['paste', 'upload'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setMode(option)}
+                      className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                        mode === option
+                          ? 'bg-tp-primary text-tp-on-primary'
+                          : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
+                      }`}
+                    >
+                      {option === 'paste' ? 'Paste text' : 'Upload file'}
+                    </button>
+                  ))}
+                </div>
+
+                {mode === 'paste' ? (
+                  <>
+                    <textarea
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      rows={12}
+                      placeholder="Paste the contract's Terms of Service text here..."
+                      className="w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas p-3 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                    />
+                    <ActionButton
+                      text={stage === 'submitting' ? 'Starting analysis…' : 'Analyze contract'}
+                      onClick={handleAnalyze}
+                      disabled={stage === 'submitting' || !text.trim() || !metadataComplete}
+                      className="w-full font-bold"
+                    />
+                    {!metadataComplete && (
+                      <p className="text-xs text-tp-steel">
+                        Fill in the provider, title and date above before analyzing.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <FileUpload
+                    onSubmit={handleFileSubmit}
+                    submitButtonText="Load file"
+                    accept={{ 'text/plain': ['.txt'], 'text/markdown': ['.md'] }}
+                    isNotDragActiveText="Drag and drop a .txt or .md file here"
+                    isDragActiveText="Drop the file here"
+                  />
                 )}
               </div>
             </div>
@@ -286,7 +324,7 @@ export default function OntologyAnalysisPage() {
           open={saveModalOpen}
           onClose={() => setSaveModalOpen(false)}
           report={report}
-          text={sourceText}
+          text={text}
         />
       )}
     </>
