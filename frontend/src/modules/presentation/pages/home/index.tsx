@@ -5,8 +5,8 @@ import FloatingMorphHeader from './components/floating-morph-header';
 import FullFooterSection from './components/full-footer-section';
 import HeroSection from './components/hero-section';
 import HomeGlobalStyles from './components/home-global-styles';
-import FundersSection from './components/funders-section';
-import { FUNDERS, NAV_ITEMS } from './data';
+// import FundersSection from './components/funders-section';
+import { NAV_ITEMS } from './data'; // add FUNDERS back here to show the funders section
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,8 +27,9 @@ export default function HomePage() {
           <FloatingMorphHeader navItems={NAV_ITEMS} onNavigate={handleNavigate} />
 
           <main className="relative z-[3] mx-auto flex w-full max-w-[1240px] flex-col px-4 pb-24 pt-28 md:px-8 md:pb-36 md:pt-40">
-            <HeroSection />
-            <FundersSection funders={FUNDERS} />
+            <HeroSection onNavigate={handleNavigate} />
+            {/* Funders hidden for now. To show them: uncomment the import above, add FUNDERS to the data import and uncomment this line.
+            <FundersSection funders={FUNDERS} /> */}
           </main>
         </div>
 
