@@ -1,12 +1,9 @@
 # Use an official Node.js runtime as the base image
-FROM node:21.1-slim
+FROM node:22-slim
 
 ENV http_proxy=http://proxy.int.local:3128
 ENV https_proxy=http://proxy.int.local:3128
 ENV no_proxy=localhost,127.0.0.1
-
-# Install minizinc
-RUN apt-get update && apt-get install -y minizinc && apt-get clean
 
 # Set the working directory in the container
 WORKDIR /usr/src/server

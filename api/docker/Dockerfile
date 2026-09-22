@@ -1,8 +1,5 @@
 # Use an official Node.js runtime as the base image
-FROM node:21.1-slim
-
-# Install minizinc
-RUN apt-get update && apt-get install -y minizinc && apt-get clean
+FROM node:22-slim
 
 # Set the working directory in the container
 WORKDIR /usr/src/server
