@@ -1,99 +1,108 @@
-# SPHERE Agents
+# ICAN Agents
+
+ICAN is a platform for analysing SaaS Terms of Service: AI clause classification, ontology analysis (ToS → TOSL/ODRL policies), and contract collections with versioned contracts.
 
 ## Project Structure
 
-- **api/** — Express + MongoDB + Redis backend (TypeScript)
+- **api/** — Express + MongoDB + Redis backend (TypeScript, Node 22)
 - **frontend/** — React + Vite + TailwindCSS v4 frontend
+- **docker/** — Compose files per environment (`dev`, `testing`, `pre-production`, `production`)
 - Package manager: **pnpm** (not npm/yarn)
+
+External services the API calls (URLs come from env vars):
+
+| Service | Env var | Used by |
+| --- | --- | --- |
+| tos-to-odrl (ontology analysis pipeline, separate repo) | `TOS_TO_ODRL_SERVICE_URL` | `OntologyAnalysisService` |
+| Clause analyzer (AI classification) | `ANALYZER_SERVICE_URL` | `AnalysisService` |
+| TermsCockpit (contract population sync) | `TERMSCOCKPIT_SERVICE_URL` | `services/clients/TermsCockpitClient.ts` |
 
 ## Developer Commands
 
 ```bash
 pnpm run install    # Install dependencies for both packages
+pnpm run dev:setup  # Start MongoDB and Redis (docker/dev) and seed MongoDB. Run it BEFORE dev.
 pnpm run dev        # Run API + Vite dev servers concurrently (from root)
-pnpm run dev:setup  # Run MongoDB and Redis containers locally with Docker Compose. Also seeds MongoDB with test data. It must be run BEFORE dev commands.
-pnpm run test       # Run API tests (vitest) then reseed MongoDB
-pnpm run build      # Build both frontend and api
+pnpm run test       # Run API tests (vitest), then reseed MongoDB
+pnpm run build      # Build frontend and api
 ```
 
-## Running Single Test / Package
+Seeded dev users: `admin` / `faked` and `testuser` / `faked`. The `USER_PASSWORD` variable in `api/.env` is not used by anything.
+
+## Running a Single Test
 
 ```bash
 cd api && npx vitest --run --test-name-pattern "<pattern>"
 ```
 
-## Prerequisites (required for dev and tests)
-
-- **MongoDB** — must be running with a seeded database
-- **MiniZinc** — required for analytics/pricing optimization; must have `gecode` solver available
-
-  If analytics return 500, verify with:
-  ```bash
-  minizinc --solvers  # gecode must appear in output
-  ```
-
 ## Important Quirks
 
-- `test` script runs `seed:mongo-local:small` **after** tests to reset state
-- Tests run sequentially (`fileParallelism: false` in vitest.config.ts)
+- `test` reseeds MongoDB (`seed:mongo-local:small`) **after** the tests to reset state
+- Tests run sequentially (`fileParallelism: false` in `api/vitest.config.ts`)
 - API entry point: `api/src/main/backend.ts`
-- Migrations auto-run via `npx migrate up` in `dev:api` script
-- API uses `ts-migrate-mongoose` for MongoDB migrations
+- Migrations (`ts-migrate-mongoose`, in `api/src/main/migrations/mongo/`) auto-run via `npx migrate up` in `dev:api`
+- Commit messages are checked by commitlint (husky `commit-msg` hook): conventional commits, types `feat`, `fix`, `docs`, `refactor`, `chore`
 
 ## API Documentation
 
-- `/api/docs/sphere-api-docs.yaml` contains the OpenAPI specification for the API. Use it as the primary reference for understanding available endpoints, request and response schemas, authentication requirements, and general API behavior.
+The OpenAPI description of the API lives in `api/src/main/docs/openapi.ts` and is served with Swagger UI at `/api/v1/docs` (JSON at `/api/v1/docs/openapi.json`). It is the source of truth for endpoint contracts: request/response schemas, authentication and behaviour. Keep it in sync with every endpoint change.
 
-## Test distribution
+## Test Distribution
 
-- /api/src/test/unit-tests/** – tests related to individual utility functions, services, and repositories. These tests should be focused on isolated logic and should mock external dependencies.
-- /api/src/test/auth.test.ts – tests related to authentication flows, including login, token generation, and token validation
-- /api/src/test/cache.test.ts – tests related to caching mechanisms
-- /api/src/test/user.test.ts – tests related to user management, authentication, and authorization
-- /api/src/test/organization.test.ts – tests related to organization management and organization-user interactions
-- /api/src/test/collection.test.ts — tests related to collection management and collection-pricing interactions
-- /api/src/test/pricing.test.ts — tests related to pricing management and pricing-analytics
+- `api/src/test/unit-tests/**` — isolated logic (services, permission engine, auth middleware, SSO/Google providers, utilities). Mock external dependencies.
+- `api/src/test/user.test.ts` — user management, authentication and authorization
+- `api/src/test/api-keys.test.ts` — API keys
+- `api/src/test/organization.test.ts` — organizations and organization-user interactions
+- `api/src/test/contractCollection.test.ts`, `contract.test.ts` — contract collections and contracts
+- `api/src/test/contractAnalysisSave.test.ts`, `contractOntologyAnalysisSave.test.ts` — saving AI-classify and ontology results into collections
+- `api/src/test/ontologyAnalysisSubmit.test.ts` — submitting ontology analysis jobs
+- `api/src/test/entityDeletion.test.ts` — cascading deletions
+- `api/src/test/cache.test.ts` — caching
+- `api/src/test/apiRest.test.ts` — API documentation endpoints and API-key access
 
-In addition, test utilities are organized in `/api/src/test/utils/` with subfolders for auth, users, organizations, collections and pricings.
+Test utilities are in `api/src/test/utils/` (auth, users, organizations, collections, permissions, config, `testApp.ts`).
 
 ## Lint Config
 
 - API: `api/eslint.config.ts` (TypeScript-eslint, semi required)
 - Frontend: `frontend/eslint.config.js`
 
-## Instructions for Adding New API Endpoints
+## Adding New API Endpoints
 
-1. Define the endpoint in the OpenAPI spec (`/api/docs/sphere-api-docs.yaml`). This will serve as the source of truth for the endpoint's contract, including request/response schemas and authentication requirements.
-2. Implement the endpoint in its corresponder router (different routets can be found in `api/src/main/routers/`). Follow the RESTful conventions to name the endpoints and ensure that the implementation adheres to the contract defined in the OpenAPI spec.
-3. Add any necessary permissions of the endpoint in `api/src/main/config/permissions.ts`. This will ensure that the endpoint is properly secured and only accessible to authorized users.
-4. Add a method in the appropiate controller (found in `api/src/main/controllers/`) to parse the request body and parameters to the appropriate data structures. The controller should interact with the necessary services to fulfill the request and return the appropriate response.
-5. If needed, add any necessary business logic in the services layer (found in `api/src/main/services/`). This layer should contain the core logic of the application and should be decoupled from the controllers and routers to ensure separation of concerns. If needed, you can use repositories here to communicate with the database. Nontheless, if you can fulfill the requirements of the endpoint without adding any new logic to the services layer, you can directly call the necessary service methods from the controller.
-6. If the endpoint requires any changes to persist in the database or requires retrieving information from it, add any necessary database queries in the appropriate repository (found in `api/src/main/repositories/mongoose/`).
-7. Write tests for the new endpoint in the appropriate test file under `api/src/test/
-8. Ensure that the tests cover various scenarios, including successful requests, validation errors, and unauthorized access. Use the test utilities in `api/src/test/utils/` to help set up test data and mock dependencies as needed.
-9. Run the tests to verify that the new endpoint works as expected and does not introduce any regressions. Use `pnpm run test` from the root directory to execute all tests, or run specific tests using `npx vitest --run --test-name-pattern "<pattern>"` from the `api` directory.
+1. Describe the endpoint in `api/src/main/docs/openapi.ts`: request/response schemas and authentication.
+2. Add the route in its router in `api/src/main/routes/`, following RESTful naming and the contract from step 1.
+3. Add the endpoint's permissions in `api/src/main/config/permissions.ts`.
+4. Add a controller method in `api/src/main/controllers/` that parses the request and calls the services. Request validation lives in `api/src/main/controllers/validation/`.
+5. Put business logic in `api/src/main/services/`, decoupled from controllers and routes. If an existing service method already does the job, call it directly from the controller.
+6. Put database queries in the repositories in `api/src/main/repositories/mongoose/`.
+7. Write tests in `api/src/test/` covering success, validation errors and unauthorized access, using the helpers in `api/src/test/utils/`.
+8. Run `pnpm run test` from the root, or a single test as shown above.
 
-IMPORTANT NOTES if adding a new entity to the database schema:
+If you add a new entity to the database:
 
-- You must create a new mongoose schema in `api/src/main/repositories/mongoose/models`
-- You must add any necessary migrations in `api/src/main/migrations/`. Remember to run the migrations using `npx migrate up` after implementing the new endpoint to ensure that the database schema is updated accordingly.
-- You must update the seeders located in `api/src/main/database/seeders/mongo/` to reflect the changes
-- You must register the new repository and service in the awilix container located in `api/src/main/config/container.ts` to ensure that they can be properly injected into the controllers and other services as needed.
+- Create its Mongoose schema in `api/src/main/repositories/mongoose/models/`
+- Add a migration in `api/src/main/migrations/mongo/` and run `npx migrate up`
+- Update the seeders in `api/src/main/database/seeders/mongo/`
+- Register the new repository and service in the awilix container (`api/src/main/config/container.ts`)
 
-## Instructions for Adding New Frontend Pages/Components
+## Adding New Frontend Pages/Components
 
-The frontend organizes its functionality in modules, which are located in `frontend/src/modules/`. Each module corresponds to a specific feature or section of the application and contains its own components, pages, and styles. When adding new pages or components, you should determine which module they belong to based on their functionality and the existing structure of the application. In particular, each module may have the following subfolders:
+The frontend is organised in modules under `frontend/src/modules/` (`analysis`, `api-keys`, `auth`, `contract-collection`, `core`, `notification`, `organization`, `presentation`, `settings`). Put new code in the module it belongs to. A module may have:
 
-- pages/: contains the main pages of the module, which are typically associated with specific routes in the application. Pages are responsible for rendering the overall layout and structure of a particular section of the application and may include multiple components to display data and handle user interactions.
-- components/: contains reusable components that are specific to the module. These components can be used across different pages within the same module and are designed to encapsulate specific functionality or UI elements related to the module's feature set. IMPORTANT: If you wanna reuse a component across different modules, you should place it in the `frontend/src/modules/core/components/` folder instead of the module's components folder.
-- utils/: contains utility functions that are specific to the module. These functions can be used across different components and pages within the same module and are designed to encapsulate specific logic related to the module's feature set. IMPORTANT: If you wanna reuse a utility function across different modules, you should place it in the `frontend/src/modules/core/utils/` folder instead of the module's utils folder.
-- api/: contains functions that handle API calls related to the module's feature set. These functions are responsible for making HTTP requests to the backend API and processing the responses. They can be used across different components and pages within the same module to interact with the backend and retrieve or manipulate data as needed. IMPORTANT: remember to check wheter an API function that fulfills your needs already exists before creating a new one, even in a different module. If it does, you should reuse it instead of creating a new one.
-- contexts/: contains React contexts that are specific to the module. These contexts can be used to manage state and share data across different components and pages within the same module. They are designed to encapsulate specific logic related to the module's feature set and can help improve the organization and maintainability of the codebase.
-- hooks/: contains custom React hooks that are specific to the module. These hooks can be used to encapsulate reusable logic related to the module's feature set and can help improve the organization and maintainability of the codebase. They can be used across different components and pages within the same module to handle common functionality such as form handling, data fetching, or state management.
-- layouts/: contains layout components that are specific to the module. These components are responsible for defining the overall structure and layout of the pages within the module and can be used to ensure a consistent look and feel across different sections of the application.
+- `pages/` — route-level pages
+- `components/` — components specific to the module. Components reused across modules go in `frontend/src/modules/core/components/`.
+- `utils/` — module-specific helpers. Cross-module helpers go in `frontend/src/modules/core/utils/`.
+- `api/` — HTTP calls to the backend. Check whether a function you need already exists, in any module, before adding a new one.
+- `contexts/`, `hooks/`, `layouts/` — module-specific React contexts, hooks and layouts
 
-When adding new pages or components you should always follow the style depicted in `./DESIGN.md` and make sure to keep the code organized and maintainable by placing it in the appropriate module and subfolder based on its functionality and purpose. Additionally, remember to update the routing configuration if you are adding new pages that need to be accessible via specific routes in the application.
+Follow the style in `./DESIGN.md`, and register new pages in `frontend/src/routes/router.tsx`.
 
-If you need to add any new color to the palette, you should add it to the `frontend/src/main/styles/tailwind.css` file to ensure that it can be used consistently across the application and is available for use in the TailwindCSS classes throughout the codebase. In addition, you should ALWAYS include a dark mode variant for any new colors you add by extending the class `.dark` in the same file. This will ensure that the new colors are properly displayed in both light and dark modes, providing a better user experience for users who prefer dark mode.
+New colours go in `frontend/src/main/styles/tailwind.css`, ALWAYS with a dark mode variant in the `.dark` class of the same file.
 
-IMPORTANT RULE: EVERY CLICKABLE COMPONENT IN THE UI MUST HAVE A "cursor-pointer" CLASS TO INDICATE THAT IT IS INTERACTIVE. This is a crucial aspect of the user experience, as it provides a visual cue to users that an element is clickable and can be interacted with. By adding the "cursor-pointer" class to all clickable components, you can improve the usability of the application and make it more intuitive for users to navigate and interact with the various features and functionalities available.
+IMPORTANT RULE: EVERY CLICKABLE COMPONENT IN THE UI MUST HAVE A `cursor-pointer` CLASS.
+
+## Deployment Notes
+
+- Production runs `docker/production/docker-compose.yml`. The API container loads `api/.env.production` first and `docker/production/.env` second, so a variable defined in both takes the value from `docker/production/.env`. The tos-to-odrl backend reads `docker/production/.env.tos-to-odrl`.
+- `docker compose restart` does not reload env files. Recreate the container: `docker compose up -d --force-recreate <service>`.
+- ICAN was forked from SPHERE, and some infrastructure names still carry the old prefix (for example the `sphere-mongodb` volume and `sphere-network`). Do not rename the volume: it holds the production database.
