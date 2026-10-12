@@ -108,19 +108,19 @@ class ContractCollectionRepository extends RepositoryBase {
 
       if (!collection) return null;
 
-      const contracts = await ContractMongoose.find({ _collectionId: String(collection._id) }).populate(
-        'service',
-        'name slug'
-      );
-
+      // The auth middlewares call this on every collection request, so it must not
+      // load the contracts: the collection detail page pages them on its own.
       return {
         ...collection.toObject(),
         id: String(collection._id),
-        contracts,
       };
     } catch {
       return null;
     }
+  }
+
+  async countContracts(collectionId: string): Promise<number> {
+    return ContractMongoose.countDocuments({ _collectionId: String(collectionId) });
   }
 
   async findCollectionContractsByOrganization(slug: string, organizationId: string) {

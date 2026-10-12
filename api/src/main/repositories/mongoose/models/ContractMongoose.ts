@@ -78,6 +78,8 @@ contractSchema.virtual('service', {
 
 // Unique slug per organization
 contractSchema.index({ slug: 1, _organizationId: 1 }, { unique: true });
+// Opening a collection looks its contracts up by collection (see migration 1782000000000).
+contractSchema.index({ _collectionId: 1, _serviceId: 1 }, { name: 'collection_service' });
 
 const contractModel = mongoose.model('Contract', contractSchema, 'contracts');
 
