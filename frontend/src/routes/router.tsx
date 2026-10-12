@@ -18,7 +18,6 @@ export const AiClassifyPage = lazy(() => import('../modules/analysis/pages/ai-cl
 export const OntologyAnalysisPage = lazy(() => import('../modules/analysis/pages/ontology-analysis'));
 
 import ResearchPage from '../modules/presentation/pages/research';
-import ContributionsPage from '../modules/presentation/pages/contributions';
 import DocsPage from '../modules/presentation/pages/docs';
 import AuthenticationPage from '../modules/auth/pages/authentication-page';
 import SsoCallbackPage from '../modules/auth/pages/sso-callback';
@@ -83,7 +82,6 @@ export default function Router() {
         { element: <SsoCallbackPage />, path: '/sso/callback' },
         { element: <TeamPage />, path: '/team' },
         { element: <ResearchPage />, path: '/research' },
-        { element: <ContributionsPage />, path: '/contributions' },
         { element: <ContractsListPage />, path: '/contracts' },
         { element: <ContractDetailPage />, path: '/contracts/:organizationId/:contractSlug' },
         { element: <CollectionsListPage />, path: '/collections' },
