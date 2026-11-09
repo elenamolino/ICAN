@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import container from '../config/container';
 import AuthProviderService, { SsoAccountError } from '../services/AuthProviderService';
 import CacheService from '../services/CacheService';
-import { LoginTransaction } from '../services/identity/IdentityProvider';
+import { LoginTransaction, ProviderProfile } from '../services/identity/IdentityProvider';
 import { configuredProviders, getProvider } from '../services/identity/providerRegistry';
 import { handleError } from '../utils/users/helpers';
 
@@ -10,6 +10,7 @@ const FRONTEND_URL = () => process.env.FRONTEND_URL ?? 'http://localhost:5173';
 const SSO_CODE_TTL = 30; // seconds; single-use exchange code
 const SSO_STATE_TTL = 600; // seconds; OAuth2 CSRF state, single use
 const SSO_LINK_TTL = 60; // seconds; single-use ticket that starts a connection from Settings
+const SSO_PENDING_LINK_TTL = 300; // seconds; connection waiting for the account owner to confirm it
 const BROWSER_COOKIE = 'ican_sso_browser';
 const HEX_64 = /^[a-f0-9]{64}$/;
 
@@ -24,11 +25,30 @@ interface PendingSignIn extends LoginTransaction {
   linkUserId?: string;
 }
 
+/** A connection the provider approved, waiting for the account that started it to confirm. */
+interface PendingLink {
+  userId: string;
+  provider: string;
+  browserHash: string;
+  profile: ProviderProfile;
+}
+
+class PendingLinkError extends Error {
+  constructor(readonly status: number, readonly code: string, message: string) {
+    super(message);
+  }
+}
+
 function readCookie(req: any, name: string): string | undefined {
   const header: string = req.headers?.cookie ?? '';
   for (const part of header.split(';')) {
     const [key, ...value] = part.trim().split('=');
-    if (key === name) return decodeURIComponent(value.join('='));
+    if (key !== name) continue;
+    try {
+      return decodeURIComponent(value.join('='));
+    } catch {
+      return undefined;
+    }
   }
   return undefined;
 }
@@ -49,6 +69,8 @@ class SSOController {
     this.providers = this.providers.bind(this);
     this.initiate = this.initiate.bind(this);
     this.link = this.link.bind(this);
+    this.pendingLink = this.pendingLink.bind(this);
+    this.confirmLink = this.confirmLink.bind(this);
     this.callback = this.callback.bind(this);
     this.exchange = this.exchange.bind(this);
   }
@@ -183,8 +205,18 @@ class SSOController {
       }
 
       if (pending?.linkUserId) {
-        await this.authProviderService.linkIdentity(pending.linkUserId, profile);
-        return this.toFrontend(res, { linked: req.params.provider });
+        // Nothing is connected yet: the account that asked for the connection has to
+        // confirm it with its own session in this same browser. Otherwise a link sent to
+        // someone else would connect their identity to the sender's account.
+        const pendingCode = randomHex(32);
+        const pendingLink: PendingLink = {
+          userId: pending.linkUserId,
+          provider: req.params.provider,
+          browserHash: pending.browserHash,
+          profile,
+        };
+        await this.cacheService.set(`sso:pending-link:${pendingCode}`, pendingLink, SSO_PENDING_LINK_TTL);
+        return this.toFrontend(res, { mode: 'link', provider: req.params.provider, pending: pendingCode });
       }
 
       const { token } = await this.authProviderService.findOrCreateUser(profile);
@@ -197,11 +229,63 @@ class SSOController {
       return this.toFrontend(res, { code });
     } catch (err: any) {
       if (err instanceof SsoAccountError) {
-        return this.toFrontend(res, { sso_error: err.code, ...mode });
+        return this.toFrontend(res, { sso_error: err.code, provider: req.params.provider, ...mode });
       }
       console.error('[SSO] callback error:', err);
       return this.toFrontend(res, { sso_error: 'server_error', ...mode });
     }
+  }
+
+  /**
+   * Reads a pending connection for its confirmation page. Only the account that started
+   * it, signed in on the browser that went through the provider, may see or confirm it.
+   */
+  private async readPendingLink(req: any): Promise<{ key: string; link: PendingLink }> {
+    if (!req.user || req.authType !== 'token') {
+      throw new PendingLinkError(401, 'unauthorized', 'Sign in to ICAN with the account that started the connection');
+    }
+    const code = req.params.pending;
+    const link: PendingLink | null = typeof code === 'string' && HEX_64.test(code)
+      ? await this.cacheService.get(`sso:pending-link:${code}`)
+      : null;
+    const browser = readCookie(req, BROWSER_COOKIE);
+    if (!link || link.provider !== req.params.provider || !browser || link.browserHash !== sha256(browser)) {
+      throw new PendingLinkError(400, 'invalid_state', 'This connection expired or belongs to another browser. Start it again from Settings.');
+    }
+    if (String(link.userId) !== String(req.user.id)) {
+      throw new PendingLinkError(403, 'wrong_account', 'You are signed in to ICAN with a different account from the one that started this connection. Nothing was connected.');
+    }
+    return { key: `sso:pending-link:${code}`, link };
+  }
+
+  async pendingLink(req: any, res: any) {
+    try {
+      const { link } = await this.readPendingLink(req);
+      const { email, firstName, lastName } = link.profile;
+      return res.json({ provider: link.provider, email, name: [firstName, lastName].filter(Boolean).join(' ') });
+    } catch (err: any) {
+      return this.pendingLinkError(err, res);
+    }
+  }
+
+  async confirmLink(req: any, res: any) {
+    try {
+      const { key, link } = await this.readPendingLink(req);
+      if (!(await this.cacheService.take(key))) {
+        throw new PendingLinkError(400, 'invalid_state', 'This connection was already used. Start it again from Settings.');
+      }
+      await this.authProviderService.linkIdentity(String(req.user.id), link.profile);
+      return res.json({ linked: link.provider });
+    } catch (err: any) {
+      return this.pendingLinkError(err, res);
+    }
+  }
+
+  private pendingLinkError(err: any, res: any) {
+    if (err instanceof PendingLinkError) return res.status(err.status).json({ code: err.code, error: err.message });
+    if (err instanceof SsoAccountError) return res.status(409).json({ code: err.code, error: err.message });
+    const { status, message } = handleError(err);
+    return res.status(status).json({ error: message });
   }
 
   async exchange(req: any, res: any) {

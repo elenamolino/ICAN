@@ -14,11 +14,21 @@ const ERROR_MESSAGES: Record<string, string> = {
   server_error: 'There was an error processing your sign in.',
   provider_unavailable: 'This sign-in method is not available right now. Please try again later or use another one.',
   access_denied: 'You cancelled the sign in. You can try again whenever you want.',
-  email_in_use:
-    'An ICAN account already uses this email. Sign in to it with your password, UVUS or Google, then connect this sign-in method in Settings → Sign-in methods.',
+  email_in_use: 'An ICAN account already uses this email. Sign in to it with your password or another sign-in method.',
   identity_in_use: 'This account is already connected to another ICAN account.',
   provider_already_linked: 'Your ICAN account is already connected to another account of this provider.',
 };
+
+// Providers that can be connected to an existing account from Settings, by URL segment.
+const CONNECTABLE: Record<string, string> = { sphere: 'SPHERE' };
+
+function errorMessage(code: string, provider: string | null): string {
+  const message = ERROR_MESSAGES[code] ?? 'Authentication error.';
+  const name = provider ? CONNECTABLE[provider] : undefined;
+  return code === 'email_in_use' && name
+    ? `${message} Then connect ${name} in Settings → Sign-in methods to use it next time.`
+    : message;
+}
 
 export default function SsoCallbackPage() {
   const [params] = useSearchParams();
@@ -35,13 +45,15 @@ export default function SsoCallbackPage() {
 
     const ssoError = params.get('sso_error');
     if (ssoError) {
-      setError(ERROR_MESSAGES[ssoError] ?? 'Authentication error.');
+      setError(errorMessage(ssoError, params.get('provider')));
       return;
     }
 
-    const linked = params.get('linked');
-    if (linked) {
-      router.push(`${SIGN_IN_METHODS_SETTINGS}&linked=${encodeURIComponent(linked)}`);
+    // A connection started from Settings comes back pending: the account confirms it there.
+    const pending = params.get('pending');
+    if (fromSettings && pending) {
+      const query = new URLSearchParams({ provider: params.get('provider') ?? '', pending });
+      router.push(`${SIGN_IN_METHODS_SETTINGS}&${query.toString()}`);
       return;
     }
 
@@ -59,7 +71,7 @@ export default function SsoCallbackPage() {
         router.push('/');
       })
       .catch((e: Error) => setError(e.message));
-  }, [params, login, router]);
+  }, [params, login, router, fromSettings]);
 
   if (error) {
     return (

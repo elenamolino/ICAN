@@ -35,6 +35,12 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['POST'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
+  // Confirmar una conexión pendiente (el GET lo cubre la regla pública; el controlador exige sesión).
+  {
+    path: '/users/auth/sso/*/link/*',
+    methods: ['POST'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+  },
   // Login social (SSO UVUS, Google, …). Debe ir ANTES del catch-all /users/**:
   // las reglas se evalúan en orden y la primera que casa gana.
   {
