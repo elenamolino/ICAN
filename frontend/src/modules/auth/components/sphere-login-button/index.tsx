@@ -18,7 +18,7 @@ export default function SphereLoginButton() {
         href={ssoInitiateUrl('sphere')}
         className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-tp-input-border bg-tp-input-bg text-sm font-medium text-tp-ink transition-colors duration-200 hover:border-tp-primary"
       >
-        <img src="/assets/logo/SPHERE-logo-short.svg" alt="" aria-hidden="true" className="h-4 w-4 dark:invert" />
+        <img src="/assets/logo/SPHERE-logo-short.svg" alt="" aria-hidden="true" className="h-4 w-4" />
         Continue with SPHERE
       </a>
     </motion.div>

@@ -75,8 +75,8 @@ export default function SsoCallbackPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center p-6">
-        <div className="max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/50 dark:bg-red-950/50">
+      <div className="flex min-h-[60vh] w-full items-center justify-center p-6">
+        <div className="w-full max-w-[32rem] rounded-lg border border-red-200 bg-red-50 px-4 py-3 dark:border-red-900/50 dark:bg-red-950/50">
           <p className="text-sm text-red-600 dark:text-red-400">
             {error}{' '}
             <Link

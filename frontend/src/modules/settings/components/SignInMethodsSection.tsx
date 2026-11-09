@@ -28,7 +28,7 @@ const METHODS: Method[] = [
     connectAs: 'sphere',
     name: 'SPHERE',
     description: 'Sign in to ICAN with your SPHERE account.',
-    icon: <img src="/assets/logo/SPHERE-logo-short.svg" alt="" aria-hidden="true" className="h-5 w-5 dark:invert" />,
+    icon: <img src="/assets/logo/SPHERE-logo-short.svg" alt="" aria-hidden="true" className="h-5 w-5" />,
   },
   {
     provider: 'us-sso',
