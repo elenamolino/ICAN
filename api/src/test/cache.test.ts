@@ -5,6 +5,7 @@ import { shutdownApp, TestApp } from './utils/testApp';
 import testContainer from './utils/config/testContainer';
 import { BASE_PATH } from './utils/config/variables';
 import { LeanUser } from '../main/types/models/User';
+import mainContainer from '../main/config/container';
 
 dotenv.config();
 
@@ -168,6 +169,32 @@ describe('Cache API integration', () => {
 
       expect(response.status).toBe(422);
       expect(response.body.errors).toBeDefined();
+    });
+  });
+
+  describe('server-only keys (sign-in state, tickets and codes)', () => {
+    it('refuses to write an sso: key from an allowed origin or as ADMIN, and writes nothing', async () => {
+      const key = `sso:link:${'a'.repeat(64)}`;
+      const forged = { key, value: { userId: adminUser.id, provider: 'sphere' }, expirationInSeconds: 60 };
+
+      const fromLocalhost = await requestWithOrigin('post', `${BASE_PATH}/cache`, 'http://localhost').send(forged);
+      expect(fromLocalhost.status).toBe(403);
+      const asAdmin = await requestWithOrigin('post', `${BASE_PATH}/cache`, forbiddenOrigin)
+        .set('Authorization', `Bearer ${adminUser.token}`)
+        .send({ ...forged, key: ` SSO:state:${'b'.repeat(32)}` });
+      expect(asAdmin.status).toBe(403);
+
+      expect(await mainContainer.resolve('cacheService').get(key)).toBeNull();
+    });
+
+    it('refuses to read an sso: key, so sign-in codes cannot be stolen', async () => {
+      const cacheService = mainContainer.resolve('cacheService');
+      const key = `sso:code:${Date.now()}`;
+      await cacheService.set(key, { token: 'secret-session' }, 30);
+
+      const response = await requestWithOrigin('get', `${BASE_PATH}/cache?key=${key}`, 'http://localhost');
+      expect(response.status).toBe(403);
+      expect(JSON.stringify(response.body)).not.toContain('secret-session');
     });
   });
 

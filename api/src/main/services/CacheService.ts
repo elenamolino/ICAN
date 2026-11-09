@@ -2,6 +2,18 @@ import dotenv from 'dotenv';
 import { RedisClientType } from 'redis';
 dotenv.config();
 
+/**
+ * Prefixes of the entries the server keeps for itself (sign-in state, tickets and codes).
+ * The public /cache endpoint must never read or write them.
+ */
+export const SERVER_CACHE_PREFIXES = ['sso:'] as const;
+
+/** Whether a key belongs to the server's own entries. */
+export function isServerCacheKey(key: string): boolean {
+  const normalized = key.trim().toLowerCase();
+  return SERVER_CACHE_PREFIXES.some((prefix) => normalized.startsWith(prefix));
+}
+
 class CacheService {
   private redisClient: RedisClientType | null = null;
 

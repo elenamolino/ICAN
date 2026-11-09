@@ -1,5 +1,5 @@
 import container from '../config/container';
-import CacheService from '../services/CacheService';
+import CacheService, { isServerCacheKey } from '../services/CacheService';
 import { handleError } from '../utils/users/helpers';
 
 class CacheController {
@@ -10,6 +10,22 @@ class CacheController {
     this.cacheService = container.resolve('cacheService');
     this.get = this.get.bind(this);
     this.set = this.set.bind(this);
+  }
+
+  /**
+   * Sign-in state, tickets and codes live in the same Redis: refused for everyone, ADMIN
+   * included, or a forged `sso:` entry could connect an identity to someone else's account.
+   */
+  private refuseKey(key: unknown, res: any): boolean {
+    if (typeof key !== 'string' || !key) {
+      res.status(400).send({ error: 'INVALID DATA: key must be a non-empty string' });
+      return true;
+    }
+    if (isServerCacheKey(key)) {
+      res.status(403).send({ error: 'PERMISSION ERROR: This cache key is reserved for the server' });
+      return true;
+    }
+    return false;
   }
 
   async get(req: any, res: any) {
@@ -33,6 +49,7 @@ class CacheController {
       }
 
       const { key } = req.query;
+      if (this.refuseKey(key, res)) return;
       const data = await this.cacheService.get(key);
 
       res.status(200).json(data);
@@ -64,6 +81,7 @@ class CacheController {
       }
 
       const { key, value, expirationInSeconds } = req.body;
+      if (this.refuseKey(key, res)) return;
 
       if (!expirationInSeconds) {
         await this.cacheService.set(key, value);
