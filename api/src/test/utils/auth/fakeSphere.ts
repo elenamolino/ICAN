@@ -22,6 +22,8 @@ export interface TokenTampering {
   issuer?: string;
   signWithOtherKey?: boolean;
   expiresIn?: number;
+  /** Issue the token this many seconds ago (with an exp still in the future). */
+  issuedSecondsAgo?: number;
   algorithm?: 'HS256';
   omitIdToken?: boolean;
   status?: number;
@@ -170,13 +172,17 @@ export class FakeSphere {
       ? jwt.sign({ ...claims, nonce: t.nonce ?? issued.nonce }, SPHERE_CLIENT_SECRET, {
         algorithm: 'HS256', keyid: this.kid, subject: sub, issuer: SPHERE_ISSUER, audience: SPHERE_CLIENT_ID, expiresIn: 300,
       })
-      : jwt.sign({ ...claims, nonce: t.nonce ?? issued.nonce }, (t.signWithOtherKey ? this.otherKey : this.key).privateKey, {
+      : jwt.sign({
+        ...claims,
+        nonce: t.nonce ?? issued.nonce,
+        ...(t.issuedSecondsAgo ? { iat: Math.floor(Date.now() / 1000) - t.issuedSecondsAgo } : {}),
+      }, (t.signWithOtherKey ? this.otherKey : this.key).privateKey, {
         algorithm: 'RS256',
         keyid: this.kid,
         subject: sub,
         issuer: t.issuer ?? SPHERE_ISSUER,
         audience: t.audience ?? SPHERE_CLIENT_ID,
-        expiresIn: t.expiresIn ?? 300,
+        expiresIn: t.expiresIn ?? (t.issuedSecondsAgo ? t.issuedSecondsAgo + 3600 : 300),
       });
     return this.json({ access_token: 'sph_oid_x', token_type: 'Bearer', expires_in: 300, id_token: idToken });
   }

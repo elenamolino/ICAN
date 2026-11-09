@@ -1,10 +1,10 @@
 import { createHash } from 'crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SphereProvider, trustedUrl } from '../../main/services/identity/SphereProvider';
-import { FakeSphere, SPHERE_CLIENT_ID, SPHERE_ISSUER } from '../utils/auth/fakeSphere';
+import { FakeSphere, SPHERE_CLIENT_ID, SPHERE_ISSUER, SphereAccount } from '../utils/auth/fakeSphere';
 
 const transaction = { codeVerifier: 'v'.repeat(43), nonce: 'n'.repeat(32) };
-const account = {
+const account: SphereAccount = {
   sub: '64f0c0ffee0000000000abcd',
   preferred_username: 'fran.garcia',
   name: 'Fran García López',
@@ -27,7 +27,7 @@ describe('SphereProvider', () => {
     provider = new SphereProvider();
   });
 
-  const signIn = async (who = account, tx = transaction) => {
+  const signIn = async (who: SphereAccount = account, tx = transaction) => {
     const url = await provider.buildLoginUrl('s'.repeat(32), tx);
     const callback = new URL(sphere.approve(url, who), 'http://localhost');
     return provider.handleCallback(Object.fromEntries(callback.searchParams), tx);
@@ -130,6 +130,13 @@ describe('SphereProvider', () => {
         sphere.tampering = tampering;
         expect(await signIn(), JSON.stringify(tampering)).toBeNull();
       }
+    });
+
+    it('refuses an ID token issued more than five minutes ago, even if it has not expired', async () => {
+      sphere.tampering = { issuedSecondsAgo: 600 };
+      expect(await signIn()).toBeNull();
+      sphere.tampering = { issuedSecondsAgo: 60 };
+      expect(await signIn()).not.toBeNull();
     });
 
     it('refuses a response without ID token, a token without email, or a code SPHERE rejects', async () => {

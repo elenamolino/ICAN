@@ -6,6 +6,7 @@ import { createTestUser } from './utils/users/userTestUtils';
 import { BASE_PATH } from './utils/config/variables';
 import { FakeSphere, SphereAccount } from './utils/auth/fakeSphere';
 import UserMongoose from '../main/repositories/mongoose/models/UserMongoose';
+import OrganizationMongoose from '../main/repositories/mongoose/models/OrganizationMongoose';
 import { randomBytes } from 'crypto';
 
 const SSO = `${BASE_PATH}/users/auth/sso`;
@@ -78,6 +79,25 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
     const response = await callback(sphere.approve(authorizationUrl, account), cookie);
     expect(response.status).toBe(302);
     return redirectOf(response);
+  };
+
+  /**
+   * Settings -> Connect SPHERE in the browser of `token`'s owner: ticket, SPHERE approval
+   * and the pending connection the callback hands back. Confirming is a separate step.
+   */
+  const startConnection = async (token: string, account: SphereAccount, cookie?: string) => {
+    const link = await request(app).post(`${SSO}/sphere/link`).set('Authorization', `Bearer ${token}`);
+    expect(link.status).toBe(200);
+    expect(link.body.ticket).toMatch(/^[a-f0-9]{64}$/);
+    const started = await start(`?link=${link.body.ticket}`, cookie);
+    const back = redirectOf(await callback(sphere.approve(started.authorizationUrl, account), started.cookie));
+    return { params: back.params, cookie: started.cookie! };
+  };
+  const confirmConnection = (pending: string, token?: string, cookie?: string, method: 'get' | 'post' = 'post') => {
+    const req = request(app)[method](`${SSO}/sphere/link/${pending}`);
+    if (token) req.set('Authorization', `Bearer ${token}`);
+    if (cookie) req.set('Cookie', cookie);
+    return req;
   };
 
   const exchange = async (code: string) => {
@@ -157,6 +177,21 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       expect(await UserMongoose.countDocuments({ 'identities.providerId': account.sub })).toBe(1);
     });
 
+    it('lowercases the username and skips names an organization already uses', async () => {
+      const taken = `Acme${Date.now()}`;
+      const org = await OrganizationMongoose.create({ name: taken.toLowerCase(), displayName: 'Acme', isPersonal: false, ancestors: [] });
+      try {
+        const account = uniqueAccount({ preferred_username: taken });
+        const { params } = await signIn(account);
+        expect(params.code).toBeDefined();
+        const user = await me(await exchange(params.code));
+        usersToDelete.add(user.username);
+        expect(user.username).toBe(`${taken.toLowerCase()}-2`);
+      } finally {
+        await OrganizationMongoose.deleteOne({ _id: org._id });
+      }
+    });
+
     it('picks a free username when the SPHERE one is taken in ICAN', async () => {
       const { user: local } = await createTestUser('USER');
       const account = uniqueAccount({ preferred_username: local.username });
@@ -173,7 +208,7 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       const account = uniqueAccount({ email: local.email, email_verified: true });
 
       const { params } = await signIn(account);
-      expect(params).toEqual({ sso_error: 'email_in_use' });
+      expect(params).toEqual({ sso_error: 'email_in_use', provider: 'sphere' });
       const stored = await UserMongoose.findById(local.id).lean();
       expect(stored?.identities ?? []).toEqual([]);
       expect(await UserMongoose.countDocuments({ 'identities.providerId': account.sub })).toBe(0);
@@ -183,13 +218,18 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       const { user: local } = await createTestUser('USER');
       const account = uniqueAccount({ email: local.email });
 
-      const link = await request(app).post(`${SSO}/sphere/link`).set('Authorization', `Bearer ${local.token}`);
-      expect(link.status).toBe(200);
-      expect(link.body.ticket).toMatch(/^[a-f0-9]{64}$/);
+      const { params, cookie } = await startConnection(local.token!, account);
+      expect(params).toEqual({ mode: 'link', provider: 'sphere', pending: expect.stringMatching(/^[a-f0-9]{64}$/) });
+      // Nothing is connected until the account owner confirms.
+      expect((await UserMongoose.findById(local.id).lean())?.identities ?? []).toEqual([]);
 
-      const { authorizationUrl, cookie } = await start(`?link=${link.body.ticket}`);
-      const linked = await callback(sphere.approve(authorizationUrl, account), cookie);
-      expect(redirectOf(linked).params).toEqual({ linked: 'sphere' });
+      const preview = await confirmConnection(params.pending, local.token, cookie, 'get');
+      expect(preview.status).toBe(200);
+      expect(preview.body).toEqual({ provider: 'sphere', email: account.email, name: 'Grace Hopper' });
+      const confirmed = await confirmConnection(params.pending, local.token, cookie);
+      expect(confirmed.status).toBe(200);
+      expect(confirmed.body).toEqual({ linked: 'sphere' });
+      expect((await confirmConnection(params.pending, local.token, cookie)).status).toBe(400);
 
       const stored = await UserMongoose.findById(local.id).lean();
       expect(stored?.identities).toEqual([expect.objectContaining({ provider: 'sphere', providerId: account.sub })]);
@@ -204,20 +244,20 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       usersToDelete.add(owner.username);
       const { user: other } = await createTestUser('USER');
 
-      const link = await request(app).post(`${SSO}/sphere/link`).set('Authorization', `Bearer ${other.token}`);
-      const { authorizationUrl, cookie } = await start(`?link=${link.body.ticket}`);
-      const response = await callback(sphere.approve(authorizationUrl, account), cookie);
-      expect(redirectOf(response).params).toEqual({ sso_error: 'identity_in_use', mode: 'link' });
+      const { params, cookie } = await startConnection(other.token!, account);
+      const response = await confirmConnection(params.pending, other.token, cookie);
+      expect(response.status).toBe(409);
+      expect(response.body.code).toBe('identity_in_use');
       expect((await UserMongoose.findById(other.id).lean())?.identities ?? []).toEqual([]);
     });
 
     it('refuses a second SPHERE identity on an account that already has one', async () => {
       const { user: local } = await createTestUser('USER');
-      for (const [index, expected] of [[0, { linked: 'sphere' }], [1, { sso_error: 'provider_already_linked', mode: 'link' }]] as const) {
-        const link = await request(app).post(`${SSO}/sphere/link`).set('Authorization', `Bearer ${local.token}`);
-        const { authorizationUrl, cookie } = await start(`?link=${link.body.ticket}`);
-        const response = await callback(sphere.approve(authorizationUrl, uniqueAccount({ sub: `second-${index}-${Date.now()}` })), cookie);
-        expect(redirectOf(response).params).toEqual(expected);
+      for (const [index, status] of [[0, 200], [1, 409]] as const) {
+        const { params, cookie } = await startConnection(local.token!, uniqueAccount({ sub: `second-${index}-${Date.now()}` }));
+        const response = await confirmConnection(params.pending, local.token, cookie);
+        expect(response.status).toBe(status);
+        if (status === 409) expect(response.body.code).toBe('provider_already_linked');
       }
       expect((await UserMongoose.findById(local.id).lean())?.identities).toHaveLength(1);
     });
@@ -243,6 +283,33 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       const otherProvider = await request(app).post(`${SSO}/sphere/link`).set('Authorization', `Bearer ${local.token}`);
       const google = await request(app).get(`${SSO}/google/initiate?link=${otherProvider.body.ticket}`);
       expect(redirectOf(google).params).toEqual({ sso_error: 'invalid_state', mode: 'link' });
+    });
+  });
+
+  describe('connection CSRF', () => {
+    it('a connection link sent to someone else never connects their SPHERE to the sender', async () => {
+      const { user: attacker } = await createTestUser('USER');
+      const { user: victim } = await createTestUser('USER');
+      const victimSphere = uniqueAccount();
+
+      // The attacker asks for a ticket and gets the victim's browser to use it; the victim
+      // approves on SPHERE, so the callback runs in the victim's browser.
+      const { params, cookie: victimBrowser } = await startConnection(attacker.token!, victimSphere);
+      expect(params.pending).toBeDefined();
+
+      // The pending connection is in the victim's browser, but it is not the victim's to confirm,
+      const asVictim = await confirmConnection(params.pending, victim.token, victimBrowser);
+      expect(asVictim.status).toBe(403);
+      expect(asVictim.body.code).toBe('wrong_account');
+      // and the attacker cannot confirm it from another browser.
+      const fromAttackerBrowser = await confirmConnection(params.pending, attacker.token, `ican_sso_browser=${'1'.repeat(64)}`);
+      expect(fromAttackerBrowser.status).toBe(400);
+      expect((await confirmConnection(params.pending, undefined, victimBrowser)).status).toBe(401);
+
+      for (const id of [attacker.id, victim.id]) {
+        expect((await UserMongoose.findById(id).lean())?.identities ?? []).toEqual([]);
+      }
+      expect(await UserMongoose.countDocuments({ 'identities.providerId': victimSphere.sub })).toBe(0);
     });
   });
 
