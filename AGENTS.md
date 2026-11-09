@@ -53,8 +53,15 @@ cd api && npx vitest --run --test-name-pattern "<pattern>"
 - /api/src/test/organization.test.ts – tests related to organization management and organization-user interactions
 - /api/src/test/collection.test.ts — tests related to collection management and collection-pricing interactions
 - /api/src/test/pricing.test.ts — tests related to pricing management and pricing-analytics
+- /api/src/test/sso.test.ts — social login flows (state bound to the browser cookie, sign in with SPHERE, connecting a provider from Settings), against the fake SPHERE in `/api/src/test/utils/auth/fakeSphere.ts`
 
 In addition, test utilities are organized in `/api/src/test/utils/` with subfolders for auth, users, organizations, collections and pricings.
+
+## Social login (UVUS, Google, SPHERE)
+
+- Each provider implements `IdentityProvider` in `api/src/main/services/identity/` and is registered in `providerRegistry.ts`; `SSOController` and `AuthProviderService` are common to all. `GET /users/auth/sso/providers` lists the configured ones, and the login page only shows those.
+- OAuth2/OIDC providers (`usesState`) get a single-use state bound to the browser by the `ican_sso_browser` cookie, plus a PKCE verifier and nonce kept in Redis. Only they can be connected to an existing account from Settings → Sign-in methods (`POST /users/auth/sso/:provider/link`).
+- Accounts are found by `identities.provider` + `providerId`. An email links to an existing account only when the provider verifies it (Google); SPHERE and UVUS never do. Sign in with SPHERE is described in `api/docs/sso-sphere.md` (`SPHERE_OIDC_*` variables).
 
 ## Lint Config
 

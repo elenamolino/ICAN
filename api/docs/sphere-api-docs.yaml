@@ -197,6 +197,113 @@ paths:
               example:
                 error: Invalid credentials
 
+  /users/auth/sso/providers:
+    get:
+      summary: Sign-in providers this deployment offers
+      description: |
+        URL segments of the configured external sign-in providers (`us`, `google`,
+        `sphere`). SPHERE only appears when its four `SPHERE_OIDC_*` settings are set.
+
+        **Authentication**: Public
+      tags:
+        - Authentication
+      security: []
+      responses:
+        '200':
+          description: Configured providers, in sign-in page order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items: {type: string, example: sphere}
+  /users/auth/sso/{provider}/initiate:
+    get:
+      summary: Start a sign-in with an external provider
+      description: |
+        Redirects the browser to the provider. OAuth2/OIDC providers (Google, SPHERE) get a
+        single-use state bound to this browser by the HttpOnly `ican_sso_browser` cookie;
+        SPHERE also gets an S256 PKCE challenge and a nonce kept on the server. With
+        `link`, the sign-in connects the provider to the account that asked for the ticket.
+
+        **Authentication**: Public
+      tags:
+        - Authentication
+      security: []
+      parameters:
+        - {name: provider, in: path, required: true, schema: {type: string, enum: [us, google, sphere]}}
+        - {name: link, in: query, required: false, description: 'Single-use ticket from POST /users/auth/sso/{provider}/link', schema: {type: string}}
+      responses:
+        '302': {description: 'Redirect to the provider, or to /sso/callback?sso_error=provider_unavailable'}
+        '404': {description: Unknown provider}
+  /users/auth/sso/{provider}/link:
+    post:
+      summary: Start connecting a provider to the signed-in account
+      description: |
+        Answers a ticket valid once for 60 seconds. The browser then navigates to
+        `/users/auth/sso/{provider}/initiate?link=<ticket>`; when the provider sends it back,
+        the callback adds the identity to this account and redirects to
+        `/sso/callback?linked=<provider>`, or with `sso_error` and `mode=link`
+        (`identity_in_use`, `provider_already_linked`, `access_denied`...).
+
+        **Authentication**: User JWT (API keys are refused)
+      tags:
+        - Authentication
+      parameters:
+        - {name: provider, in: path, required: true, schema: {type: string, enum: [google, sphere]}}
+      responses:
+        '200':
+          description: Single-use ticket
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticket: {type: string, pattern: '^[a-f0-9]{64}$'}
+        '400': {description: The provider cannot be connected from Settings (UVUS)}
+        '401': {description: No web session}
+        '404': {description: Unknown provider}
+        '503': {description: The provider is not configured}
+  /users/auth/sso/{provider}/callback:
+    get:
+      summary: Where the provider sends the browser back
+      description: |
+        Validates the state against the browser cookie, the provider's answer and, for
+        SPHERE, the ID token. Redirects to the frontend `/sso/callback` with a 30-second
+        single-use `code` for /exchange, `linked=<provider>`, or `sso_error`
+        (`invalid_state`, `invalid_response`, `access_denied`, `email_in_use`,
+        `identity_in_use`, `provider_already_linked`, `server_error`).
+
+        **Authentication**: Public
+      tags:
+        - Authentication
+      security: []
+      parameters:
+        - {name: provider, in: path, required: true, schema: {type: string, enum: [us, google, sphere]}}
+      responses:
+        '302': {description: Redirect to the frontend /sso/callback page}
+  /users/auth/sso/{provider}/exchange:
+    get:
+      summary: Exchange the single-use sign-in code for a session token
+      tags:
+        - Authentication
+      security: []
+      parameters:
+        - {name: provider, in: path, required: true, schema: {type: string}}
+        - {name: code, in: query, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Session JWT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: {type: string}
+        '400': {description: Missing code}
+        '401': {description: Invalid, expired or already used code}
   /users/register:
     post:
       summary: Register a new user
