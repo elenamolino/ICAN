@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiUser, FiGlobe, FiLink2, FiBell, FiCreditCard, FiAlertTriangle, FiChevronDown } from 'react-icons/fi';
+import { useSearchParams } from 'react-router-dom';
+import { FiUser, FiKey, FiGlobe, FiLink2, FiBell, FiCreditCard, FiAlertTriangle, FiChevronDown } from 'react-icons/fi';
 import { type UserSettings } from '../api/userSettingsApi';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AccountSection from '../components/AccountSection';
+import SignInMethodsSection from '../components/SignInMethodsSection';
 import PublicProfileSection from '../components/PublicProfileSection';
 import SocialLinksSection from '../components/SocialLinksSection';
 import NotificationsSection from '../components/NotificationsSection';
@@ -15,6 +17,7 @@ import { fadeInUp, transitionDefault } from '../../core/utils/motion-variants';
 
 const SECTIONS = [
   { id: 'account', label: 'Account', icon: FiUser },
+  { id: 'signin', label: 'Sign-in methods', icon: FiKey },
   { id: 'profile', label: 'Public Profile', icon: FiGlobe },
   { id: 'social', label: 'Social Links', icon: FiLink2 },
   { id: 'notifications', label: 'Notifications', icon: FiBell },
@@ -40,7 +43,11 @@ function buildUserSettings(authUser: any): UserSettings | null {
 
 export default function SettingsPage() {
   const { authUser, updateUser, updateUserSettings } = useAuth();
-  const [activeSection, setActiveSection] = useState<SectionId>('account');
+  const [searchParams] = useSearchParams();
+  // ?section=<id> opens a section directly (e.g. back from connecting SPHERE).
+  const [activeSection, setActiveSection] = useState<SectionId>(
+    () => SECTIONS.find((s) => s.id === searchParams.get('section'))?.id ?? 'account',
+  );
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingSection, setPendingSection] = useState<SectionId | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -233,6 +240,7 @@ export default function SettingsPage() {
                 {activeSection === 'account' && (
                   <AccountSection settings={settings} onUpdate={updateSettings} onDirtyChange={accountDirtyChange} />
                 )}
+                {activeSection === 'signin' && <SignInMethodsSection />}
                 {activeSection === 'profile' && (
                   <PublicProfileSection settings={settings} onUpdate={updateSettings} onDirtyChange={profileDirtyChange} />
                 )}
