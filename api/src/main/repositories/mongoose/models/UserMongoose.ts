@@ -25,7 +25,7 @@ const ApiKeySchema = new Schema(
 
 const IdentitySchema = new Schema(
   {
-    provider: { type: String, enum: ['us-sso', 'google'], required: true },
+    provider: { type: String, enum: ['us-sso', 'google', 'sphere'], required: true },
     providerId: { type: String, required: true },
     email: { type: String },
     linkedAt: { type: Date, default: Date.now },
@@ -181,7 +181,7 @@ export interface UserDocument extends Document {
   lastName: string;
   email: string;
   identities: {
-    provider: 'us-sso' | 'google';
+    provider: 'us-sso' | 'google' | 'sphere';
     providerId: string;
     email?: string;
     linkedAt?: Date;

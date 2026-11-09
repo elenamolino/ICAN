@@ -29,6 +29,17 @@ class CacheService {
     await this.redisClient.del(key);
   }
 
+  /** Reads and deletes a key in one step, so a single-use value can only be taken once. */
+  async take(key: string) {
+    if (!this.redisClient) {
+      throw new Error('ERROR: Redis client not initialized');
+    }
+
+    const value = await this.redisClient.getDel(key);
+
+    return value ? JSON.parse(value) : null;
+  }
+
   async set(key: string, value: any, expirationInSeconds?: number) {
     if (!this.redisClient) {
       throw new Error('ERROR: Redis client not initialized');

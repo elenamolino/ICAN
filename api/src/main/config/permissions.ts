@@ -29,6 +29,12 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['POST'],
     isPublic: true,
   },
+  // Conectar un proveedor (SPHERE…) a la cuenta con sesión iniciada, desde Ajustes.
+  {
+    path: '/users/auth/sso/*/link',
+    methods: ['POST'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+  },
   // Login social (SSO UVUS, Google, …). Debe ir ANTES del catch-all /users/**:
   // las reglas se evalúan en orden y la primera que casa gana.
   {
