@@ -201,8 +201,9 @@ paths:
     get:
       summary: Sign-in providers this deployment offers
       description: |
-        URL segments of the configured external sign-in providers (`us`, `google`,
-        `sphere`). SPHERE only appears when its four `SPHERE_OIDC_*` settings are set.
+        URL segments of the external sign-in providers this deployment offers. `us` and
+        `google` are always listed; `sphere` only when its four `SPHERE_OIDC_*` settings
+        are set.
 
         **Authentication**: Public
       tags:
@@ -244,9 +245,9 @@ paths:
       description: |
         Answers a ticket valid once for 60 seconds. The browser then navigates to
         `/users/auth/sso/{provider}/initiate?link=<ticket>`; when the provider sends it back,
-        the callback adds the identity to this account and redirects to
-        `/sso/callback?linked=<provider>`, or with `sso_error` and `mode=link`
-        (`identity_in_use`, `provider_already_linked`, `access_denied`...).
+        the callback connects nothing yet: it redirects to
+        `/sso/callback?mode=link&provider=<provider>&pending=<code>`, and the account
+        that asked for the ticket confirms it with `/users/auth/sso/{provider}/link/{pending}`.
 
         **Authentication**: User JWT (API keys are refused)
       tags:
@@ -266,15 +267,63 @@ paths:
         '401': {description: No web session}
         '404': {description: Unknown provider}
         '503': {description: The provider is not configured}
+  /users/auth/sso/{provider}/link/{pending}:
+    parameters:
+      - {name: provider, in: path, required: true, schema: {type: string, enum: [google, sphere]}}
+      - {name: pending, in: path, required: true, schema: {type: string, pattern: '^[a-f0-9]{64}$'}}
+    get:
+      summary: Show which external account a pending connection would connect
+      description: |
+        Only for the account that asked for the ticket, with its web session, in the
+        browser that went through the provider (`ican_sso_browser` cookie).
+
+        **Authentication**: User JWT
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: The external account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider: {type: string}
+                  email: {type: string}
+                  name: {type: string}
+        '400': {description: 'Expired, unknown, or from another browser (code invalid_state)'}
+        '401': {description: No web session}
+        '403': {description: 'Another ICAN account started this connection (code wrong_account)'}
+    post:
+      summary: Confirm a pending connection
+      description: |
+        Same checks as GET; the pending connection can be confirmed once.
+
+        **Authentication**: User JWT
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Connected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  linked: {type: string, example: sphere}
+        '400': {description: 'Expired, already used, or from another browser (code invalid_state)'}
+        '401': {description: No web session}
+        '403': {description: 'Another ICAN account started this connection (code wrong_account)'}
+        '409': {description: 'identity_in_use or provider_already_linked'}
   /users/auth/sso/{provider}/callback:
     get:
       summary: Where the provider sends the browser back
       description: |
         Validates the state against the browser cookie, the provider's answer and, for
         SPHERE, the ID token. Redirects to the frontend `/sso/callback` with a 30-second
-        single-use `code` for /exchange, `linked=<provider>`, or `sso_error`
-        (`invalid_state`, `invalid_response`, `access_denied`, `email_in_use`,
-        `identity_in_use`, `provider_already_linked`, `server_error`).
+        single-use `code` for /exchange, a pending connection (`mode=link`, `provider`,
+        `pending`), or `sso_error` (`invalid_state`, `invalid_response`, `access_denied`,
+        `email_in_use` with `provider`, `server_error`).
 
         **Authentication**: Public
       tags:

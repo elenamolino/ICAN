@@ -36,12 +36,21 @@ proveedor OpenID Connect y ICAN es un cliente registrado en él (`ican`).
 - **Conectar SPHERE a una cuenta existente:** Settings → **Sign-in methods** → *Connect
   SPHERE*. El frontend pide `POST /users/auth/sso/sphere/link` (con la sesión web; las API
   keys no valen), que devuelve un ticket de un solo uso (60 s); el navegador va a
-  `/initiate?link=<ticket>` y, a la vuelta, la identidad se añade a esa cuenta. Una
-  identidad de SPHERE solo puede estar en una cuenta (`identity_in_use`) y una cuenta solo
-  tiene una de SPHERE (`provider_already_linked`).
-- El primer usuario se toma de `preferred_username` (solo letras, dígitos, `_` y `-`; hasta
-  30). Si está ocupado se añade un sufijo, como con UVUS. Nombre y apellidos salen de
+  `/initiate?link=<ticket>` y pasa por SPHERE. A la vuelta **no se conecta nada todavía**:
+  el callback guarda la conexión pendiente (5 min, ligada a la cookie del navegador) y
+  Settings muestra qué cuenta de SPHERE es y pide confirmarla. Solo la cuenta que pidió el
+  ticket, con su sesión y en ese navegador, puede confirmarla
+  (`GET`/`POST /users/auth/sso/sphere/link/<pendiente>`); otra cuenta recibe 403
+  (`wrong_account`). Así, un enlace de conexión enviado a otra persona no conecta su
+  SPHERE a la cuenta de quien lo envió. Una identidad de SPHERE solo puede estar en una
+  cuenta (`identity_in_use`) y una cuenta solo tiene una de SPHERE
+  (`provider_already_linked`).
+- El primer usuario se toma de `preferred_username` en minúsculas (solo letras, dígitos,
+  `_` y `-`; hasta 30). Si ya lo usa un usuario o una organización (la organización
+  personal se llama como el usuario), se añade `-2`, `-3`... Nombre y apellidos salen de
   `given_name`/`family_name` (o de `name`).
+- Las claves `sso:*` de Redis (state, tickets, conexiones pendientes y códigos) no se
+  pueden leer ni escribir por el endpoint público `/cache`, ni siquiera como ADMIN.
 - No hay desvincular, ni cierre de sesión compartido, ni sincronización de organizaciones.
 
 ## Configuración
@@ -73,11 +82,20 @@ OIDC_SIGNING_PRIVATE_KEY=<ya configurada si SPACE usa SPHERE>
 
 ## En local
 
-1. Arranca SPHERE (`http://localhost:5173`, API en 8080 por defecto) con
-   `OIDC_SIGNING_PRIVATE_KEY` y `OIDC_ICAN_*`, y ICAN en otros puertos.
-2. En `api/.env` de ICAN pon `SPHERE_OIDC_ISSUER` igual al `issuer` de SPHERE, el mismo
-   client ID y secreto, y `SPHERE_OIDC_REDIRECT_URI` apuntando a la API de ICAN
-   (`http://localhost:<puerto>/api/v1/users/auth/sso/sphere/callback`).
+Los dos proyectos usan por defecto los mismos puertos (Vite 5173, API 8080), así que hay
+que mover uno. Por ejemplo, el que se usó para probar esta función:
+
+| | Front (Vite) | API |
+|---|---|---|
+| SPHERE | `5186` (`VITE_API_PROXY_TARGET=http://localhost:8186`) | `8186`, con `FRONTEND_URL` y `OAUTH_ISSUER_URL` = `http://localhost:5186` |
+| ICAN | `5187` (`VITE_API_PROXY_TARGET=http://localhost:8187`) | `8187`, con `FRONTEND_URL=http://localhost:5187` |
+
+1. SPHERE: `OIDC_SIGNING_PRIVATE_KEY` (RSA de 2048 bits o más) y
+   `OIDC_ICAN_CLIENT_ID`/`OIDC_ICAN_CLIENT_SECRET`/`OIDC_ICAN_REDIRECT_URI=http://localhost:5187/api/v1/users/auth/sso/sphere/callback`.
+2. ICAN (`api/.env`): `SPHERE_OIDC_ISSUER=http://localhost:5186`, el mismo client ID y
+   secreto, y `SPHERE_OIDC_REDIRECT_URI` igual que en SPHERE.
+3. Usa siempre `localhost` (no mezcles con `127.0.0.1`): la cookie del navegador va por
+   nombre de host.
 
 ## Tests
 
@@ -85,4 +103,6 @@ OIDC_SIGNING_PRIVATE_KEY=<ya configurada si SPACE usa SPHERE>
   (firma, emisor, audiencia, algoritmo, caducidad, nonce), nombres y rotación de clave.
 - `api/src/test/sso.test.ts`: flujo completo contra un SPHERE simulado
   (`utils/auth/fakeSphere.ts`, con PKCE y códigos de un solo uso como SPHERE): alta,
-  vuelta, colisiones, cookie del navegador, conexión desde Settings y errores.
+  vuelta, colisiones de email, usuario y organización, cookie del navegador, conexión
+  desde Settings con confirmación, CSRF de la conexión y errores.
+- `api/src/test/cache.test.ts`: el endpoint `/cache` rechaza las claves `sso:*`.
