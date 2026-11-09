@@ -68,7 +68,7 @@ ICAN is a platform for browsing SaaS Terms-of-Service contracts and their analys
 
 Before running `docker compose up -d` in `docker/production/`, the deploy machine needs these gitignored files created (none are committed):
 
-- `docker/production/.env` — copy from `.env.example` and fill in.
+- `docker/production/.env` — copy from `.env.example` and fill in. It holds `SPHERE_OIDC_CLIENT_SECRET`, the secret of the `ican` client registered in SPHERE (see `api/docs/sso-sphere.md`); without it the "Continue with SPHERE" button stays hidden.
 - `docker/production/.env.tos-to-odrl` — copy from `.env.tos-to-odrl.example` and fill in the model API keys.
 - `nginx/production/ssl/fullchain.pem` and `privkey.pem` — a TLS cert for the deploy domain.
 

@@ -93,6 +93,20 @@ class UserRepository extends RepositoryBase {
     }
   }
 
+  /**
+   * Conditional update of a single user. Returns false when no user matches the filter
+   * or a unique index refuses the write; other database failures are thrown.
+   */
+  async updateOne(filter: any, data: any): Promise<boolean> {
+    try {
+      const result = await UserMongoose.updateOne(filter, data).exec();
+      return result.modifiedCount === 1;
+    } catch (err: any) {
+      if (err?.code === 11000) return false;
+      throw err;
+    }
+  }
+
   async findByToken(token: string): Promise<LeanUser | null> {
     return await UserMongoose.findOne({ token });
   }

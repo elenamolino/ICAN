@@ -64,6 +64,31 @@ export function exchangeSsoCode(code: string): Promise<{ token: string }> {
     });
 }
 
+/** URL that starts a sign-in with a provider, or connects it to the account when `linkTicket` is given. */
+export function ssoInitiateUrl(provider: string, linkTicket?: string): string {
+    const url = `${USERS_BASE_PATH}/auth/sso/${provider}/initiate`;
+    return linkTicket ? `${url}?link=${encodeURIComponent(linkTicket)}` : url;
+}
+
+let ssoProvidersPromise: Promise<string[]> | null = null;
+
+/** Providers this deployment configured (URL segments such as `us`, `google`, `sphere`), fetched once. */
+export function getSsoProviders(): Promise<string[]> {
+    ssoProvidersPromise ??= fetch(`${USERS_BASE_PATH}/auth/sso/providers`)
+        .then(async (response) => {
+            const parsedResponse = await response.json().catch(() => ({}));
+            if (!response.ok || !Array.isArray(parsedResponse.providers)) {
+                throw new Error("Could not load the sign-in methods");
+            }
+            return parsedResponse.providers as string[];
+        })
+        .catch((error) => {
+            ssoProvidersPromise = null; // try again next time
+            throw error;
+        });
+    return ssoProvidersPromise;
+}
+
 export function getCurrentUser(token: string): Promise<any> {
     return fetch(`${USERS_BASE_PATH}/me`, {
         method: "GET",

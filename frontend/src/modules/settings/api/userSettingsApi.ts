@@ -31,8 +31,58 @@ export interface UserSettings {
   };
 }
 
+export interface UserIdentity {
+  provider: 'us-sso' | 'google' | 'sphere';
+  providerId: string;
+  email?: string;
+  linkedAt?: string;
+}
+
+export interface PendingConnection {
+  provider: string;
+  email?: string;
+  name?: string;
+}
+
+/** `code` is the server's reason (identity_in_use, wrong_account, invalid_state...). */
+export class ConnectionError extends Error {
+  constructor(readonly code: string | undefined, message: string) {
+    super(message);
+  }
+}
+
 export function useUserSettingsApi() {
   const { fetchWithInterceptor } = useAuth();
+
+  /** External sign-in identities connected to the account (UVUS, Google, SPHERE…). */
+  async function getIdentities(): Promise<UserIdentity[]> {
+    const res = await fetchWithInterceptor(`${BASE_PATH}/users/me`);
+    if (!res.ok) throw new Error('Failed to load your sign-in methods');
+    const user = await res.json();
+    return Array.isArray(user.identities) ? user.identities : [];
+  }
+
+  /** Single-use ticket that lets this browser connect a provider to the account. */
+  async function startIdentityLink(provider: string): Promise<string> {
+    const res = await fetchWithInterceptor(`${BASE_PATH}/users/auth/sso/${provider}/link`, { method: 'POST' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || typeof body.ticket !== 'string') throw new Error(body.error || 'Could not start the connection');
+    return body.ticket;
+  }
+
+  /** A connection the provider approved and the account has to confirm (who it is). */
+  async function getPendingConnection(provider: string, pending: string): Promise<PendingConnection> {
+    const res = await fetchWithInterceptor(`${BASE_PATH}/users/auth/sso/${provider}/link/${pending}`);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ConnectionError(body.code, body.error || 'Could not read the connection');
+    return body;
+  }
+
+  async function confirmConnection(provider: string, pending: string): Promise<void> {
+    const res = await fetchWithInterceptor(`${BASE_PATH}/users/auth/sso/${provider}/link/${pending}`, { method: 'POST' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ConnectionError(body.code, body.error || 'Could not connect the account');
+  }
 
   async function getSettings(): Promise<UserSettings> {
     const res = await fetchWithInterceptor(`${BASE_PATH}/users/me/settings`);
@@ -148,6 +198,10 @@ export function useUserSettingsApi() {
   }
 
   return {
+    getIdentities,
+    startIdentityLink,
+    getPendingConnection,
+    confirmConnection,
     getSettings,
     updateAccount,
     updateProfile,

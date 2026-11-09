@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useRouter } from '../../../core/hooks/useRouter';
 import { fadeUp } from '../auth-layout';
 import GoogleLoginButton from '../google-login-button';
+import SphereLoginButton from '../sphere-login-button';
 import UvusLoginButton from '../uvus-login-button';
 
 export type RegisterFormProps = {
@@ -81,6 +82,7 @@ const RegisterForm: React.FC = () => {
       {/* SSO first, local registration below the divider */}
       <UvusLoginButton />
       <GoogleLoginButton />
+      <SphereLoginButton />
 
       <motion.div variants={fadeUp} className="my-5 flex items-center gap-3">
         <div className="h-px flex-1 bg-tp-input-border" />
