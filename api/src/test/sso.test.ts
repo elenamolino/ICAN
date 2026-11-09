@@ -90,8 +90,9 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
     expect(link.status).toBe(200);
     expect(link.body.ticket).toMatch(/^[a-f0-9]{64}$/);
     const started = await start(`?link=${link.body.ticket}`, cookie);
-    const back = redirectOf(await callback(sphere.approve(started.authorizationUrl, account), started.cookie));
-    return { params: back.params, cookie: started.cookie! };
+    const response = await callback(sphere.approve(started.authorizationUrl, account), started.cookie);
+    const setCookie = ((response.headers['set-cookie'] as unknown as string[] | undefined) ?? []).join(';');
+    return { params: redirectOf(response).params, cookie: started.cookie!, setCookie };
   };
   const confirmConnection = (pending: string, token?: string, cookie?: string, method: 'get' | 'post' = 'post') => {
     const req = request(app)[method](`${SSO}/sphere/link/${pending}`);
@@ -160,6 +161,13 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       });
       expect(user.identities).toEqual([expect.objectContaining({ provider: 'sphere', providerId: account.sub })]);
 
+      // Other users never see the SPHERE email or account id of this one.
+      const { user: viewer } = await createTestUser('USER');
+      const seen = await request(app).get(`${BASE_PATH}/users/${user.username}`).set('Authorization', `Bearer ${viewer.token}`);
+      expect(seen.status).toBe(200);
+      expect(seen.body.identities).toBeUndefined();
+      expect(JSON.stringify(seen.body)).not.toContain(account.email!);
+
       const orgs = await request(app).get(`${BASE_PATH}/users/me/orgs`).set('Authorization', `Bearer ${await exchange((await signIn(account)).params.code)}`);
       expect(orgs.status).toBe(200);
       expect(JSON.stringify(orgs.body)).toContain(account.preferred_username!.toLowerCase());
@@ -218,8 +226,10 @@ describe('Sign in with SPHERE (SSO)', { timeout: 20000 }, () => {
       const { user: local } = await createTestUser('USER');
       const account = uniqueAccount({ email: local.email });
 
-      const { params, cookie } = await startConnection(local.token!, account);
+      const { params, cookie, setCookie } = await startConnection(local.token!, account);
       expect(params).toEqual({ mode: 'link', provider: 'sphere', pending: expect.stringMatching(/^[a-f0-9]{64}$/) });
+      // The browser cookie is renewed for as long as the pending connection lasts.
+      expect(setCookie).toContain(`${cookie}; Max-Age=300`);
       // Nothing is connected until the account owner confirms.
       expect((await UserMongoose.findById(local.id).lean())?.identities ?? []).toEqual([]);
 

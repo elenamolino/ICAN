@@ -6,6 +6,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { ssoInitiateUrl } from '../../auth/api/usersApi';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useSsoProvider } from '../../auth/hooks/useSsoProviders';
+import { CONNECTABLE_PROVIDERS } from '../../auth/utils/ssoProviders';
 import {
   ConnectionError,
   type PendingConnection,
@@ -15,29 +16,34 @@ import {
 
 interface Method {
   provider: UserIdentity['provider'];
-  /** URL segment of /users/auth/sso/:provider; only methods with it can be connected here. */
-  connectAs?: string;
+  /** URL segment of /users/auth/sso/:provider. */
+  segment: string;
   name: string;
   description: string;
   icon: React.ReactNode;
 }
 
+/** Methods of this page that the account can connect here (see CONNECTABLE_PROVIDERS). */
+const connectable = (method: Method) => Object.prototype.hasOwnProperty.call(CONNECTABLE_PROVIDERS, method.segment);
+
 const METHODS: Method[] = [
   {
     provider: 'sphere',
-    connectAs: 'sphere',
+    segment: 'sphere',
     name: 'SPHERE',
     description: 'Sign in to ICAN with your SPHERE account.',
     icon: <img src="/assets/logo/SPHERE-logo-short.svg" alt="" aria-hidden="true" className="h-5 w-5" />,
   },
   {
     provider: 'us-sso',
+    segment: 'us',
     name: 'UVUS',
     description: 'Universidad de Sevilla single sign-on.',
     icon: <FiLock className="h-5 w-5 text-tp-steel" />,
   },
   {
     provider: 'google',
+    segment: 'google',
     name: 'Google',
     description: 'Your Google account.',
     icon: <FcGoogle className="h-5 w-5" />,
@@ -63,7 +69,7 @@ export default function SignInMethodsSection() {
 
   // A connection the provider approved comes back here to be confirmed by this account.
   const pendingCode = params.get('pending');
-  const pendingMethod = METHODS.find((method) => method.connectAs && method.connectAs === params.get('provider'));
+  const pendingMethod = METHODS.find((method) => connectable(method) && method.segment === params.get('provider'));
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -79,14 +85,14 @@ export default function SignInMethodsSection() {
   useEffect(() => {
     if (!pendingCode || !pendingMethod) return;
     let active = true;
-    getPendingConnection(pendingMethod.connectAs!, pendingCode)
+    getPendingConnection(pendingMethod.segment, pendingCode)
       .then((value) => active && setPending(value))
       .catch((e: Error) => active && setConnectError(e.message));
     return () => {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCode, pendingMethod?.connectAs]);
+  }, [pendingCode, pendingMethod?.segment]);
 
   const clearPending = () => {
     setPending(null);
@@ -101,7 +107,7 @@ export default function SignInMethodsSection() {
     setConfirming(true);
     setConnectError(null);
     try {
-      await confirmConnection(pendingMethod.connectAs!, pendingCode);
+      await confirmConnection(pendingMethod.segment, pendingCode);
       setJustLinked(pendingMethod);
       loadIdentities();
     } catch (e) {
@@ -117,9 +123,9 @@ export default function SignInMethodsSection() {
     setConnecting(method.provider);
     setConnectError(null);
     try {
-      const ticket = await startIdentityLink(method.connectAs!);
+      const ticket = await startIdentityLink(method.segment);
       // Full page navigation: the provider sends this browser back to ICAN when done.
-      window.location.assign(ssoInitiateUrl(method.connectAs!, ticket));
+      window.location.assign(ssoInitiateUrl(method.segment, ticket));
     } catch (e) {
       setConnectError((e as Error).message);
       setConnecting(null);
@@ -128,7 +134,7 @@ export default function SignInMethodsSection() {
 
   const connectedTo = (provider: Method['provider']) => identities?.find((identity) => identity.provider === provider);
   const visible = METHODS.filter(
-    (method) => connectedTo(method.provider) || (method.provider === 'sphere' && sphereAvailable),
+    (method) => connectedTo(method.provider) || (connectable(method) && method.segment === 'sphere' && sphereAvailable),
   );
 
   return (

@@ -39,6 +39,17 @@ class PendingLinkError extends Error {
   }
 }
 
+/** Sets the HttpOnly cookie that binds sign-ins and pending connections to this browser. */
+function setBrowserCookie(res: any, browser: string, maxAgeSeconds: number) {
+  res.cookie(BROWSER_COOKIE, browser, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: FRONTEND_URL().startsWith('https:'),
+    path: (process.env.BASE_URL_PATH ?? '') + '/api/v1/users/auth/sso',
+    maxAge: maxAgeSeconds * 1000,
+  });
+}
+
 function readCookie(req: any, name: string): string | undefined {
   const header: string = req.headers?.cookie ?? '';
   for (const part of header.split(';')) {
@@ -117,13 +128,7 @@ class SSOController {
         const browser = existing && HEX_64.test(existing) ? existing : randomHex(32);
         const pending: PendingSignIn = { ...transaction, browserHash: sha256(browser), linkUserId };
         await this.cacheService.set(`sso:state:${state}`, pending, SSO_STATE_TTL);
-        res.cookie(BROWSER_COOKIE, browser, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: FRONTEND_URL().startsWith('https:'),
-          path: (process.env.BASE_URL_PATH ?? '') + '/api/v1/users/auth/sso',
-          maxAge: SSO_STATE_TTL * 1000,
-        });
+        setBrowserCookie(res, browser, SSO_STATE_TTL);
       } else if (linkTicket !== undefined) {
         return this.toFrontend(res, { sso_error: 'invalid_state', mode: 'link' });
       }
@@ -216,6 +221,8 @@ class SSOController {
           profile,
         };
         await this.cacheService.set(`sso:pending-link:${pendingCode}`, pendingLink, SSO_PENDING_LINK_TTL);
+        // The cookie must outlive the pending connection, whatever the provider took.
+        setBrowserCookie(res, readCookie(req, BROWSER_COOKIE)!, SSO_PENDING_LINK_TTL);
         return this.toFrontend(res, { mode: 'link', provider: req.params.provider, pending: pendingCode });
       }
 

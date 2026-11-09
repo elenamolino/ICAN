@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useRouter } from '../../../core/hooks/useRouter';
 import { exchangeSsoCode } from '../../api/usersApi';
+import { CONNECTABLE_PROVIDERS } from '../../utils/ssoProviders';
 
 const SIGN_IN_METHODS_SETTINGS = '/me/settings?section=signin';
 
@@ -15,16 +16,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   provider_unavailable: 'This sign-in method is not available right now. Please try again later or use another one.',
   access_denied: 'You cancelled the sign in. You can try again whenever you want.',
   email_in_use: 'An ICAN account already uses this email. Sign in to it with your password or another sign-in method.',
-  identity_in_use: 'This account is already connected to another ICAN account.',
-  provider_already_linked: 'Your ICAN account is already connected to another account of this provider.',
 };
-
-// Providers that can be connected to an existing account from Settings, by URL segment.
-const CONNECTABLE: Record<string, string> = { sphere: 'SPHERE' };
 
 function errorMessage(code: string, provider: string | null): string {
   const message = ERROR_MESSAGES[code] ?? 'Authentication error.';
-  const name = provider ? CONNECTABLE[provider] : undefined;
+  const name = provider ? CONNECTABLE_PROVIDERS[provider] : undefined;
   return code === 'email_in_use' && name
     ? `${message} Then connect ${name} in Settings → Sign-in methods to use it next time.`
     : message;
