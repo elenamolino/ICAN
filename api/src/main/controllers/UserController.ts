@@ -86,6 +86,8 @@ class UserController {
           'phone',
           'role',
           'email',
+          // External sign-in identities carry the provider's email and account id.
+          'identities',
           'address',
           'postalCode'
         ];
