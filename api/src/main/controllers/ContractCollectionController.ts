@@ -3,6 +3,7 @@ import ContractCollectionService from '../services/ContractCollectionService';
 import ContractService from '../services/ContractService';
 import { CollectionIndexQueryParams } from '../types/services/ContractCollection';
 import { handleError } from '../utils/users/helpers';
+import { ServicePageQuery } from '../utils/collectionServicePage';
 
 class ContractCollectionController {
   private readonly contractCollectionService: ContractCollectionService;
@@ -15,6 +16,7 @@ class ContractCollectionController {
     this.indexByOrganizationId = this.indexByOrganizationId.bind(this);
     this.indexByAuthenticatedUser = this.indexByAuthenticatedUser.bind(this);
     this.show = this.show.bind(this);
+    this.indexServices = this.indexServices.bind(this);
     this.create = this.create.bind(this);
     this.addContractToCollection = this.addContractToCollection.bind(this);
     this.update = this.update.bind(this);
@@ -72,6 +74,21 @@ class ContractCollectionController {
         req.user
       );
       res.json(collection);
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async indexServices(req: any, res: any) {
+    try {
+      const page = await this.contractCollectionService.listServices(
+        req.params.organizationId,
+        req.params.collectionSlug,
+        this._transformServicesQueryParams(req.query),
+        req.user
+      );
+      res.json(page);
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });
@@ -153,6 +170,19 @@ class ContractCollectionController {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });
     }
+  }
+
+  _transformServicesQueryParams(queryParams: Record<string, string>): ServicePageQuery {
+    const csv = (value?: string) => (value ? value.split(',') : undefined);
+    return {
+      limit: parseInt(queryParams.limit) || 10,
+      offset: parseInt(queryParams.offset) || 0,
+      name: queryParams.name || undefined,
+      documents: csv(queryParams.documents) as ServicePageQuery['documents'],
+      policyTypes: csv(queryParams.policyTypes) as ServicePageQuery['policyTypes'],
+      review: csv(queryParams.review) as ServicePageQuery['review'],
+      captured: csv(queryParams.captured) as ServicePageQuery['captured'],
+    };
   }
 
   _transformIndexQueryParams(indexQueryParams: Record<string, string>): CollectionIndexQueryParams {

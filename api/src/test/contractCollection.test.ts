@@ -8,6 +8,7 @@ import { BASE_PATH } from './utils/config/variables';
 import testContainer from './utils/config/testContainer';
 import ContractCollectionMongoose from '../main/repositories/mongoose/models/ContractCollectionMongoose';
 import ContractMongoose from '../main/repositories/mongoose/models/ContractMongoose';
+import ServiceMongoose from '../main/repositories/mongoose/models/ServiceMongoose';
 
 dotenv.config();
 
@@ -235,6 +236,100 @@ describe('Contract Collections API integration', () => {
       expect(storedContract?.private).toBe(true);
 
       await ContractMongoose.deleteOne({ slug: contractSlug });
+    });
+  });
+
+  describe('GET /api/v1/contractCollections/:organizationId/:collectionSlug/services', () => {
+    async function createCollectionWithServices(isPrivate: boolean, serviceCount: number) {
+      const { user, organizationId } = await createAndLoginUser('USER', `paged_${randomSuffix()}`);
+      const collectionResponse = await request(app)
+        .post(`${BASE_PATH}/contractCollections/${organizationId}`)
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({ name: `Paged_${randomSuffix()}`, private: isPrivate });
+      const collectionId = collectionResponse.body.id ?? collectionResponse.body._id;
+      collectionIdsToDelete.add(collectionId);
+
+      const services = await ServiceMongoose.insertMany(
+        Array.from({ length: serviceCount }, (_, i) => ({
+          name: `Service ${String(i).padStart(2, '0')}`,
+          slug: `service-${i}`,
+          _collectionId: String(collectionId),
+          _organizationId: organizationId,
+        }))
+      );
+      await ContractMongoose.insertMany(
+        services.map((service, i) => ({
+          name: `Service ${String(i).padStart(2, '0')} — Privacy Policy`,
+          slug: `paged-contract-${i}-${randomSuffix()}`,
+          _collectionId: String(collectionId),
+          _serviceId: String(service._id),
+          _organizationId: organizationId,
+          content: 'Full text that the page does not need. '.repeat(100),
+          private: isPrivate,
+        }))
+      );
+
+      return { user, organizationId, collectionId: String(collectionId), slug: collectionResponse.body.slug };
+    }
+
+    afterEach(async () => {
+      await ServiceMongoose.deleteMany({ name: /^Service \d\d$/, slug: /^service-\d+$/ });
+      await ContractMongoose.deleteMany({ slug: /^paged-contract-/ });
+    });
+
+    it('returns the services ten at a time, with their documents but not their text', async () => {
+      const { organizationId, slug } = await createCollectionWithServices(false, 12);
+      const url = `${BASE_PATH}/contractCollections/${organizationId}/${slug}/services`;
+
+      const firstPage = await request(app).get(url);
+      expect(firstPage.status).toBe(200);
+      expect(firstPage.body.total).toBe(12);
+      expect(firstPage.body.services).toHaveLength(10);
+      expect(firstPage.body.services[0].name).toBe('Service 00');
+      expect(firstPage.body.services[0].contracts).toHaveLength(1);
+      expect(firstPage.body.services[0].contracts[0].content).toBeUndefined();
+      expect(firstPage.body.services[0].contracts[0].service.slug).toBe('service-0');
+      expect(firstPage.body.facets.documents).toEqual({ 'with-documents': 12, empty: 0 });
+
+      const secondPage = await request(app).get(`${url}?offset=10`);
+      expect(secondPage.body.services.map((s: any) => s.name)).toEqual(['Service 10', 'Service 11']);
+    });
+
+    it('searches by service name', async () => {
+      const { organizationId, slug } = await createCollectionWithServices(false, 12);
+
+      const response = await request(app)
+        .get(`${BASE_PATH}/contractCollections/${organizationId}/${slug}/services?name=service 1`);
+
+      expect(response.body.services.map((s: any) => s.name)).toEqual(['Service 10', 'Service 11']);
+    });
+
+    it('rejects an invalid limit or filter value', async () => {
+      const { organizationId, slug } = await createCollectionWithServices(false, 1);
+      const url = `${BASE_PATH}/contractCollections/${organizationId}/${slug}/services`;
+
+      expect((await request(app).get(`${url}?limit=500`)).status).toBe(422);
+      expect((await request(app).get(`${url}?review=bogus`)).status).toBe(422);
+    });
+
+    it('hides the services of a private collection from a user outside the organization', async () => {
+      const { organizationId, slug } = await createCollectionWithServices(true, 1);
+      const { user: outsider } = await createAndLoginUser('USER', `outsider_${randomSuffix()}`);
+
+      const response = await request(app)
+        .get(`${BASE_PATH}/contractCollections/${organizationId}/${slug}/services`)
+        .set('Authorization', `Bearer ${outsider.token}`);
+
+      expect(response.status).toBe(403);
+    });
+
+    it('no longer embeds the contracts in the collection detail, only their count', async () => {
+      const { organizationId, slug } = await createCollectionWithServices(false, 3);
+
+      const response = await request(app).get(`${BASE_PATH}/contractCollections/${organizationId}/${slug}`);
+
+      expect(response.body.contractCount).toBe(3);
+      expect(response.body.contracts).toBeUndefined();
     });
   });
 
