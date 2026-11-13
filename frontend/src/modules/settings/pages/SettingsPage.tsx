@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiUser, FiGlobe, FiLink2, FiBell, FiCreditCard, FiAlertTriangle, FiChevronDown } from 'react-icons/fi';
+import { FiUser, FiGlobe, FiLink2, FiBell, FiCreditCard, FiAlertTriangle, FiChevronDown, FiShield } from 'react-icons/fi';
+import { useSearchParams } from 'react-router-dom';
 import { type UserSettings } from '../api/userSettingsApi';
 import { useAuth } from '../../auth/hooks/useAuth';
 import AccountSection from '../components/AccountSection';
@@ -10,6 +11,8 @@ import SocialLinksSection from '../components/SocialLinksSection';
 import NotificationsSection from '../components/NotificationsSection';
 import PaymentsSection from '../components/PaymentsSection';
 import DangerZoneSection from '../components/DangerZoneSection';
+import IdentitySection, { ScoretechAccountSection } from '../components/IdentitySection';
+import { useAuthConfig } from '../../auth/hooks/useAuthConfig';
 import UnsavedChangesDialog from '../components/UnsavedChangesDialog';
 import { fadeInUp, transitionDefault } from '../../core/utils/motion-variants';
 
@@ -18,6 +21,7 @@ const SECTIONS = [
   { id: 'profile', label: 'Public Profile', icon: FiGlobe },
   { id: 'social', label: 'Social Links', icon: FiLink2 },
   { id: 'notifications', label: 'Notifications', icon: FiBell },
+  { id: 'identity', label: 'SCORETech', icon: FiShield },
   { id: 'payments', label: 'Payments', icon: FiCreditCard },
   { id: 'danger', label: 'Danger Zone', icon: FiAlertTriangle },
 ] as const;
@@ -40,7 +44,18 @@ function buildUserSettings(authUser: any): UserSettings | null {
 
 export default function SettingsPage() {
   const { authUser, updateUser, updateUserSettings } = useAuth();
-  const [activeSection, setActiveSection] = useState<SectionId>('account');
+  const [params] = useSearchParams();
+  const authConfig = useAuthConfig();
+  // When SCORETech is the only sign-in (AUTH_PROVIDER=scoretech) it owns the account and
+  // profile. Otherwise its section, for connecting an account, shows once it is configured.
+  const centralized = authConfig?.provider === 'scoretech';
+  const sections = SECTIONS.filter((s) =>
+    centralized
+      ? !['profile', 'social', 'identity'].includes(s.id)
+      : s.id !== 'identity' || authConfig?.identityAvailable
+  );
+  const requested = SECTIONS.find((s) => s.id === params.get('section'))?.id;
+  const [activeSection, setActiveSection] = useState<SectionId>(requested ?? 'account');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [pendingSection, setPendingSection] = useState<SectionId | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
@@ -48,6 +63,11 @@ export default function SettingsPage() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const settings = buildUserSettings(authUser);
+
+  // The sign-in configuration loads after the first render: leave a section it hides.
+  useEffect(() => {
+    if (authConfig && !sections.some((s) => s.id === activeSection)) setActiveSection('account');
+  }, [authConfig, sections, activeSection]);
 
   const updateSettings = useCallback((partial: Partial<UserSettings>) => {
     if (partial.settings) {
@@ -162,7 +182,7 @@ export default function SettingsPage() {
                 style={{ transformOrigin: 'top' }}
                 className="mt-1 overflow-hidden rounded-[8px] border border-tp-hairline bg-tp-canvas shadow-elevation-4"
               >
-                {SECTIONS.map((section) => {
+                {sections.map((section) => {
                   const isActive = activeSection === section.id;
                   const Icon = section.icon;
                   return (
@@ -198,7 +218,7 @@ export default function SettingsPage() {
             className="hidden w-56 shrink-0 lg:block"
           >
             <nav className="sticky top-24 space-y-0.5">
-              {SECTIONS.map((section) => {
+              {sections.map((section) => {
                 const isActive = activeSection === section.id;
                 const Icon = section.icon;
                 return (
@@ -230,9 +250,11 @@ export default function SettingsPage() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
               >
-                {activeSection === 'account' && (
+                {activeSection === 'account' && (centralized ? (
+                  <ScoretechAccountSection />
+                ) : (
                   <AccountSection settings={settings} onUpdate={updateSettings} onDirtyChange={accountDirtyChange} />
-                )}
+                ))}
                 {activeSection === 'profile' && (
                   <PublicProfileSection settings={settings} onUpdate={updateSettings} onDirtyChange={profileDirtyChange} />
                 )}
@@ -243,6 +265,7 @@ export default function SettingsPage() {
                   <NotificationsSection settings={settings} onUpdate={updateSettings} onDirtyChange={notificationsDirtyChange} />
                 )}
                 {activeSection === 'payments' && <PaymentsSection settings={settings} />}
+                {activeSection === 'identity' && <IdentitySection />}
                 {activeSection === 'danger' && <DangerZoneSection />}
               </motion.div>
             </AnimatePresence>

@@ -1,8 +1,16 @@
+import type { LeanUser } from '../types/models/User';
 import container from '../config/container';
 import UserRepository from '../repositories/mongoose/UserRepository';
 import OrganizationService from './OrganizationService';
 import { ProviderProfile } from './identity/IdentityProvider';
 import { generateJwtToken, generateUserTokenDTO } from '../utils/users/helpers';
+
+export class SsoEmailConflictError extends Error {
+  constructor(readonly cause?: unknown) {
+    super('CONFLICT: An account already uses the email supplied by the identity provider.');
+    this.name = 'SsoEmailConflictError';
+  }
+}
 
 /**
  * Provider-agnostic account logic for social logins: finds or creates the SPHERE user
@@ -18,7 +26,7 @@ class AuthProviderService {
     this.organizationService = container.resolve('organizationService');
   }
 
-  async findOrCreateUser(profile: ProviderProfile): Promise<{ token: string }> {
+  async findOrCreateUser(profile: ProviderProfile): Promise<{ token: string; user: LeanUser }> {
     const { provider, providerId, email, emailVerified, firstName, lastName } = profile;
 
     if (!email) {
@@ -33,7 +41,8 @@ class AuthProviderService {
 
     // 2. Link by email ONLY when the provider verifies email ownership (Google does,
     //    the US CAS does not). Linking on unverified email would allow account takeover.
-    if (!user && emailVerified) {
+    //    SCORETech identities are keyed by (issuer, subject) only, never by email.
+    if (!user && emailVerified && provider !== 'scoretech') {
       const existing = await this.userRepository.findByEmail(email);
       if (existing) {
         await this.userRepository.updateById(existing.id, {
@@ -48,16 +57,26 @@ class AuthProviderService {
     if (!user) {
       const username = await this.resolveFreeUsername(profile.suggestedUsername ?? providerId);
 
-      user = await this.userRepository.create({
-        username,
-        identities: [{ provider, providerId, email }],
-        firstName,
-        lastName,
-        email,
-        // Same default as local registration; aggregators expect the key to exist.
-        settings: { avatar: '' },
-        ...generateUserTokenDTO(),
-      });
+      try {
+        user = await this.userRepository.create({
+          username,
+          identities: [{ provider, providerId, email }],
+          firstName,
+          lastName,
+          email,
+          // Same default as local registration; aggregators expect the key to exist.
+          settings: { avatar: '' },
+          ...generateUserTokenDTO(),
+        });
+      } catch (err: any) {
+        // Only the account email collision has this recovery path. Other unique
+        // indexes (username, identity) and database failures keep their own error.
+        if (err?.code === 11000 && err?.keyPattern?.email === 1 &&
+            Object.keys(err.keyPattern).length === 1) {
+          throw new SsoEmailConflictError(err);
+        }
+        throw err;
+      }
 
       // Business rule shared with local registration: every user has a personal
       // organization. If this fails we must not leave a half-created account.
@@ -73,7 +92,36 @@ class AuthProviderService {
     }
 
     const token = generateJwtToken({ id: user!.id, username: user!.username, role: user!.role });
-    return { token };
+    return { token, user: user! };
+  }
+
+  /**
+   * Connects an external identity to an account that is already signed in, so that the
+   * identity signs in to that account from then on. Idempotent for the same identity.
+   */
+  async linkIdentity(userId: string, profile: ProviderProfile): Promise<void> {
+    const { provider, providerId, email } = profile;
+
+    const owner = await this.userRepository.findOne({
+      'identities.provider': provider,
+      'identities.providerId': providerId,
+    });
+    if (owner && owner.id !== userId) {
+      throw new Error('CONFLICT: This sign-in identity already belongs to another account');
+    }
+
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new Error('NOT FOUND: User not found');
+
+    const current = user.identities?.find(identity => identity.provider === provider);
+    if (current) {
+      if (current.providerId === providerId) return;
+      throw new Error('CONFLICT: This account is already connected to a different identity of that provider');
+    }
+
+    await this.userRepository.updateById(userId, {
+      $push: { identities: { provider, providerId, email: email.trim().toLowerCase(), linkedAt: new Date() } },
+    });
   }
 
   private async resolveFreeUsername(base: string): Promise<string> {

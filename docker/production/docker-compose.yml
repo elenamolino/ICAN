@@ -73,6 +73,13 @@ services:
         dockerfile: ./docker/production/Dockerfile
     ports:
       - 8080:8080
+    # Outbound HTTPS (SCORETech Identity, US SSO, Google) only leaves through the
+    # proxy. Node's fetch honours these variables only with NODE_USE_ENV_PROXY.
+    environment:
+      HTTP_PROXY: http://proxy.int.local:3128
+      HTTPS_PROXY: http://proxy.int.local:3128
+      NO_PROXY: 127.0.0.1,localhost,mongodb,redis,unfair-tos-detector,tos-to-odrl-backend,.int.local
+      NODE_USE_ENV_PROXY: "1"
     env_file:
       - ../../api/.env.production
       - .env

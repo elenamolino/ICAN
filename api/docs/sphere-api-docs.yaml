@@ -197,6 +197,182 @@ paths:
               example:
                 error: Invalid credentials
 
+  /auth/config:
+    get:
+      summary: Get the sign-in configuration
+      description: |
+        Tells the frontend whether SCORETech Identity is offered and whether it is the
+        only way to sign in (`AUTH_PROVIDER=scoretech`).
+
+        **Authentication**: Public
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: Sign-in configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  provider:
+                    type: string
+                    enum: [local, scoretech]
+                  identityAvailable:
+                    type: boolean
+                  loginUrl:
+                    type: string
+                    example: /api/v1/auth/identity/login
+                  registerUrl:
+                    type: string
+                    example: /api/v1/auth/identity/login?screen=register
+                  accountUrl:
+                    type: string
+                    description: SCORETech Identity account page, when configured
+  /auth/identity/login:
+    get:
+      summary: Start a SCORETech Identity sign-in
+      description: |
+        Starts an OIDC Authorization Code flow with PKCE and redirects the browser to
+        SCORETech Identity. Sets a short-lived cookie that binds the flow to this browser.
+
+        **Authentication**: Public
+      tags:
+        - Authentication
+      parameters:
+        - name: returnTo
+          in: query
+          required: false
+          description: Same-site path to open after signing in
+          schema:
+            type: string
+            example: /contracts
+        - name: screen
+          in: query
+          required: false
+          description: Open the SCORETech registration screen instead of the login one
+          schema:
+            type: string
+            enum: [register]
+      responses:
+        '302':
+          description: Redirect to SCORETech Identity
+        '404':
+          description: SCORETech Identity is not configured
+        '503':
+          description: SCORETech Identity is unreachable
+  /auth/identity/callback:
+    get:
+      summary: Finish a SCORETech Identity sign-in
+      description: |
+        Redirect target registered in SCORETech Identity. Exchanges the code, validates the
+        tokens, finds or creates the user by issuer and subject, and sets the HttpOnly
+        identity session cookie. Then redirects to the frontend at
+        `/sso/identity/callback`, or to `/authentication?identity_error=<code>` on failure.
+
+        **Authentication**: Public (flow cookie)
+      tags:
+        - Authentication
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the frontend
+  /auth/identity/session:
+    post:
+      summary: Get an API token for the SCORETech Identity session
+      description: |
+        Trades the identity session cookie for an API token valid for five minutes,
+        refreshing the SCORETech tokens when needed. Must be called from the frontend origin.
+
+        **Authentication**: Identity session cookie
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: API token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    $ref: '#/components/schemas/ApiToken'
+                  tokenExpiration:
+                    type: string
+                    format: date-time
+        '401':
+          description: The identity session has ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request origin is not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/identity/logout:
+    post:
+      summary: Sign out of the SCORETech Identity session
+      description: |
+        Ends the identity session and the central SCORETech session. Must be called from
+        the frontend origin.
+
+        **Authentication**: Identity session cookie
+      tags:
+        - Authentication
+      responses:
+        '204':
+          description: Signed out
+        '403':
+          description: Request origin is not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/identity/link:
+    post:
+      summary: Connect SCORETech Identity to the signed-in account
+      description: |
+        Starts an OIDC flow that asks the user to sign in to SCORETech again. When it
+        completes, the SCORETech identity is added to the signed-in account, and signing in
+        with SCORETech opens that account from then on. The callback redirects to
+        `/me/settings?section=identity` with `identity_linked=scoretech` or
+        `identity_error=link_failed`. Not available when `AUTH_PROVIDER=scoretech`.
+        Must be called from the frontend origin.
+
+        **Authentication**: User token
+      tags:
+        - Authentication
+      responses:
+        '200':
+          description: URL to open in the browser
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+        '403':
+          description: Not signed in, identity mode is on, or the request origin is not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /users/register:
     post:
       summary: Register a new user
