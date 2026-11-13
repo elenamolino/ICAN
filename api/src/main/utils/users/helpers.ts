@@ -9,11 +9,13 @@ interface JwtPayload {
   id: string;
   username: string;
   role: string;
+  /** Present on tokens issued for a SCORETech Identity session: short-lived and renewed through it. */
+  identitySessionId?: string;
 }
 
-function generateJwtToken(user: { id: string; username: string; role: string }): string {
-  const payload: JwtPayload = { id: user.id, username: user.username, role: user.role };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRATION } as any);
+function generateJwtToken(user: { id: string; username: string; role: string }, identitySessionId?: string): string {
+  const payload: JwtPayload = { id: user.id, username: user.username, role: user.role, ...(identitySessionId ? { identitySessionId } : {}) };
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: identitySessionId ? '5m' : JWT_EXPIRATION } as any);
 }
 
 function verifyJwtToken(token: string): JwtPayload {

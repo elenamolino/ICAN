@@ -29,6 +29,42 @@ class CacheService {
     await this.redisClient.del(key);
   }
 
+  /** Reads and deletes a key atomically, so a value can only be consumed once. */
+  async take(key: string) {
+    if (!this.redisClient) {
+      throw new Error('ERROR: Redis client not initialized');
+    }
+
+    const value = await this.redisClient.getDel(key);
+    return value ? JSON.parse(value) : null;
+  }
+
+  /** Sets a key only when it does not exist yet. Returns whether it was set. */
+  async setIfAbsent(key: string, value: unknown, seconds: number): Promise<boolean> {
+    if (!this.redisClient) {
+      throw new Error('ERROR: Redis client not initialized');
+    }
+
+    return (await this.redisClient.set(key, JSON.stringify(value), { NX: true, EX: seconds })) === 'OK';
+  }
+
+  /**
+   * Overwrites a key, unlike set(), which refuses to change an existing value.
+   * With onlyIfPresent, it only writes when the key still exists.
+   */
+  async replace(key: string, value: unknown, seconds: number, onlyIfPresent = false): Promise<boolean> {
+    if (!this.redisClient) {
+      throw new Error('ERROR: Redis client not initialized');
+    }
+
+    const result = await this.redisClient.set(
+      key,
+      JSON.stringify(value),
+      onlyIfPresent ? { EX: seconds, XX: true } : { EX: seconds }
+    );
+    return result === 'OK';
+  }
+
   async set(key: string, value: any, expirationInSeconds?: number) {
     if (!this.redisClient) {
       throw new Error('ERROR: Redis client not initialized');

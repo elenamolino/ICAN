@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { fadeUp } from '../auth-layout';
 import GoogleLoginButton from '../google-login-button';
 import UvusLoginButton from '../uvus-login-button';
+import ScoretechLoginButton from '../scoretech-login-button';
 
 export type LoginFormProps = {
   loginField: string;
@@ -66,6 +67,7 @@ const LoginForm: React.FC = () => {
       </motion.div>
 
       {/* SSO first, local login below the divider */}
+      <ScoretechLoginButton />
       <UvusLoginButton />
       <GoogleLoginButton />
 

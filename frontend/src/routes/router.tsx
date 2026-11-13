@@ -22,6 +22,7 @@ import ContributionsPage from '../modules/presentation/pages/contributions';
 import DocsPage from '../modules/presentation/pages/docs';
 import AuthenticationPage from '../modules/auth/pages/authentication-page';
 import SsoCallbackPage from '../modules/auth/pages/sso-callback';
+import IdentityCallbackPage from '../modules/auth/pages/identity-callback';
 import OrganizationsListPage from '../modules/organization/pages/organizations-list';
 import CreateOrganizationPage from '../modules/organization/pages/create-organization';
 import OrganizationDetailPage from '../modules/organization/pages/organization-detail';
@@ -81,6 +82,7 @@ export default function Router() {
       children: [
         { element: <AuthenticationPage />, path: '/authentication' },
         { element: <SsoCallbackPage />, path: '/sso/callback' },
+        { element: <IdentityCallbackPage />, path: '/sso/identity/callback' },
         { element: <TeamPage />, path: '/team' },
         { element: <ResearchPage />, path: '/research' },
         { element: <ContributionsPage />, path: '/contributions' },

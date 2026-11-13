@@ -36,6 +36,22 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['GET'],
     isPublic: true,
   },
+  // SCORETech Identity (OIDC). The session endpoints authenticate with their own cookie.
+  {
+    path: '/auth/config',
+    methods: ['GET'],
+    isPublic: true,
+  },
+  {
+    path: '/auth/identity/link',
+    methods: ['POST'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+  },
+  {
+    path: '/auth/identity/*',
+    methods: ['GET', 'POST'],
+    isPublic: true,
+  },
   {
     path: '/users/register',
     methods: ['POST'],

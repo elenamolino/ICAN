@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { EMAIL_REGEX } from '../../main/repositories/mongoose/models/UserMongoose';
 import { UsCasProvider } from '../../main/services/identity/UsCasProvider';
 
 const successXml = (overrides: Partial<Record<string, string | null>> = {}) => {
@@ -116,8 +117,8 @@ describe('UsCasProvider', () => {
     });
 
     it('accepts email addresses that pass the user model regex', async () => {
-      // Same regex as UserMongoose email match: multi-level US domains must pass.
-      const modelEmailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+      // The user model must accept multi-level US domains.
+      const modelEmailRegex = EMAIL_REGEX;
       mockFetchXml(successXml());
       const profile = await provider.handleCallback({ ticket: 'ST-123' });
       expect(profile?.email).toMatch(modelEmailRegex);

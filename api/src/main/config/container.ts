@@ -23,6 +23,7 @@ import PermissionService from '../services/PermissionService';
 import UserSettingsService from '../services/UserSettingsService';
 import NotificationService from '../services/NotificationService';
 import ApiKeyService from '../services/ApiKeyService';
+import ScoretechIdentityService from '../services/ScoretechIdentityService';
 import AuthProviderService from '../services/AuthProviderService';
 import AnalysisService from '../services/AnalysisService';
 import TermsCockpitClient from '../services/clients/TermsCockpitClient';
@@ -75,6 +76,7 @@ function initContainer(databaseType: string): AwilixContainer {
     notificationService: asClass(NotificationService).singleton(),
     apiKeyService: asClass(ApiKeyService).singleton(),
     authProviderService: asClass(AuthProviderService).singleton(),
+    scoretechIdentityService: asClass(ScoretechIdentityService).singleton(),
     analysisService: asClass(AnalysisService).singleton(),
     termsCockpitClient: asClass(TermsCockpitClient).singleton(),
     termsCockpitSyncService: asClass(TermsCockpitSyncService).singleton(),
