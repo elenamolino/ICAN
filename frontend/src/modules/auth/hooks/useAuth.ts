@@ -2,6 +2,7 @@ import { useCallback, useContext, useEffect, useRef } from 'react';
 import { useLocalStorage } from '../../core/hooks/useLocalStorage';
 import { AuthContext } from '../contexts/authContext';
 import { getCurrentUser, USERS_BASE_PATH } from '../api/usersApi';
+import { identityLogout, identitySession, isIdentityToken, jwtExpiration } from '../api/identityApi';
 
 const AUTH_TOKEN_KEY = 'token';
 const AUTH_USER_KEY = 'auth_user';
@@ -109,6 +110,25 @@ export const useAuth = () => {
       return;
     }
 
+    // SCORETech tokens last five minutes: renew them through the identity session cookie.
+    if (isIdentityToken(authUser.token)) {
+      if (new Date(authUser.tokenExpiration).getTime() - Date.now() > 60 * 1000) {
+        return;
+      }
+      if (refreshInFlightRef.current) {
+        return refreshInFlightRef.current;
+      }
+      const user = authUser.user;
+      const renewal = identitySession()
+        .then(({ token }) => setSession(user, token, jwtExpiration(token)))
+        .catch(() => clearSession())
+        .finally(() => {
+          refreshInFlightRef.current = null;
+        });
+      refreshInFlightRef.current = renewal;
+      return renewal;
+    }
+
     const expirationTime = new Date(authUser.tokenExpiration).getTime();
     const currentTime = Date.now();
     const timeDifference = expirationTime - currentTime;
@@ -165,6 +185,20 @@ export const useAuth = () => {
         return;
       }
 
+      // A SCORETech session outlives its five-minute tokens: start from a fresh one.
+      if (isIdentityToken(storedToken)) {
+        try {
+          const { token } = await identitySession();
+          const user = normalizeUser(await getCurrentUser(token));
+          const settings = await fetchUserSettings(token);
+          if (settings) user.settings = settings;
+          setSession(user, token, jwtExpiration(token));
+        } catch {
+          clearSession();
+        }
+        return;
+      }
+
       try {
         const currentUser = await getCurrentUser(storedToken);
         const user = normalizeUser(currentUser);
@@ -196,12 +230,23 @@ export const useAuth = () => {
     const user = normalizeUser(currentUser);
     const settings = await fetchUserSettings(token);
     if (settings) user.settings = settings;
-    setSession(user, token, null);
+    setSession(user, token, isIdentityToken(token) ? jwtExpiration(token) : null);
   }, [setSession]);
 
   const logout = useCallback(() => {
+    if (isIdentityToken(authUser.token ?? getItem(AUTH_TOKEN_KEY))) {
+      void identityLogout();
+    }
     clearSession();
-  }, [clearSession]);
+  }, [authUser.token, clearSession, getItem]);
+
+  // Keep a SCORETech token fresh while the app is open, also for calls that bypass
+  // fetchWithInterceptor and read authUser.token directly.
+  useEffect(() => {
+    if (!authUser.isAuthenticated || !isIdentityToken(authUser.token)) return;
+    const timer = window.setInterval(() => void refreshTokenIfNeeded(), 30 * 1000);
+    return () => window.clearInterval(timer);
+  }, [authUser.isAuthenticated, authUser.token, refreshTokenIfNeeded]);
 
   const updateUser = useCallback((partial: Partial<AuthUser>) => {
     setAuthUser((prev) => {

@@ -3,6 +3,14 @@ import { USER_ROLES, UserRole } from '../../../types/config/permissions';
 import { processFileUris } from '../../../services/FileService';
 import { generateUserTokenDTO, hashPassword } from '../../../utils/users/helpers';
 
+/**
+ * Each part of the address is a run without dots or @, joined by single dots, so a
+ * value can only be split one way: checking it takes linear time. The previous
+ * pattern nested repetitions and took minutes on some non-matching addresses,
+ * blocking the whole API meanwhile.
+ */
+export const EMAIL_REGEX = /^[^\s@.]+(\.[^\s@.]+)*@[^\s@.]+(\.[^\s@.]+)+$/;
+
 const ApiKeySchema = new Schema(
   {
     key: { type: String, required: true },
@@ -25,7 +33,7 @@ const ApiKeySchema = new Schema(
 
 const IdentitySchema = new Schema(
   {
-    provider: { type: String, enum: ['us-sso', 'google'], required: true },
+    provider: { type: String, enum: ['us-sso', 'google', 'scoretech'], required: true },
     providerId: { type: String, required: true },
     email: { type: String },
     linkedAt: { type: Date, default: Date.now },
@@ -111,7 +119,8 @@ const userSchema = new Schema(
       type: String,
       required: true,
       unique: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address'],
+      maxlength: 254,
+      match: [EMAIL_REGEX, 'Please fill a valid email address'],
     },
     settings: {
       type: UserSettingsSchema,
@@ -181,7 +190,7 @@ export interface UserDocument extends Document {
   lastName: string;
   email: string;
   identities: {
-    provider: 'us-sso' | 'google';
+    provider: 'us-sso' | 'google' | 'scoretech';
     providerId: string;
     email?: string;
     linkedAt?: Date;
