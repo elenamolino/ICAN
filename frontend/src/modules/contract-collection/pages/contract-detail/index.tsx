@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import DOMPurify from 'dompurify';
@@ -18,19 +19,20 @@ import {
 } from '../../api/contractCollectionsApi';
 import SummaryStat from '../../../analysis/components/SummaryStat';
 import SavedOntologyReport from '../../../analysis/components/SavedOntologyReport';
-import VersionSelector from '../../components/version-selector';
+import VersionGraph from '../../components/version-graph';
+import VersionList from '../../components/version-list';
 import FilterableClauseList from '../../components/filterable-clause-list';
 import VersionEvolutionChart from '../../components/version-evolution-chart';
 import VersionComparison from '../../components/version-comparison';
 
-type Tab = 'content' | 'clauses' | 'ontology' | 'evolution' | 'compare';
+type Tab = 'content' | 'clauses' | 'ontology' | 'versions' | 'evolution';
 
 const TAB_LABELS: Record<Tab, string> = {
   content: 'Text',
   clauses: 'AI analysis result',
   ontology: 'Ontology analysis result',
+  versions: 'Versions',
   evolution: 'Evolution',
-  compare: 'Compare',
 };
 
 export default function ContractDetailPage() {
@@ -40,6 +42,8 @@ export default function ContractDetailPage() {
     contractSlug: string;
   }>();
   const router = useRouter();
+  // ?version= lets a link open a given version.
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     getContract,
     getContractVersion,
@@ -55,8 +59,21 @@ export default function ContractDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>('content');
+  const [tab, setTab] = useState<Tab>(() => {
+    const linked = searchParams.get('tab');
+    return linked && linked in TAB_LABELS ? (linked as Tab) : 'content';
+  });
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+  // The pair the comparison in the Versions tab shows; a new pair remounts it.
+  const [comparePair, setComparePair] = useState<{ before: string; after: string } | null>(null);
+
+  const selectVersion = (id: string) => {
+    setSelectedVersionId(id);
+    setSearchParams((params) => {
+      params.set('version', id);
+      return params;
+    }, { replace: true });
+  };
 
   useEffect(() => {
     if (!organizationId || !contractSlug) return;
@@ -69,8 +86,9 @@ export default function ContractDetailPage() {
       .then(([contractData, versionsData]) => {
         setContract(contractData);
         setVersions(versionsData);
+        const linked = versionsData.find((v) => v.id === searchParams.get('version'));
         const latest = versionsData.find((v) => v.label === 'last') ?? versionsData[versionsData.length - 1];
-        if (latest) setSelectedVersionId(latest.id);
+        if (linked ?? latest) setSelectedVersionId((linked ?? latest).id);
       })
       .catch(() => setError('Contract not found'))
       .finally(() => setIsLoading(false));
@@ -167,6 +185,34 @@ export default function ContractDetailPage() {
     }
   };
 
+  // Compares the version at `index` with the one before it.
+  const openComparison = (index: number) => {
+    if (index < 1 || index >= versions.length) return;
+    setComparePair({ before: versions[index - 1].id, after: versions[index].id });
+    setTab('versions');
+  };
+
+  const versionLink = (id: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('version', id);
+    return url.toString();
+  };
+
+  const handleDownloadVersion = async (id: string) => {
+    if (!organizationId || !contractSlug) return;
+    try {
+      const version = await getContractVersion(organizationId, contractSlug, id);
+      const blob = new Blob([version.content ?? ''], { type: 'text/markdown' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${contractSlug}-v${versions.findIndex((v) => v.id === id) + 1}.md`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (err: any) {
+      await customAlert(err.message || 'Failed to download the version', 'error');
+    }
+  };
+
   const hasVersionHistory = versions.length > 0;
   const selectedVersionListItem = versions.find((v) => v.id === selectedVersionId) ?? null;
   const hasClassifyData = !!selectedVersionListItem?.summary;
@@ -180,11 +226,13 @@ export default function ContractDetailPage() {
   ];
   const availableTabs: Tab[] = hasVersionHistory
     ? versions.length > 1
-      ? [...versionTabs, 'evolution', 'compare']
-      : versionTabs
+      ? [...versionTabs, 'versions', 'evolution']
+      : [...versionTabs, 'versions']
     : ['content'];
 
   useEffect(() => {
+    // While loading there are no versions yet, so a linked tab would look unavailable.
+    if (isLoading) return;
     if (!availableTabs.includes(tab)) {
       setTab(availableTabs[0] ?? 'content');
     }
@@ -192,7 +240,7 @@ export default function ContractDetailPage() {
     // not on every render — `tab` itself is intentionally excluded so a
     // manual tab click isn't immediately overridden.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedVersionId, hasClassifyData, hasOntologyData]);
+  }, [isLoading, selectedVersionId, hasClassifyData, hasOntologyData]);
 
   if (isLoading) {
     return (
@@ -238,7 +286,29 @@ export default function ContractDetailPage() {
         </div>
 
         <div className="flex items-start justify-between gap-4">
-          <h1 className="font-display text-2xl font-normal text-tp-ink">{contract.name}</h1>
+          <div>
+            <h1 className="font-display text-2xl font-normal text-tp-ink">{contract.name}</h1>
+            {hasVersionHistory && selectedVersionListItem && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-tp-steel">
+                <select
+                  value={selectedVersionId ?? ''}
+                  onChange={(e) => selectVersion(e.target.value)}
+                  aria-label="Version"
+                  className="cursor-pointer rounded-lg border border-tp-hairline bg-tp-canvas px-2.5 py-1 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                >
+                  {versions
+                    .map((v, i) => ({ v, n: i + 1 }))
+                    .reverse()
+                    .map(({ v, n }) => (
+                      <option key={v.id} value={v.id}>
+                        v{n}{v.label === 'last' ? ' (current)' : ''}
+                      </option>
+                    ))}
+                </select>
+                <span>· Updated {formatDistanceToNow(new Date(selectedVersionListItem.capturedAt), { addSuffix: true })}</span>
+              </div>
+            )}
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             {/* A contract inside a collection takes its visibility from that collection,
                 so here it is only reported — the control lives on the collection page.
@@ -317,18 +387,12 @@ export default function ContractDetailPage() {
           transition={transitionDefault}
           className="mb-6 space-y-4"
         >
-          <VersionSelector
-            versions={versions}
-            selectedId={selectedVersionId ?? ''}
-            onSelect={setSelectedVersionId}
-            onDelete={contract?.canDelete ? handleDeleteVersion : undefined}
-          />
-
           {selectedVersion?.summary && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <SummaryStat label="Clauses" value={selectedVersion.summary.totalClauses} />
               <SummaryStat label="Potentially unfair" value={selectedVersion.summary.unfairClauses} />
               <SummaryStat label="Words" value={selectedVersion.summary.totalWords} />
+              <SummaryStat label="Versions" value={versions.length} />
             </div>
           )}
 
@@ -399,11 +463,64 @@ export default function ContractDetailPage() {
               </p>
             ))}
 
+          {tab === 'versions' && organizationId && contractSlug && (
+            <div className="space-y-5">
+              <VersionGraph
+                contractName={contract.name}
+                ownerName={contract.organization?.displayName}
+                versions={versions}
+                selectedId={selectedVersionId ?? ''}
+                onSelect={selectVersion}
+              />
+
+              {versions.length > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-tp-steel">Pick two versions to see what changed between them.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (comparePair) return setComparePair(null);
+                      const i = versions.findIndex((v) => v.id === selectedVersionId);
+                      openComparison(i > 0 ? i : 1);
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-tp-hairline px-3 py-1.5 text-sm font-medium text-tp-ink transition-colors hover:border-tp-primary hover:text-tp-primary"
+                  >
+                    <Iconify icon={comparePair ? 'mdi:close' : 'mdi:compare-horizontal'} width={16} />
+                    {comparePair ? 'Close comparison' : 'Compare versions'}
+                  </button>
+                </div>
+              )}
+
+              {comparePair && (
+                <div className="rounded-2xl border border-tp-hairline p-5">
+                  <VersionComparison
+                    key={`${comparePair.before}-${comparePair.after}`}
+                    organizationId={organizationId}
+                    contractSlug={contractSlug}
+                    versions={versions}
+                    initialBeforeId={comparePair.before}
+                    initialAfterId={comparePair.after}
+                  />
+                </div>
+              )}
+
+              <VersionList
+                versions={versions}
+                selectedId={selectedVersionId ?? ''}
+                onView={(id) => {
+                  selectVersion(id);
+                  setTab('content');
+                }}
+                onCompareWithPrevious={(id) => openComparison(versions.findIndex((v) => v.id === id))}
+                onDownload={handleDownloadVersion}
+                linkTo={versionLink}
+                onDelete={contract?.canDelete ? handleDeleteVersion : undefined}
+              />
+            </div>
+          )}
+
           {tab === 'evolution' && <VersionEvolutionChart versions={versions} />}
 
-          {tab === 'compare' && organizationId && contractSlug && (
-            <VersionComparison organizationId={organizationId} contractSlug={contractSlug} versions={versions} />
-          )}
         </>
       )}
     </div>

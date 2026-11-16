@@ -104,6 +104,8 @@ export interface ContractVersionListItem {
   summary: AnalysisSummary | null;
   hasOntologyReport: boolean;
   analysisSkipped: boolean;
+  /** When it was saved in iCan, as opposed to when the text was captured. */
+  createdAt?: string;
 }
 
 export interface ContractVersionDetail extends ContractVersionListItem {

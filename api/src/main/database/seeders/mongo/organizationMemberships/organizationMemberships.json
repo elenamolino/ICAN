@@ -82,5 +82,33 @@
     "_organizationId": { "$oid": "6a8b24393b9cca36319a1869" },
     "role": "OWNER",
     "joinedAt": { "$date": "2026-08-23T16:47:53.095Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000b01" },
+    "_userId": { "$oid": "63f74bf8eeed64054274b52d" },
+    "_organizationId": { "$oid": "6b1a00000000000000000a01" },
+    "role": "OWNER",
+    "joinedAt": { "$date": "2026-11-16T00:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000b02" },
+    "_userId": { "$oid": "63f74bf8eeed64054274b52d" },
+    "_organizationId": { "$oid": "6b1a00000000000000000a02" },
+    "role": "OWNER",
+    "joinedAt": { "$date": "2026-11-16T00:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000b03" },
+    "_userId": { "$oid": "63f74bf8eeed64054274b52d" },
+    "_organizationId": { "$oid": "6b1a00000000000000000a03" },
+    "role": "OWNER",
+    "joinedAt": { "$date": "2026-11-16T00:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000b04" },
+    "_userId": { "$oid": "63f74bf8eeed64054274b52d" },
+    "_organizationId": { "$oid": "6b1a00000000000000000a04" },
+    "role": "OWNER",
+    "joinedAt": { "$date": "2026-11-16T00:00:00.000Z" }
   }
 ]
