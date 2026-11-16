@@ -10,7 +10,7 @@ import {
   useContractCollectionsApi,
 } from '../../contract-collection/api/contractCollectionsApi';
 import { listServices, ServiceSummary } from '../../contract-collection/api/servicesApi';
-import { useAnalysisApi, AnalyzeResponse } from '../api/analysisApi';
+import { useAnalysisApi, AnalyzeResponse, SaveAnalysisResult } from '../api/analysisApi';
 import EntityPickerInput, { EntitySelection } from './EntityPickerInput';
 
 interface SaveAnalysisModalProps {
@@ -23,26 +23,43 @@ interface SaveAnalysisModalProps {
   provider: string;
   title: string;
   date: string;
+  /** Told where the analysis went, so a caller can keep saving to the same contract. */
+  onSaved?: (saved: SaveAnalysisResult & { collectionId: string; collectionName: string }) => void;
+  /** Heading and button text; the editor saves a contract rather than an analysis. */
+  heading?: string;
+  submitLabel?: string;
+  /** Name for the version this save creates. */
+  versionName?: string;
 }
 
-// getMyOrganizations returns a tree (subOrganizations nested) — flatten it so
+type OrganizationChoice = Organization & { label: string };
+
+// getMyOrganizations returns a tree (subOrganizations nested): flatten it so
 // orgs the user only has access to via a sub-org still show up as choices.
-function flattenOrganizations(orgs: Organization[]): Organization[] {
-  return orgs.reduce<Organization[]>((acc, org) => {
-    acc.push(org);
-    if (org.subOrganizations?.length) {
-      acc.push(...flattenOrganizations(org.subOrganizations));
-    }
-    return acc;
-  }, []);
+// A sub-org is labelled with its parent ("FIS › 2026-2027"), since names
+// like "2026-2027" mean nothing alone, and appears once even when the user
+// is also a direct member of it.
+function flattenOrganizations(orgs: Organization[], parent?: Organization): OrganizationChoice[] {
+  const all = orgs.flatMap<OrganizationChoice>((org) => [
+    { ...org, label: parent ? `${parent.displayName} › ${org.displayName}` : org.displayName },
+    ...flattenOrganizations(org.subOrganizations ?? [], org),
+  ]);
+  const byId = new Map<string, OrganizationChoice>();
+  for (const choice of all) {
+    const seen = byId.get(choice.id);
+    if (!seen || choice.label.length > seen.label.length) byId.set(choice.id, choice);
+  }
+  return [...byId.values()];
 }
 
-export default function SaveAnalysisModal({ open, onClose, text, result, provider, title, date }: SaveAnalysisModalProps) {
+export default function SaveAnalysisModal({
+  open, onClose, text, result, provider, title, date, onSaved, heading = 'Save analysis', submitLabel = 'Save analysis', versionName,
+}: SaveAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
   const { listCollections, listContracts, listContractVersions, createCollection } = useContractCollectionsApi();
 
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [orgs, setOrgs] = useState<OrganizationChoice[]>([]);
   const [collections, setCollections] = useState<ContractCollectionSummary[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<ContractCollectionSummary | null>(null);
@@ -224,6 +241,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
           ? { contractId: contractSelection.id, ...(attachVersionId ? { versionId: attachVersionId } : {}) }
           : { contractName: contractSelection.name, provider: provider.trim(), title: title.trim() }),
         date: new Date(date).toISOString(),
+        ...(versionName?.trim() && !attachVersionId ? { versionName: versionName.trim() } : {}),
         text,
         summary: result.summary,
         clauses: result.clauses,
@@ -233,6 +251,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
         contractSlug: result_.contractSlug,
         collectionName: selectedCollection.name,
       });
+      onSaved?.({ ...result_, collectionId: selectedCollection.id, collectionName: selectedCollection.name });
     } catch (err: any) {
       setError(err.message || 'Failed to save analysis');
     } finally {
@@ -286,7 +305,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
             </div>
           ) : (
             <>
-              <h2 className="mb-4 text-lg font-semibold text-tp-ink">Save analysis</h2>
+              <h2 className="mb-4 text-lg font-semibold text-tp-ink">{heading}</h2>
 
               {error && (
                 <BlockAlert variant="error" className="mb-4" onDismiss={() => setError(null)}>
@@ -323,7 +342,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
                   </option>
                   {collections.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.organization.displayName} / {c.name}
+                      {orgs.find((o) => o.id === c.organization.id)?.label ?? c.organization.displayName} / {c.name}
                     </option>
                   ))}
                 </select>
@@ -332,34 +351,42 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
               {showCreateCollection && (
                 <div className="space-y-2 rounded-lg border border-tp-hairline bg-tp-surface p-3">
                   {!loadingCollections && collections.length === 0 && (
-                    <p className="text-xs text-tp-steel">You have no collections yet — create one below.</p>
+                    <p className="text-xs text-tp-steel">You have no collections yet. Create one below.</p>
                   )}
                   {createCollectionError && (
                     <BlockAlert variant="error" onDismiss={() => setCreateCollectionError(null)}>
                       {createCollectionError}
                     </BlockAlert>
                   )}
-                  <div className="flex gap-2">
+                  {/* Organization names can be long: each field takes its own row
+                      on narrow screens and half the width otherwise, never more. */}
+                  <div className={`grid gap-2 ${orgs.length > 1 ? 'sm:grid-cols-2' : ''}`}>
                     {orgs.length > 1 && (
-                      <select
-                        value={newCollectionOrgId}
-                        onChange={(e) => setNewCollectionOrgId(e.target.value)}
-                        className="rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-                      >
-                        {orgs.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.displayName}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="flex min-w-0 flex-col gap-1 text-xs text-tp-steel">
+                        Organization
+                        <select
+                          value={newCollectionOrgId}
+                          onChange={(e) => setNewCollectionOrgId(e.target.value)}
+                          className="w-full min-w-0 cursor-pointer truncate rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                        >
+                          {orgs.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                     )}
-                    <input
-                      type="text"
-                      value={newCollectionName}
-                      onChange={(e) => setNewCollectionName(e.target.value)}
-                      placeholder="Collection name"
-                      className="flex-1 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-                    />
+                    <label className="flex min-w-0 flex-col gap-1 text-xs text-tp-steel">
+                      Collection name
+                      <input
+                        type="text"
+                        value={newCollectionName}
+                        onChange={(e) => setNewCollectionName(e.target.value)}
+                        placeholder="For example: Course projects"
+                        className="w-full min-w-0 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      />
+                    </label>
                   </div>
                   <label className="flex cursor-pointer items-center gap-2 text-xs text-tp-steel">
                     <input
@@ -463,7 +490,7 @@ export default function SaveAnalysisModal({ open, onClose, text, result, provide
                 disabled={loading || !canSubmit}
                 className="cursor-pointer rounded-lg bg-tp-primary px-4 py-2 text-sm font-medium text-tp-on-primary transition-colors hover:bg-tp-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? 'Saving…' : 'Save analysis'}
+                {loading ? 'Saving…' : submitLabel}
               </button>
             </div>
               </form>

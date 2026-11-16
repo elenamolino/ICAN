@@ -64,7 +64,7 @@ export async function up(db: mongoose.Connection) {
 
   let parent: { _id: mongoose.Types.ObjectId; ancestors: mongoose.Types.ObjectId[] } | null = null;
   for (const link of CHAIN) {
-    const existing = await organizations.findOne({
+    const existing: mongoose.mongo.WithId<mongoose.mongo.Document> | null = await organizations.findOne({
       displayName: { $regex: `^${escapeRegex(link.displayName)}$`, $options: 'i' },
       _parentId: parent ? parent._id : null,
       isPersonal: { $ne: true },
@@ -77,7 +77,7 @@ export async function up(db: mongoose.Connection) {
     }
 
     const now = new Date();
-    const ancestors = parent ? [...parent.ancestors, parent._id] : [];
+    const ancestors: mongoose.Types.ObjectId[] = parent ? [...parent.ancestors, parent._id] : [];
     const { insertedId } = await organizations.insertOne({
       name: await freeSlug(organizations, link.name),
       displayName: link.displayName,

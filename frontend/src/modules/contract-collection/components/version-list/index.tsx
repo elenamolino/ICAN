@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ContractVersionListItem } from '../../api/contractCollectionsApi';
 import Iconify from '../../../core/components/iconify';
+import { parentOf } from '../../utils/versions';
 
 const ACTION = 'cursor-pointer rounded-md p-1.5 text-tp-steel transition-colors hover:bg-tp-primary/10 hover:text-tp-primary';
 
@@ -45,7 +46,10 @@ export default function VersionList({
             v.id === selectedId ? 'bg-tp-primary/5' : ''
           }`}
         >
-          <span className="w-10 font-mono text-base text-tp-ink">v{n}</span>
+          <span className="min-w-10 text-base text-tp-ink">
+            <span className="font-mono">v{n}</span>
+            {v.name && <span className="ml-2 font-medium">{v.name}</span>}
+          </span>
           {v.label === 'last' && (
             <span className="rounded-full bg-tp-primary/10 px-2 py-0.5 text-xs font-medium text-tp-primary">Current</span>
           )}
@@ -61,17 +65,17 @@ export default function VersionList({
             <button type="button" onClick={() => onView(v.id)} title="Show this version" className={ACTION}>
               <Iconify icon="mdi:eye-outline" width={18} />
             </button>
-            {n > 1 && (
+            {parentOf(versions, v.id) && (
               <button
                 type="button"
                 onClick={() => onCompareWithPrevious(v.id)}
-                title={`Compare with v${n - 1}`}
+                title={`Compare with v${versions.indexOf(parentOf(versions, v.id)!) + 1}, the version it came from`}
                 className={ACTION}
               >
                 <Iconify icon="mdi:compare-horizontal" width={18} />
               </button>
             )}
-            {n === 1 && <span aria-hidden className="w-[30px]" />}
+            {!parentOf(versions, v.id) && <span aria-hidden className="w-[30px]" />}
             <button type="button" onClick={() => onDownload(v.id)} title="Download the text (.md)" className={ACTION}>
               <Iconify icon="mdi:download-outline" width={18} />
             </button>

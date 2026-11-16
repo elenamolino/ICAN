@@ -11,6 +11,7 @@ import { PermissionEngine } from '../policies/PermissionEngine';
 import { LeanUser } from '../types/models/User';
 import { AnalysisSummary, ClauseAnalysis } from '../types/services/AnalysisService';
 import { SaveOntologyAnalysisPayload } from '../types/services/OntologyAnalysisService';
+import ContractVersionRepository from '../repositories/mongoose/ContractVersionRepository';
 
 function contentHash(text: string): string {
   return createHash('md5').update(text).digest('hex');
@@ -27,6 +28,10 @@ export interface SaveAnalysisPayload {
   // version keyed by content hash — lets the same version carry both an AI
   // Classify and an Ontology Analysis result even if the two texts differ.
   versionId?: string;
+  /** Name for the new version, such as "Adds a refund policy". */
+  versionName?: string;
+  /** Version of `contractId` the new one was edited from, to draw it as a branch. */
+  parentVersionId?: string;
   provider?: string;
   title?: string;
   date: string;
@@ -42,6 +47,7 @@ class AnalysisSaveService {
   private serviceService: ServiceService;
   private contractService: ContractService;
   private contractVersionService: ContractVersionService;
+  private contractVersionRepository: ContractVersionRepository;
   private permissionService: PermissionService;
   private permissionEngine: PermissionEngine;
 
@@ -52,6 +58,7 @@ class AnalysisSaveService {
     this.serviceService = container.resolve('serviceService');
     this.contractService = container.resolve('contractService');
     this.contractVersionService = container.resolve('contractVersionService');
+    this.contractVersionRepository = container.resolve('contractVersionRepository');
     this.permissionService = container.resolve('permissionService');
     this.permissionEngine = new PermissionEngine();
   }
@@ -90,12 +97,20 @@ class AnalysisSaveService {
         precomputedAnalysis: { summary: payload.summary, clauses: payload.clauses },
       });
     } else {
+      if (payload.parentVersionId) {
+        const parent: any = await this.contractVersionRepository.findById(payload.parentVersionId);
+        if (!parent || String(parent._contractId) !== String(contractId)) {
+          throw new Error('NOT FOUND: Parent version not found in this contract');
+        }
+      }
       const commitHash = contentHash(payload.text);
       await this.contractVersionService.upsertVersion(contractId, {
         commitHash,
         capturedAt: new Date(payload.date),
         label: 'last',
         content: payload.text,
+        name: payload.versionName?.trim() || null,
+        parentVersionId: payload.parentVersionId ?? null,
         precomputedAnalysis: { summary: payload.summary, clauses: payload.clauses },
       });
       await this.contractVersionService.relabelAllByDate(contractId);

@@ -184,6 +184,84 @@ describe('POST /api/v1/contracts/:organizationId/ai-classify/save', () => {
     expect(versions[1].label).toBe('last');
   });
 
+  it('names a version, lists the name and renames it when the same text is saved again', async () => {
+    const { user, organizationId, collectionId } = await setupCollection();
+    const base = { collectionId, date: '2026-03-01T00:00:00.000Z', text: 'Text of the named version.', summary: sampleSummary, clauses: sampleClauses };
+
+    const first = await request(app)
+      .post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`)
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ ...base, serviceName: `Acme_${randomSuffix()}`, contractName: 'x', provider: 'Acme', title: 'Terms', versionName: '  First draft  ' });
+    expect(first.status).toBe(201);
+    const contract: any = await ContractMongoose.findOne({ slug: first.body.contractSlug });
+    contractsToDelete.add(String(contract!._id));
+
+    const listed = await request(app)
+      .get(`${BASE_PATH}/contracts/${organizationId}/${first.body.contractSlug}/versions`)
+      .set('Authorization', `Bearer ${user.token}`);
+    expect(listed.body.versions.map((v: any) => v.name)).toEqual(['First draft']);
+
+    await request(app)
+      .post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`)
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({ ...base, contractId: String(contract!._id), serviceId: String(contract!._serviceId), versionName: 'Reviewed' });
+    const versions = await ContractVersionMongoose.find({ _contractId: contract!._id });
+    expect(versions.map(v => (v as any).name)).toEqual(['Reviewed']);
+  });
+
+  it('saves a version edited from an older one as its branch, and refuses a parent from another contract', async () => {
+    const { user, organizationId, collectionId } = await setupCollection();
+    const save = (body: object) =>
+      request(app).post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`).set('Authorization', `Bearer ${user.token}`)
+        .send({ collectionId, summary: sampleSummary, clauses: sampleClauses, ...body });
+
+    const v1 = await save({ serviceName: `Acme_${randomSuffix()}`, contractName: 'x', provider: 'Acme', title: 'Terms', date: '2026-01-01T00:00:00.000Z', text: 'First text.' });
+    const contract: any = await ContractMongoose.findOne({ slug: v1.body.contractSlug });
+    contractsToDelete.add(String(contract!._id));
+    const existing = { contractId: String(contract!._id), serviceId: String(contract!._serviceId) };
+    await save({ ...existing, date: '2026-02-01T00:00:00.000Z', text: 'Second text.' });
+
+    const branch = await save({ ...existing, date: '2026-03-01T00:00:00.000Z', text: 'First text, edited.', parentVersionId: v1.body.versionId });
+    expect(branch.status).toBe(201);
+    const saved: any = await ContractVersionMongoose.findById(branch.body.versionId);
+    expect(saved._parentVersionId).toBe(v1.body.versionId);
+
+    const other = await save({ serviceName: `Other_${randomSuffix()}`, contractName: 'y', provider: 'Other', title: 'Terms', date: '2026-01-01T00:00:00.000Z', text: 'Other text.' });
+    contractsToDelete.add(String((await ContractMongoose.findOne({ slug: other.body.contractSlug }))!._id));
+    const wrongParent = await save({ ...existing, date: '2026-04-01T00:00:00.000Z', text: 'Third text.', parentVersionId: other.body.versionId });
+    expect(wrongParent.status).toBe(404);
+  });
+
+  it('asks for the contract when a parent version is given', async () => {
+    const { user, organizationId, collectionId } = await setupCollection();
+
+    const response = await request(app)
+      .post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`)
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({
+        collectionId, serviceName: 'Acme', contractName: 'x', provider: 'Acme', title: 'Terms',
+        date: '2026-03-01T00:00:00.000Z', text: 'Some text.', summary: sampleSummary, clauses: sampleClauses,
+        parentVersionId: '507f1f77bcf86cd799439011',
+      });
+
+    expect(response.status).toBe(422);
+  });
+
+  it('rejects a version name longer than 80 characters', async () => {
+    const { user, organizationId, collectionId } = await setupCollection();
+
+    const response = await request(app)
+      .post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`)
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({
+        collectionId, serviceName: 'Acme', contractName: 'x', provider: 'Acme', title: 'Terms',
+        date: '2026-03-01T00:00:00.000Z', text: 'Some text.', summary: sampleSummary, clauses: sampleClauses,
+        versionName: 'x'.repeat(81),
+      });
+
+    expect(response.status).toBe(422);
+  });
+
   it('rejects saving without authentication', async () => {
     const response = await request(app)
       .post(`${BASE_PATH}/contracts/507f1f77bcf86cd799439011/ai-classify/save`)

@@ -54,6 +54,17 @@ describe('AnalysisService', () => {
     expect(result).toEqual(analyzerResponse);
   });
 
+  it('sends Markdown as plain sentences, so headings are not split into clauses', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ summary: {}, clauses: [] }) });
+
+    await service.classify('## 2. The service\n\nYouRoom is an online tool.\n\n- send spam');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/v1/analyze',
+      expect.objectContaining({ body: JSON.stringify({ text: 'YouRoom is an online tool.\n\nsend spam.' }) })
+    );
+  });
+
   it('throws when the analyzer service is unreachable', async () => {
     fetchMock.mockRejectedValue(new Error('ECONNREFUSED'));
 

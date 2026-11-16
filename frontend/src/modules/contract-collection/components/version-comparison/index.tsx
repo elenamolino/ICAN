@@ -7,13 +7,14 @@ import {
 } from '../../api/contractCollectionsApi';
 import { CATEGORY_LABELS, CATEGORY_KEYS, RELEVANCE_THRESHOLD } from '../../../analysis/constants/clauseCategories';
 import Iconify from '../../../core/components/iconify';
+import { versionTitle } from '../../utils/versions';
 
 const SELECT_CLASS =
   'w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none';
 
 function versionLabel(v: ContractVersionListItem, n: number) {
   const dateStr = format(new Date(v.capturedAt), 'MMM d, yyyy');
-  return `v${n} · ${dateStr}${v.label === 'last' ? ' (current)' : ''}`;
+  return `${versionTitle(v, n)} · ${dateStr}${v.label === 'last' ? ' (current)' : ''}`;
 }
 
 function Delta({ before, after, invertGood = false }: { before: number; after: number; invertGood?: boolean }) {

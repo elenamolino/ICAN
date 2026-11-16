@@ -79,7 +79,7 @@ export const openApiSpec = {
         tags: ['Analysis'],
         summary: 'Classify a text with AI Classify',
         description:
-          'Cuts the text into sentences and flags potentially unfair ones across eight categories (a clause is flagged when a category scores above 0.5). Synchronous.',
+          'Cuts the text into sentences and flags potentially unfair ones across eight categories (a clause is flagged when a category scores above 0.5). Synchronous. Markdown headings and list marks are removed first, so they are not taken for clauses.',
         requestBody: {
           required: true,
           content: {
@@ -204,6 +204,17 @@ export const openApiSpec = {
                 required: ['collectionId', 'date', 'text', 'summary', 'clauses'],
                 properties: {
                   ...saveBodyCommon,
+                  versionName: {
+                    type: 'string',
+                    maxLength: 80,
+                    description:
+                      'Optional name for the version, such as "Adds a refund policy". Saving the same text again with a name renames that version.',
+                  },
+                  parentVersionId: {
+                    type: 'string',
+                    description:
+                      'Version of `contractId` the text was edited from. The version graph draws the new version as a branch from it. Without it, the new version follows the one before it by date.',
+                  },
                   text: { type: 'string', description: 'The analysed text.' },
                   summary: { $ref: '#/components/schemas/AiClassifySummary' },
                   clauses: { type: 'array', items: { $ref: '#/components/schemas/AiClassifyClause' } },
@@ -352,7 +363,7 @@ export const openApiSpec = {
         tags: ['Contracts'],
         summary: 'List the versions of a contract',
         description:
-          'Each version says whether it has an AI Classify `summary` and/or an ontology report (`hasOntologyReport`).',
+          'Each version says whether it has an AI Classify `summary` and/or an ontology report (`hasOntologyReport`), carries the `name` its author gave it, or null, and `_parentVersionId`, the version it was edited from (null: the one before it by date).',
         parameters: [orgParam, { name: 'contractSlug', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { '200': { description: 'Versions.' } },
       },

@@ -6,6 +6,11 @@ const contractVersionSchema = new Schema(
     commitHash: { type: String, required: true },
     capturedAt: { type: Date, required: true },
     label: { type: String, enum: ['first', 'intermediate', 'last'], required: true },
+    // A name the author gives the version when saving it ("Adds a refund policy").
+    name: { type: String, required: false, default: null, trim: true, maxlength: 80 },
+    // The version this one was edited from, when it was not the latest: the
+    // version graph draws it as a branch. Null means "the one before it by date".
+    _parentVersionId: { type: String, ref: 'ContractVersion', required: false, default: null },
     content: { type: String, required: true },
     insertions: { type: Number, required: false, default: null },
     deletions: { type: Number, required: false, default: null },

@@ -28,6 +28,10 @@ export interface UpsertVersionInput {
   capturedAt: Date;
   label: ContractVersionLabel;
   content: string;
+  /** Optional name given by the author; saving the same text again with a name renames it. */
+  name?: string | null;
+  /** The version it was edited from; null or missing for "the one before it by date". */
+  parentVersionId?: string | null;
   insertions?: number | null;
   deletions?: number | null;
   // When provided, skips the analyzer call and stores this analysis as-is —
@@ -77,6 +81,10 @@ class ContractVersionService {
       // land or the selection logic improves — keep the label current.
       if (existing.label !== input.label) {
         updates.label = input.label;
+      }
+
+      if (input.name && existing.name !== input.name) {
+        updates.name = input.name;
       }
 
       // AI Classify and Ontology Analysis are independent analyses that can
@@ -133,6 +141,8 @@ class ContractVersionService {
         capturedAt: input.capturedAt,
         label: input.label,
         content: input.content,
+        name: input.name ?? null,
+        _parentVersionId: input.parentVersionId ?? null,
         insertions: input.insertions ?? null,
         deletions: input.deletions ?? null,
         summary,

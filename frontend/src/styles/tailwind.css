@@ -563,3 +563,28 @@ body {
     animation: wiggle-bubble 2.5s ease-in-out infinite;
   }
 }
+
+/* Contract editor (Monaco): red for a potentially unfair clause, amber for a
+   placeholder left unfilled. Built from the severity tokens, so the dark
+   variants come from the .dark block above. */
+.contract-editor-error-line {
+  background: color-mix(in srgb, var(--color-tp-severity-error) 14%, transparent);
+}
+
+.contract-editor-warning-line {
+  background: color-mix(in srgb, var(--color-tp-severity-warning) 16%, transparent);
+}
+
+.contract-editor-error-gutter,
+.contract-editor-warning-gutter {
+  width: 3px !important;
+  margin-left: 3px;
+}
+
+.contract-editor-error-gutter {
+  background: var(--color-tp-severity-error);
+}
+
+.contract-editor-warning-gutter {
+  background: var(--color-tp-severity-warning);
+}

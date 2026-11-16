@@ -62,6 +62,17 @@ const save = [
     .withMessage('The clauses field is required')
     .isArray()
     .withMessage('The clauses field must be an array'),
+  check('versionName')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('The versionName field must be a string')
+    .trim()
+    .isLength({ max: 80 })
+    .withMessage('The versionName field must be at most 80 characters'),
+  check('parentVersionId')
+    .optional({ values: 'null' })
+    .isMongoId()
+    .withMessage('The parentVersionId field must be a version id'),
   check('collectionId').custom((value, { req }) => {
     const body = req.body ?? {};
     if (!body.serviceId && !body.serviceName) {
@@ -75,6 +86,9 @@ const save = [
     }
     if (body.versionId && !body.contractId) {
       throw new Error('versionId requires contractId');
+    }
+    if (body.parentVersionId && !body.contractId) {
+      throw new Error('parentVersionId requires contractId');
     }
     return true;
   }),

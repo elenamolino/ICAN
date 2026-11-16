@@ -20,6 +20,7 @@ import {
 import SummaryStat from '../../../analysis/components/SummaryStat';
 import SavedOntologyReport from '../../../analysis/components/SavedOntologyReport';
 import VersionGraph from '../../components/version-graph';
+import { describeTextChanges, parentOf, summariseChanges, versionTitle } from '../../utils/versions';
 import VersionList from '../../components/version-list';
 import FilterableClauseList from '../../components/filterable-clause-list';
 import VersionEvolutionChart from '../../components/version-evolution-chart';
@@ -56,6 +57,8 @@ export default function ContractDetailPage() {
   const [versions, setVersions] = useState<ContractVersionListItem[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<ContractVersionDetail | null>(null);
+  // The version before the selected one, to summarise what changed.
+  const [previousVersion, setPreviousVersion] = useState<ContractVersionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingVersion, setIsLoadingVersion] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +112,37 @@ export default function ContractDetailPage() {
       cancelled = true;
     };
   }, [organizationId, contractSlug, selectedVersionId]);
+
+  // The version the selected one came from: the one it was edited from, or the one before it.
+  const previousVersionId = selectedVersionId ? parentOf(versions, selectedVersionId)?.id ?? null : null;
+
+  useEffect(() => {
+    if (!organizationId || !contractSlug || !previousVersionId) {
+      setPreviousVersion(null);
+      return;
+    }
+    let cancelled = false;
+    getContractVersion(organizationId, contractSlug, previousVersionId)
+      .then((v) => !cancelled && setPreviousVersion(v))
+      .catch(() => !cancelled && setPreviousVersion(null));
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, contractSlug, previousVersionId]);
+
+  // Only when both loaded versions are the pair on screen.
+  const versionChanges = useMemo(() => {
+    if (!selectedVersion?.clauses || !previousVersion?.clauses) return null;
+    if (selectedVersion.id !== selectedVersionId || previousVersion.id !== previousVersionId) return null;
+    return summariseChanges(previousVersion.clauses, selectedVersion.clauses);
+  }, [selectedVersion, previousVersion, selectedVersionId, previousVersionId]);
+
+  const textChanges = useMemo(() => {
+    if (!selectedVersion || !previousVersion) return null;
+    if (selectedVersion.id !== selectedVersionId || previousVersion.id !== previousVersionId) return null;
+    return describeTextChanges(previousVersion.content ?? '', selectedVersion.content ?? '');
+  }, [selectedVersion, previousVersion, selectedVersionId, previousVersionId]);
 
   // Version-history content comes from termscockpit's OpenTermsArchive sync,
   // which is already-extracted markdown; a manually-uploaded contract (no
@@ -185,10 +219,11 @@ export default function ContractDetailPage() {
     }
   };
 
-  // Compares the version at `index` with the one before it.
-  const openComparison = (index: number) => {
-    if (index < 1 || index >= versions.length) return;
-    setComparePair({ before: versions[index - 1].id, after: versions[index].id });
+  // Compares a version with the one it came from.
+  const openComparison = (versionId: string | null) => {
+    const parent = versionId ? parentOf(versions, versionId) : null;
+    if (!versionId || !parent) return;
+    setComparePair({ before: parent.id, after: versionId });
     setTab('versions');
   };
 
@@ -301,7 +336,7 @@ export default function ContractDetailPage() {
                     .reverse()
                     .map(({ v, n }) => (
                       <option key={v.id} value={v.id}>
-                        v{n}{v.label === 'last' ? ' (current)' : ''}
+                        {versionTitle(v, n)}{v.label === 'last' ? ' (current)' : ''}
                       </option>
                     ))}
                 </select>
@@ -364,6 +399,21 @@ export default function ContractDetailPage() {
                 Source
                 <Iconify icon="mdi:open-in-new" width={14} />
               </a>
+            )}
+            {contract.canEdit && hasVersionHistory && selectedVersionId && (
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    `/editor?organization=${organizationId}&contract=${contractSlug}&version=${selectedVersionId}`
+                  )
+                }
+                title="Open this version in the contract editor and save your changes as a new version"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary"
+              >
+                <Iconify icon="mdi:pencil-outline" width={14} />
+                Edit
+              </button>
             )}
             {contract?.canDelete && (
               <button
@@ -471,6 +521,9 @@ export default function ContractDetailPage() {
                 versions={versions}
                 selectedId={selectedVersionId ?? ''}
                 onSelect={selectVersion}
+                changes={versionChanges}
+                textChanges={textChanges}
+                onSeeChanges={() => openComparison(selectedVersionId)}
               />
 
               {versions.length > 1 && (
@@ -480,8 +533,8 @@ export default function ContractDetailPage() {
                     type="button"
                     onClick={() => {
                       if (comparePair) return setComparePair(null);
-                      const i = versions.findIndex((v) => v.id === selectedVersionId);
-                      openComparison(i > 0 ? i : 1);
+                      // The first version has nothing before it: compare the second one instead.
+                      openComparison(parentOf(versions, selectedVersionId ?? '') ? selectedVersionId : versions[1]?.id ?? null);
                     }}
                     className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-tp-hairline px-3 py-1.5 text-sm font-medium text-tp-ink transition-colors hover:border-tp-primary hover:text-tp-primary"
                   >
@@ -511,7 +564,7 @@ export default function ContractDetailPage() {
                   selectVersion(id);
                   setTab('content');
                 }}
-                onCompareWithPrevious={(id) => openComparison(versions.findIndex((v) => v.id === id))}
+                onCompareWithPrevious={openComparison}
                 onDownload={handleDownloadVersion}
                 linkTo={versionLink}
                 onDelete={contract?.canDelete ? handleDeleteVersion : undefined}
