@@ -1,4 +1,5 @@
-import { check } from 'express-validator';
+import { check, query } from 'express-validator';
+import { CAPTURE_AGES, DOCUMENT_FILTERS, POLICY_TYPES, REVIEW_STATES } from '../../utils/collectionServicePage';
 
 const create = [
   check('name')
@@ -39,4 +40,28 @@ const update = [
     .withMessage('The private field must be boolean'),
 ];
 
-export { create, update };
+function csvOf(field: string, allowed: readonly string[]) {
+  return query(field)
+    .optional()
+    .isString()
+    .custom((value: string) => value.split(',').every(item => allowed.includes(item)))
+    .withMessage(`The ${field} query param must be a comma-separated list of: ${allowed.join(', ')}`);
+}
+
+const indexServices = [
+  query('limit')
+    .optional()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('The limit query param must be an integer between 1 and 100'),
+  query('offset')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('The offset query param must be a non-negative integer'),
+  query('name').optional().isString().withMessage('The name query param must be a string'),
+  csvOf('documents', DOCUMENT_FILTERS),
+  csvOf('policyTypes', POLICY_TYPES),
+  csvOf('review', REVIEW_STATES),
+  csvOf('captured', CAPTURE_AGES),
+];
+
+export { create, update, indexServices };

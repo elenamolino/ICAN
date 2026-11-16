@@ -21,7 +21,51 @@ export interface ContractCollectionSummary {
   canEdit?: boolean;
   canDelete?: boolean;
   organization: ContractCollectionOrganization;
+  /** Only on the detail endpoint. The documents themselves come from listCollectionServices. */
+  contractCount?: number;
   contracts?: Contract[];
+}
+
+export type PolicyType =
+  | 'terms-of-service'
+  | 'privacy-policy'
+  | 'acceptable-use-policy'
+  | 'service-level-agreement'
+  | 'data-security-policy'
+  | 'other-policy';
+export type ReviewState = 'has-unfair-clauses' | 'no-unfair-clauses' | 'not-analysed';
+export type CaptureAge = 'last-30-days' | 'older-than-90-days';
+export type DocumentFilter = 'with-documents' | 'empty';
+
+export interface CollectionServiceNode {
+  id: string;
+  name: string;
+  slug: string;
+  contracts: Contract[];
+}
+
+export interface CollectionServicesPage {
+  services: CollectionServiceNode[];
+  total: number;
+  limit: number;
+  offset: number;
+  /** How many services, before filtering, have at least one document of each kind. */
+  facets: {
+    documents: Record<DocumentFilter, number>;
+    policyTypes: Record<PolicyType, number>;
+    review: Record<ReviewState, number>;
+    captured: Record<CaptureAge, number>;
+  };
+}
+
+export interface CollectionServicesQuery {
+  limit: number;
+  offset: number;
+  name?: string;
+  documents?: DocumentFilter[];
+  policyTypes?: PolicyType[];
+  review?: ReviewState[];
+  captured?: CaptureAge[];
 }
 
 export interface ContractServiceRef {
@@ -103,6 +147,20 @@ export function useContractCollectionsApi() {
   async function getCollection(organizationId: string, collectionSlug: string): Promise<ContractCollectionSummary> {
     const res = await fetchWithInterceptor(`${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}`);
     if (!res.ok) throw new Error('Collection not found');
+    return res.json();
+  }
+
+  async function listCollectionServices(
+    organizationId: string,
+    collectionSlug: string,
+    params: CollectionServicesQuery,
+    signal?: AbortSignal
+  ): Promise<CollectionServicesPage> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}/services${buildQuery({ ...params })}`,
+      { signal }
+    );
+    if (!res.ok) throw new Error('Failed to fetch the services of the collection');
     return res.json();
   }
 
@@ -239,6 +297,7 @@ export function useContractCollectionsApi() {
   return {
     listCollections,
     getCollection,
+    listCollectionServices,
     listContracts,
     getContract,
     listContractVersions,

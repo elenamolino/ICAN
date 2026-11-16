@@ -123,6 +123,14 @@ class ContractRepository extends RepositoryBase {
     return result;
   }
 
+  // Everything the collection detail page shows about a contract, without its
+  // full text, which is what made loading a large collection slow.
+  async findSummariesByCollection(collectionId: string) {
+    return ContractMongoose.find({ _collectionId: String(collectionId) })
+      .select('name slug version createdAt url private _organizationId _serviceId latestVersionSummary')
+      .lean();
+  }
+
   async findByCollection(collectionId: string) {
     try {
       return await ContractMongoose.find({ _collectionId: collectionId });

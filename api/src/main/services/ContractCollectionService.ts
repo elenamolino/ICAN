@@ -1,6 +1,7 @@
 import container from '../config/container';
 import ContractCollectionRepository from '../repositories/mongoose/ContractCollectionRepository';
 import ContractRepository from '../repositories/mongoose/ContractRepository';
+import ServiceRepository from '../repositories/mongoose/ServiceRepository';
 import { CollectionIndexQueryParams } from '../types/services/ContractCollection';
 import { LeanUser } from '../types/models/User';
 import { PermissionEngine } from '../policies/PermissionEngine';
@@ -10,10 +11,12 @@ import UserService from './UserService';
 import PermissionService from './PermissionService';
 import OrganizationService from './OrganizationService';
 import { Organization } from '../types/database/Organization';
+import { buildServicePage, groupContractsByService, ServicePageQuery } from '../utils/collectionServicePage';
 
 class ContractCollectionService {
   private readonly contractCollectionRepository: ContractCollectionRepository;
   private readonly contractRepository: ContractRepository;
+  private readonly serviceRepository: ServiceRepository;
   private readonly permissionEngine: PermissionEngine;
   private readonly permissionService: PermissionService;
   private readonly userService: UserService;
@@ -22,6 +25,7 @@ class ContractCollectionService {
   constructor() {
     this.contractCollectionRepository = container.resolve('contractCollectionRepository');
     this.contractRepository = container.resolve('contractRepository');
+    this.serviceRepository = container.resolve('serviceRepository');
     this.permissionEngine = new PermissionEngine();
     this.permissionService = container.resolve('permissionService');
     this.userService = container.resolve('userService');
@@ -131,9 +135,11 @@ class ContractCollectionService {
       throw new Error('PERMISSION ERROR: You are not a member of this organization');
     }
 
+    const contractCount = await this.contractCollectionRepository.countContracts(collection.id);
+
     // Anonymous callers only ever reach public collections, and can never change them.
     if (!reqUser) {
-      return { ...collection, canEdit: false, canDelete: false };
+      return { ...collection, contractCount, canEdit: false, canDelete: false };
     }
 
     const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
@@ -166,7 +172,54 @@ class ContractCollectionService {
     const canEdit = this.permissionEngine.evaluate({ ...evaluationContext, action: 'PUT' }).allowed;
     const canDelete = this.permissionEngine.evaluate({ ...evaluationContext, action: 'DELETE' }).allowed;
 
-    return { ...collection, canEdit, canDelete };
+    return { ...collection, contractCount, canEdit, canDelete };
+  }
+
+  // One page of the collection's services, each with its documents (without
+  // their text), for the collection detail page.
+  async listServices(
+    organizationId: string,
+    collectionSlug: string,
+    query: ServicePageQuery,
+    reqUser?: LeanUser
+  ) {
+    const collection = await this.show(organizationId, collectionSlug, reqUser);
+
+    const [services, contracts] = await Promise.all([
+      this.serviceRepository.findByCollectionId(collection.id),
+      this.contractRepository.findSummariesByCollection(collection.id),
+    ]);
+
+    const serviceRefs = services.map((service: any) => ({
+      id: String(service._id),
+      name: service.name,
+      slug: service.slug,
+    }));
+    const servicesById = new Map(serviceRefs.map(service => [service.id, service]));
+
+    const contractSummaries = contracts.map((contract: any) => {
+      const serviceId = contract._serviceId ? String(contract._serviceId) : null;
+      return {
+        id: String(contract._id),
+        name: contract.name,
+        slug: contract.slug,
+        version: contract.version,
+        createdAt: contract.createdAt,
+        url: contract.url,
+        private: contract.private,
+        organization: { id: String(contract._organizationId) },
+        service: (serviceId && servicesById.get(serviceId)) || null,
+        latestVersionSummary: contract.latestVersionSummary,
+        serviceId,
+      };
+    });
+
+    const page = buildServicePage(groupContractsByService(serviceRefs, contractSummaries), query);
+    // serviceId only served to group the contracts; the response carries `service`.
+    page.services.forEach(service => {
+      service.contracts = service.contracts.map(({ serviceId: _serviceId, ...contract }) => contract) as any;
+    });
+    return page;
   }
 
   async create(newCollection: Record<string, any>, organizationId: string, reqUser: LeanUser) {

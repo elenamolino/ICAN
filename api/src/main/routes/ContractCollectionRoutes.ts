@@ -23,6 +23,10 @@ const loadFileRoutes = function (app: express.Application) {
     .delete(contractCollectionController.destroy);
 
   app
+    .route(baseUrl + '/contractCollections/:organizationId/:collectionSlug/services')
+    .get(ContractCollectionValidator.indexServices, handleValidation, contractCollectionController.indexServices);
+
+  app
     .route(baseUrl + '/contractCollections/:organizationId/:collectionSlug/contracts/:contractSlug')
     .delete(contractCollectionController.removeContractFromCollection);
 };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
@@ -7,24 +7,26 @@ import Iconify from '../../../core/components/iconify';
 import SearchInput from '../../../core/components/search-input';
 import FilterBar from '../../../core/components/filter-bar';
 import { useRouter } from '../../../core/hooks/useRouter';
+import { useDebouncedValue } from '../../../core/hooks/useDebouncedValue';
 import { transitionDefault } from '../../../core/utils/motion-variants';
 import customConfirm from '../../../core/utils/custom-confirm';
 import customAlert from '../../../core/utils/custom-alert';
 import {
-  Contract,
+  CaptureAge,
+  CollectionServicesPage,
   ContractCollectionSummary,
+  DocumentFilter,
+  PolicyType,
+  ReviewState,
   useContractCollectionsApi,
 } from '../../api/contractCollectionsApi';
-import { listServices, ServiceSummary } from '../../api/servicesApi';
 import CollectionTree from '../../components/collection-tree';
 import DocumentList from '../../components/document-list';
 import { buildServiceTree, findCategory, firstCategory } from '../../components/collection-tree/model';
 
-const UNASSIGNED_SERVICE: ServiceSummary = { id: '__unassigned__', name: 'Unassigned documents', slug: '__unassigned__' };
-
-type PolicyType = 'terms-of-service' | 'privacy-policy' | 'acceptable-use-policy' | 'service-level-agreement' | 'data-security-policy' | 'other-policy';
-type ReviewState = 'has-unfair-clauses' | 'no-unfair-clauses' | 'not-analysed';
-type CaptureAge = 'last-30-days' | 'older-than-90-days';
+// Services are fetched a page at a time: a large collection used to arrive whole,
+// with the full text of every document, and took far too long to open.
+const PAGE_SIZE = 10;
 
 const policyTypeLabels: Record<PolicyType, string> = {
   'terms-of-service': 'Terms of Service',
@@ -34,37 +36,6 @@ const policyTypeLabels: Record<PolicyType, string> = {
   'data-security-policy': 'Data, Content & Security',
   'other-policy': 'Other policy types',
 };
-
-function policyTypeForContract(contract: Contract): PolicyType {
-  const name = contract.name.toLocaleLowerCase();
-  if (name.includes('service level') || name.includes(' sla')) return 'service-level-agreement';
-  if (name.includes('privacy')) return 'privacy-policy';
-  if (name.includes('acceptable use')) return 'acceptable-use-policy';
-  if (name.includes('terms of service') || name.includes('terms and conditions') || name.includes('general terms')) return 'terms-of-service';
-  if (/(data|content|security|tracker|cookie)/.test(name)) return 'data-security-policy';
-  return 'other-policy';
-}
-
-function matchesReviewState(contract: Contract, states: ReviewState[]): boolean {
-  if (states.length === 0) return true;
-  const summary = contract.latestVersionSummary;
-  return states.some((state) => (
-    (state === 'has-unfair-clauses' && (summary?.unfairClauses ?? 0) > 0)
-    || (state === 'no-unfair-clauses' && summary !== undefined && summary.unfairClauses === 0)
-    || (state === 'not-analysed' && summary === undefined)
-  ));
-}
-
-function matchesCaptureAge(contract: Contract, ages: CaptureAge[], now: number): boolean {
-  if (ages.length === 0) return true;
-  const capturedAt = new Date(contract.createdAt).getTime();
-  if (Number.isNaN(capturedAt)) return false;
-  const ageInDays = (now - capturedAt) / 86_400_000;
-  return ages.some((age) => (
-    (age === 'last-30-days' && ageInDays <= 30)
-    || (age === 'older-than-90-days' && ageInDays > 90)
-  ));
-}
 
 function NoResults({ documents = false }: { documents?: boolean }) {
   return (
@@ -80,20 +51,33 @@ function NoResults({ documents = false }: { documents?: boolean }) {
 export default function CollectionDetailPage() {
   const { organizationId, collectionSlug } = useParams<{ organizationId: string; collectionSlug: string }>();
   const router = useRouter();
-  const { getCollection, updateCollection, deleteCollection } = useContractCollectionsApi();
+  const { getCollection, listCollectionServices, updateCollection, deleteCollection } = useContractCollectionsApi();
   const [collection, setCollection] = useState<ContractCollectionSummary | null>(null);
-  const [services, setServices] = useState<ServiceSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Every page fetched so far for the current filters, merged into one.
+  const [servicesPage, setServicesPage] = useState<CollectionServicesPage | null>(null);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const loadMoreController = useRef<AbortController | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   // Below lg the two panels are separate screens: the tree first, then the list.
   const [mobileView, setMobileView] = useState<'tree' | 'list'>('tree');
   const [textFilter, setTextFilter] = useState('');
-  const [serviceFilters, setServiceFilters] = useState<string[]>([]);
+  const debouncedTextFilter = useDebouncedValue(textFilter.trim(), 300);
+  const [serviceFilters, setServiceFilters] = useState<DocumentFilter[]>([]);
   const [policyTypeFilters, setPolicyTypeFilters] = useState<PolicyType[]>([]);
   const [reviewFilters, setReviewFilters] = useState<ReviewState[]>([]);
   const [captureAgeFilters, setCaptureAgeFilters] = useState<CaptureAge[]>([]);
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+
+  const servicesQuery = useMemo(() => ({
+    name: debouncedTextFilter || undefined,
+    documents: serviceFilters,
+    policyTypes: policyTypeFilters,
+    review: reviewFilters,
+    captured: captureAgeFilters,
+  }), [captureAgeFilters, debouncedTextFilter, policyTypeFilters, reviewFilters, serviceFilters]);
 
   useEffect(() => {
     if (!organizationId || !collectionSlug) return;
@@ -104,10 +88,7 @@ export default function CollectionDetailPage() {
     async function loadCollection() {
       try {
         const retrievedCollection = await getCollection(organizationId!, collectionSlug!);
-        const retrievedServices = await listServices({ collectionId: retrievedCollection.id });
-        if (!isCurrent) return;
-        setCollection(retrievedCollection);
-        setServices(retrievedServices);
+        if (isCurrent) setCollection(retrievedCollection);
       } catch {
         if (isCurrent) setError('Collection not found');
       } finally {
@@ -119,49 +100,54 @@ export default function CollectionDetailPage() {
     return () => { isCurrent = false; };
   }, [organizationId, collectionSlug]);
 
-  const contracts: Contract[] = collection?.contracts ?? [];
+  // Changing the search or a filter starts again from the first page.
+  useEffect(() => {
+    if (!organizationId || !collectionSlug) return;
+    loadMoreController.current?.abort();
+    const controller = new AbortController();
+    setIsLoadingServices(true);
 
-  const serviceNodes = useMemo(() => {
-    const contractsByServiceSlug = new Map<string, Contract[]>();
-    const unassignedContracts: Contract[] = [];
+    listCollectionServices(organizationId, collectionSlug, { ...servicesQuery, limit: PAGE_SIZE, offset: 0 }, controller.signal)
+      .then(setServicesPage)
+      .catch(() => {
+        if (!controller.signal.aborted) setServicesPage(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingServices(false);
+      });
 
-    contracts.forEach((contract) => {
-      if (!contract.service) {
-        unassignedContracts.push(contract);
-        return;
-      }
-      const serviceContracts = contractsByServiceSlug.get(contract.service.slug) ?? [];
-      serviceContracts.push(contract);
-      contractsByServiceSlug.set(contract.service.slug, serviceContracts);
-    });
+    return () => controller.abort();
+  }, [organizationId, collectionSlug, servicesQuery]);
 
-    const nodes = services.map((service) => ({ service, contracts: contractsByServiceSlug.get(service.slug) ?? [] }));
-    if (unassignedContracts.length > 0) nodes.push({ service: UNASSIGNED_SERVICE, contracts: unassignedContracts });
-    return nodes;
-  }, [contracts, services]);
+  const loadMoreServices = async () => {
+    if (!organizationId || !collectionSlug || !servicesPage || isLoadingMore) return;
+    const controller = new AbortController();
+    loadMoreController.current = controller;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = await listCollectionServices(
+        organizationId,
+        collectionSlug,
+        { ...servicesQuery, limit: PAGE_SIZE, offset: servicesPage.services.length },
+        controller.signal
+      );
+      setServicesPage((prev) => prev && { ...nextPage, services: [...prev.services, ...nextPage.services] });
+    } catch {
+      if (!controller.signal.aborted) await customAlert('Failed to load more services', 'error');
+    } finally {
+      if (!controller.signal.aborted) setIsLoadingMore(false);
+    }
+  };
 
-  const filteredServiceNodes = useMemo(() => {
-    const normalizedFilter = textFilter.trim().toLocaleLowerCase();
-    const now = Date.now();
-    return serviceNodes.flatMap(({ service, contracts: serviceContracts }) => {
-      const visibleContracts = serviceContracts.filter((contract) => (
-        (policyTypeFilters.length === 0 || policyTypeFilters.includes(policyTypeForContract(contract)))
-        && matchesReviewState(contract, reviewFilters)
-        && matchesCaptureAge(contract, captureAgeFilters, now)
-      ));
-      const matchesText = !normalizedFilter || service.name.toLocaleLowerCase().includes(normalizedFilter);
-      const matchesDocumentFilter = serviceFilters.length === 0
-        || (serviceFilters.includes('with-documents') && serviceContracts.length > 0)
-        || (serviceFilters.includes('empty') && serviceContracts.length === 0);
-      const hasDocumentLevelFilter = policyTypeFilters.length > 0 || reviewFilters.length > 0 || captureAgeFilters.length > 0;
-      const matchesDocumentCriteria = !hasDocumentLevelFilter || visibleContracts.length > 0;
-      return matchesText && matchesDocumentFilter && matchesDocumentCriteria
-        ? [{ service, contracts: visibleContracts }]
-        : [];
-    });
-  }, [captureAgeFilters, policyTypeFilters, reviewFilters, serviceFilters, serviceNodes, textFilter]);
+  const loadedServices = useMemo(() => servicesPage?.services ?? [], [servicesPage]);
+  const totalServices = servicesPage?.total ?? 0;
+  const remainingServices = totalServices - loadedServices.length;
+  const contractCount = collection?.contractCount ?? 0;
 
-  const filteredTree = useMemo(() => buildServiceTree(filteredServiceNodes), [filteredServiceNodes]);
+  const filteredTree = useMemo(
+    () => buildServiceTree(loadedServices.map(({ contracts, ...service }) => ({ service, contracts }))),
+    [loadedServices]
+  );
   // Keep the chosen category while it survives the filters; otherwise fall back to the first visible one.
   const selection = useMemo(
     () => findCategory(filteredTree, selectedKey) ?? firstCategory(filteredTree),
@@ -171,27 +157,25 @@ export default function CollectionDetailPage() {
     setSelectedKey(key);
     setMobileView('list');
   };
+  const facets = servicesPage?.facets;
   const filterOptions = useMemo(() => [
-    { label: 'With documents', value: 'with-documents', count: serviceNodes.filter(({ contracts: items }) => items.length > 0).length },
-    { label: 'Empty services', value: 'empty', count: serviceNodes.filter(({ contracts: items }) => items.length === 0).length },
-  ], [serviceNodes]);
+    { label: 'With documents', value: 'with-documents', count: facets?.documents['with-documents'] ?? 0 },
+    { label: 'Empty services', value: 'empty', count: facets?.documents.empty ?? 0 },
+  ], [facets]);
   const policyTypeOptions = useMemo(() => (Object.keys(policyTypeLabels) as PolicyType[]).map((type) => ({
     label: policyTypeLabels[type],
     value: type,
-    count: serviceNodes.filter(({ contracts: items }) => items.some((contract) => policyTypeForContract(contract) === type)).length,
-  })).filter((option) => option.count > 0), [serviceNodes]);
+    count: facets?.policyTypes[type] ?? 0,
+  })).filter((option) => option.count > 0), [facets]);
   const reviewOptions = useMemo(() => [
-    { label: 'Has unfair clauses', value: 'has-unfair-clauses', count: serviceNodes.filter(({ contracts: items }) => items.some((contract) => (contract.latestVersionSummary?.unfairClauses ?? 0) > 0)).length },
-    { label: 'No unfair clauses', value: 'no-unfair-clauses', count: serviceNodes.filter(({ contracts: items }) => items.some((contract) => contract.latestVersionSummary !== undefined && contract.latestVersionSummary.unfairClauses === 0)).length },
-    { label: 'Not analysed', value: 'not-analysed', count: serviceNodes.filter(({ contracts: items }) => items.some((contract) => contract.latestVersionSummary === undefined)).length },
-  ].filter((option) => option.count > 0), [serviceNodes]);
-  const captureAgeOptions = useMemo(() => {
-    const now = Date.now();
-    return [
-      { label: 'Captured in the last 30 days', value: 'last-30-days', count: serviceNodes.filter(({ contracts: items }) => items.some((contract) => matchesCaptureAge(contract, ['last-30-days'], now))).length },
-      { label: 'Captured over 90 days ago', value: 'older-than-90-days', count: serviceNodes.filter(({ contracts: items }) => items.some((contract) => matchesCaptureAge(contract, ['older-than-90-days'], now))).length },
-    ].filter((option) => option.count > 0);
-  }, [serviceNodes]);
+    { label: 'Has unfair clauses', value: 'has-unfair-clauses', count: facets?.review['has-unfair-clauses'] ?? 0 },
+    { label: 'No unfair clauses', value: 'no-unfair-clauses', count: facets?.review['no-unfair-clauses'] ?? 0 },
+    { label: 'Not analysed', value: 'not-analysed', count: facets?.review['not-analysed'] ?? 0 },
+  ].filter((option) => option.count > 0), [facets]);
+  const captureAgeOptions = useMemo(() => [
+    { label: 'Captured in the last 30 days', value: 'last-30-days', count: facets?.captured['last-30-days'] ?? 0 },
+    { label: 'Captured over 90 days ago', value: 'older-than-90-days', count: facets?.captured['older-than-90-days'] ?? 0 },
+  ].filter((option) => option.count > 0), [facets]);
   const hasActiveFilters = serviceFilters.length > 0
     || policyTypeFilters.length > 0
     || reviewFilters.length > 0
@@ -207,8 +191,8 @@ export default function CollectionDetailPage() {
     if (!organizationId || !collectionSlug) return;
     try {
       await customConfirm(
-        contracts.length > 0
-          ? `Delete this collection? This will also delete its ${contracts.length} ${contracts.length === 1 ? 'contract' : 'contracts'} and all their saved versions. This cannot be undone.`
+        contractCount > 0
+          ? `Delete this collection? This will also delete its ${contractCount} ${contractCount === 1 ? 'contract' : 'contracts'} and all their saved versions. This cannot be undone.`
           : 'Delete this collection? This cannot be undone.',
         { danger: true, confirmLabel: 'Delete' }
       );
@@ -229,11 +213,17 @@ export default function CollectionDetailPage() {
     setTogglingVisibility(true);
     try {
       const updated = await updateCollection(organizationId, collectionSlug, { private: nextPrivate });
-      // The update endpoint answers with the collection alone — keep the contracts
-      // and the permission flag already loaded so the list does not blank out.
+      // The update endpoint answers with the collection alone, so keep the count
+      // and the permission flags already loaded.
       setCollection((prev) =>
         prev
-          ? { ...prev, ...updated, contracts: updated.contracts ?? prev.contracts, canEdit: updated.canEdit ?? prev.canEdit }
+          ? {
+              ...prev,
+              ...updated,
+              contractCount: prev.contractCount,
+              canEdit: updated.canEdit ?? prev.canEdit,
+              canDelete: updated.canDelete ?? prev.canDelete,
+            }
           : updated
       );
     } catch (err: any) {
@@ -305,13 +295,13 @@ export default function CollectionDetailPage() {
         </div>
       ) : (
         <>
-          {isLoading ? (
+          {isLoading || (isLoadingServices && !servicesPage) ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} height={64} />
               ))}
             </div>
-          ) : services.length === 0 && contracts.length === 0 ? (
+          ) : totalServices === 0 && !hasActiveFilters && !debouncedTextFilter && contractCount === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-tp-hairline bg-tp-canvas py-16 text-center">
               <p className="text-sm font-medium text-tp-ink">No services in this collection</p>
             </div>
@@ -353,7 +343,7 @@ export default function CollectionDetailPage() {
                     label="Documents"
                     options={filterOptions}
                     selected={serviceFilters}
-                    onChange={(filters) => { setServiceFilters(filters) }}
+                    onChange={(filters) => { setServiceFilters(filters as DocumentFilter[]) }}
                     onClear={() => { setServiceFilters([]) }}
                     showClear={false}
                     openOnHover
@@ -373,11 +363,13 @@ export default function CollectionDetailPage() {
                 </div>
               </div>
 
-              <p className="mb-3 text-xs text-tp-steel">
-                {filteredTree.length} {filteredTree.length === 1 ? 'service' : 'services'} shown
+              <p className="mb-3 text-xs text-tp-steel" aria-live="polite">
+                {isLoadingServices
+                  ? 'Loading services…'
+                  : `${loadedServices.length} of ${totalServices} ${totalServices === 1 ? 'service' : 'services'} shown`}
               </p>
 
-              <div className="grid items-start gap-4 lg:grid-cols-[1fr_2fr]">
+              <div className={`grid items-start gap-4 transition-opacity lg:grid-cols-[1fr_2fr] ${isLoadingServices ? 'opacity-60' : ''}`}>
                 <aside
                   aria-label="Collection navigation"
                   className={`${mobileView === 'list' ? 'hidden' : 'block'} min-h-0 overflow-y-auto rounded-xl border border-tp-hairline bg-tp-canvas p-2 lg:block lg:max-h-[min(30rem,calc(100vh-14rem))]`}
@@ -386,6 +378,18 @@ export default function CollectionDetailPage() {
                     <NoResults />
                   ) : (
                     <CollectionTree tree={filteredTree} selection={selection} onSelect={selectCategory} />
+                  )}
+                  {remainingServices > 0 && (
+                    <button
+                      type="button"
+                      onClick={loadMoreServices}
+                      disabled={isLoadingMore || isLoadingServices}
+                      className="mt-2 w-full cursor-pointer rounded-lg border border-tp-hairline px-3 py-2 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isLoadingMore
+                        ? 'Loading…'
+                        : `Load ${Math.min(PAGE_SIZE, remainingServices)} more of ${remainingServices} remaining`}
+                    </button>
                   )}
                 </aside>
 
