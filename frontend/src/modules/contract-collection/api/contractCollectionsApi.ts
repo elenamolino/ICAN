@@ -104,6 +104,12 @@ export interface ContractVersionListItem {
   summary: AnalysisSummary | null;
   hasOntologyReport: boolean;
   analysisSkipped: boolean;
+  /** When it was saved in iCan, as opposed to when the text was captured. */
+  createdAt?: string;
+  /** Name its author gave it when saving ("Adds a refund policy"), or null. */
+  name?: string | null;
+  /** The version it was edited from; null means the one before it by date. */
+  _parentVersionId?: string | null;
 }
 
 export interface ContractVersionDetail extends ContractVersionListItem {

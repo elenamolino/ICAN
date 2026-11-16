@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Collections', to: '/collections' },
     ],
   },
+  { label: 'Editor', to: '/editor' },
   { label: 'Docs', to: '/docs' },
 ];
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FiCommand, FiSun, FiMoon, FiSearch, FiCpu, FiShare2, FiFileText, FiFolder, FiBook } from 'react-icons/fi';
+import { FiCommand, FiSun, FiMoon, FiSearch, FiCpu, FiShare2, FiFileText, FiFolder, FiBook, FiEdit3 } from 'react-icons/fi';
 import { useMode } from '../../hooks/useTheme';
 import { useRouter } from '../../hooks/useRouter';
 
@@ -52,6 +52,15 @@ export default function CommandPalette() {
         icon: FiShare2,
         group: 'Analyse',
         action: () => router.push('/analyse/ontology-analysis'),
+      },
+      {
+        id: 'contract-editor',
+        label: 'Contract editor',
+        description: 'Write terms from a template and check their sections',
+        shortcut: [],
+        icon: FiEdit3,
+        group: 'Create',
+        action: () => router.push('/editor'),
       },
       {
         id: 'explore-contracts',

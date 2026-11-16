@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { AnalyzeResponse } from '../types/services/AnalysisService';
+import { prepareForClassifier } from '../utils/prepareForClassifier';
 
 dotenv.config();
 
@@ -15,7 +16,8 @@ class AnalysisService {
       response = await fetch(`${analyzerUrl}/v1/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        // Markdown headings and lists make the classifier split clauses in the wrong places.
+        body: JSON.stringify({ text: prepareForClassifier(text) }),
       });
     } catch {
       throw new Error('ERROR: Analyzer service unavailable');

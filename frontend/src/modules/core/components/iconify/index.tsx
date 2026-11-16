@@ -45,6 +45,8 @@ import {
     MdSearchOff,
     MdOutlineDescription,
     MdOpenInNew,
+    MdOutlineViewColumn,
+    MdOutlineFileDownload,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
@@ -95,6 +97,8 @@ const iconMap: Record<string, IconType> = {
     'mdi:magnify-close': MdSearchOff,
     'mdi:file-document-outline': MdOutlineDescription,
     'mdi:open-in-new': MdOpenInNew,
+    'mdi:compare-horizontal': MdOutlineViewColumn,
+    'mdi:download-outline': MdOutlineFileDownload,
 };
 
 type IconifyProps = {

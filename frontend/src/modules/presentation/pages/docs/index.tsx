@@ -287,6 +287,11 @@ export default function DocsPage() {
             <SectionHeading id="credits">Credits and data</SectionHeading>
             <ul className="list-disc space-y-1 pl-6">
               <li>
+                ICAN started from the code of{' '}
+                <ExternalLink href="https://sphere.score.us.es/">SPHERE</ExternalLink>, a platform for SaaS
+                pricing.
+              </li>
+              <li>
                 The eight categories are those of the UNFAIR-ToS task, included in{' '}
                 <ExternalLink href="https://github.com/coastalcph/lex-glue">LexGLUE</ExternalLink>.
               </li>

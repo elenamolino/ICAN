@@ -50,5 +50,52 @@
     "isPersonal": false,
     "createdAt": { "$date": "2026-08-23T16:47:53.095Z" },
     "updatedAt": { "$date": "2026-08-23T16:47:53.095Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000a01" },
+    "name": "universidad-de-sevilla",
+    "displayName": "Universidad de Sevilla",
+    "description": "Universidad de Sevilla.",
+    "ancestors": [],
+    "avatar": null,
+    "isPersonal": false,
+    "createdAt": { "$date": "2026-11-16T00:00:00.000Z" },
+    "updatedAt": { "$date": "2026-11-16T00:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000a02" },
+    "name": "master-ingenieria-software",
+    "displayName": "Máster Universitario en Ingeniería del Software: Cloud, Datos y Gestión TI",
+    "description": "Máster Universitario en Ingeniería del Software: Cloud, Datos y Gestión TI de la Universidad de Sevilla.",
+    "_parentId": { "$oid": "6b1a00000000000000000a01" },
+    "ancestors": [{ "$oid": "6b1a00000000000000000a01" }],
+    "avatar": null,
+    "isPersonal": false,
+    "createdAt": { "$date": "2026-11-16T00:00:00.000Z" },
+    "updatedAt": { "$date": "2026-11-16T00:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000a03" },
+    "name": "fis",
+    "displayName": "FIS – Fundamentos de Ingeniería del Software",
+    "description": "Asignatura Fundamentos de Ingeniería del Software.",
+    "_parentId": { "$oid": "6b1a00000000000000000a02" },
+    "ancestors": [{ "$oid": "6b1a00000000000000000a01" }, { "$oid": "6b1a00000000000000000a02" }],
+    "avatar": null,
+    "isPersonal": false,
+    "createdAt": { "$date": "2026-11-16T00:00:00.000Z" },
+    "updatedAt": { "$date": "2026-11-16T00:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "6b1a00000000000000000a04" },
+    "name": "fis-2026-2027",
+    "displayName": "2026-2027",
+    "description": "Curso 2026-2027 de FIS.",
+    "_parentId": { "$oid": "6b1a00000000000000000a03" },
+    "ancestors": [{ "$oid": "6b1a00000000000000000a01" }, { "$oid": "6b1a00000000000000000a02" }, { "$oid": "6b1a00000000000000000a03" }],
+    "avatar": null,
+    "isPersonal": false,
+    "createdAt": { "$date": "2026-11-16T00:00:00.000Z" },
+    "updatedAt": { "$date": "2026-11-16T00:00:00.000Z" }
   }
 ]

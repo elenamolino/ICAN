@@ -7,14 +7,14 @@ import {
 } from '../../api/contractCollectionsApi';
 import { CATEGORY_LABELS, CATEGORY_KEYS, RELEVANCE_THRESHOLD } from '../../../analysis/constants/clauseCategories';
 import Iconify from '../../../core/components/iconify';
+import { versionTitle } from '../../utils/versions';
 
 const SELECT_CLASS =
   'w-full rounded-lg border border-tp-hairline-strong bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none';
 
-function versionLabel(v: ContractVersionListItem) {
+function versionLabel(v: ContractVersionListItem, n: number) {
   const dateStr = format(new Date(v.capturedAt), 'MMM d, yyyy');
-  const tag = v.label === 'first' ? 'First' : v.label === 'last' ? 'Latest' : 'Update';
-  return `${tag} · ${dateStr}`;
+  return `${versionTitle(v, n)} · ${dateStr}${v.label === 'last' ? ' (current)' : ''}`;
 }
 
 function Delta({ before, after, invertGood = false }: { before: number; after: number; invertGood?: boolean }) {
@@ -55,14 +55,18 @@ export default function VersionComparison({
   organizationId,
   contractSlug,
   versions,
+  initialBeforeId,
+  initialAfterId,
 }: {
   organizationId: string;
   contractSlug: string;
   versions: ContractVersionListItem[];
+  initialBeforeId?: string;
+  initialAfterId?: string;
 }) {
   const { getContractVersion } = useContractCollectionsApi();
-  const [beforeId, setBeforeId] = useState(versions[0]?.id ?? '');
-  const [afterId, setAfterId] = useState(versions[versions.length - 1]?.id ?? '');
+  const [beforeId, setBeforeId] = useState(initialBeforeId ?? versions[0]?.id ?? '');
+  const [afterId, setAfterId] = useState(initialAfterId ?? versions[versions.length - 1]?.id ?? '');
   const [before, setBefore] = useState<ContractVersionDetail | null>(null);
   const [after, setAfter] = useState<ContractVersionDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -95,9 +99,9 @@ export default function VersionComparison({
         <div>
           <label className="mb-1 block text-xs text-tp-steel">Compare</label>
           <select value={beforeId} onChange={(e) => setBeforeId(e.target.value)} className={SELECT_CLASS}>
-            {versions.map((v) => (
+            {versions.map((v, i) => (
               <option key={v.id} value={v.id}>
-                {versionLabel(v)}
+                {versionLabel(v, i + 1)}
               </option>
             ))}
           </select>
@@ -105,9 +109,9 @@ export default function VersionComparison({
         <div>
           <label className="mb-1 block text-xs text-tp-steel">Against</label>
           <select value={afterId} onChange={(e) => setAfterId(e.target.value)} className={SELECT_CLASS}>
-            {versions.map((v) => (
+            {versions.map((v, i) => (
               <option key={v.id} value={v.id}>
-                {versionLabel(v)}
+                {versionLabel(v, i + 1)}
               </option>
             ))}
           </select>

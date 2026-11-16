@@ -54,7 +54,8 @@ const CLIENT_ID = 'ican';
 const CALLBACK = FRONTEND + '/api/v1/auth/identity/callback';
 const USER = { id: 'user-1', username: 'ada', role: 'USER' };
 
-let privateKey: CryptoKey;
+// The key type jose returns: CryptoKey is a DOM type, and the API compiles without the DOM lib.
+let privateKey: Awaited<ReturnType<typeof generateKeyPair>>['privateKey'];
 let publicJwk: JWK;
 
 beforeAll(async () => {

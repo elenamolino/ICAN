@@ -20,6 +20,7 @@ const NAV_ITEMS = [
       { label: 'Collections', to: '/collections' },
     ],
   },
+  { label: 'Editor', to: '/editor' },
   { label: 'Docs', to: '/docs' },
 ];
 
