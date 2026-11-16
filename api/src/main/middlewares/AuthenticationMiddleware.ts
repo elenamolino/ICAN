@@ -3,6 +3,8 @@ import container from '../config/container';
 import UserRepository from '../repositories/mongoose/UserRepository';
 import { handleError, verifyJwtToken } from '../utils/users/helpers';
 import { ROLE_WEIGHT } from '../types/models/Organization';
+import { identityMode } from '../services/scoretech/config';
+import type ScoretechIdentityService from '../services/ScoretechIdentityService';
 
 /**
  * Authentication middleware.
@@ -57,11 +59,21 @@ async function authenticateApiKey(req: Request, apiKey: string): Promise<void> {
 async function authenticateToken(req: Request, token: string): Promise<void> {
   const userRepository: UserRepository = container.resolve('userRepository');
 
-  let decoded: { id: string; username: string; role: string };
+  let decoded: { id: string; username: string; role: string; identitySessionId?: string };
   try {
     decoded = verifyJwtToken(token);
   } catch {
     throw new Error('UNAUTHORIZED: Invalid or expired token');
+  }
+
+  // Tokens backed by a SCORETech Identity session stay valid only while that session
+  // does. In identity mode, every other session token is rejected.
+  if (decoded.identitySessionId) {
+    await container
+      .resolve<ScoretechIdentityService>('scoretechIdentityService')
+      .authenticate(decoded.identitySessionId, decoded.id);
+  } else if (identityMode()) {
+    throw new Error('UNAUTHORIZED: Sign in through SCORETech Identity');
   }
 
   const user = await userRepository.findById(decoded.id);

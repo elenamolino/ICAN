@@ -2,6 +2,9 @@ import container from '../config/container';
 import CacheService from '../services/CacheService';
 import { handleError } from '../utils/users/helpers';
 
+/** Login flows and sessions (SSO codes, SCORETech refresh tokens) must never leave the server. */
+const isServerCacheKey = (key: unknown) => typeof key === 'string' && key.startsWith('sso:');
+
 class CacheController {
   private cacheService: CacheService;
   private allowedOrigins = new Set(['localhost', 'sphere.score.us.es']);
@@ -33,6 +36,9 @@ class CacheController {
       }
 
       const { key } = req.query;
+      if (isServerCacheKey(key)) {
+        return res.status(403).send({ error: 'PERMISSION ERROR: This cache key is reserved for the server' });
+      }
       const data = await this.cacheService.get(key);
 
       res.status(200).json(data);
@@ -64,6 +70,9 @@ class CacheController {
       }
 
       const { key, value, expirationInSeconds } = req.body;
+      if (isServerCacheKey(key)) {
+        return res.status(403).send({ error: 'PERMISSION ERROR: This cache key is reserved for the server' });
+      }
 
       if (!expirationInSeconds) {
         await this.cacheService.set(key, value);

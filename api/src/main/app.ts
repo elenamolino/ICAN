@@ -8,6 +8,7 @@ import { disconnectMongoose, initMongoose } from "./config/mongoose";
 import { seedDatabase } from "./database/seeders/mongo/seeder";
 import { initRedis } from "./config/redis";
 import container from "./config/container";
+import { validateAuthenticationConfig } from "./services/scoretech/config";
 
 const green = "\x1b[32m"; // Color verde
 const blue = "\x1b[36m"; // Color azul
@@ -16,6 +17,7 @@ const bold = "\x1b[1m"; // Negrita
 
 const initializeApp = async () => {
   dotenv.config();
+  validateAuthenticationConfig();
   const app: Application = express();
   loadGlobalMiddlewares(app);
   await routes(app);
