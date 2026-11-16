@@ -25,12 +25,6 @@ cd api && npx vitest --run --test-name-pattern "<pattern>"
 ## Prerequisites (required for dev and tests)
 
 - **MongoDB** — must be running with a seeded database
-- **MiniZinc** — required for analytics/pricing optimization; must have `gecode` solver available
-
-  If analytics return 500, verify with:
-  ```bash
-  minizinc --solvers  # gecode must appear in output
-  ```
 
 ## Important Quirks
 
