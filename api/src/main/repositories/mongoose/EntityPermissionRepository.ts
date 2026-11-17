@@ -101,12 +101,16 @@ class EntityPermissionRepository extends RepositoryBase {
         },
       },
       {
+        // let + $expr instead of localField with a pipeline, which needs MongoDB 5.0
+        // (production runs 4.4). _userId is a string by now, so convert it back.
         $lookup: {
           from: 'users',
-          localField: '_userId',
-          foreignField: '_id',
+          let: { userId: { $toObjectId: '$_userId' } },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$userId'] } } },
+            { $project: { username: 1, email: 1 } },
+          ],
           as: 'user',
-          pipeline: [{ $project: { username: 1, email: 1 } }],
         },
       },
       {
@@ -148,12 +152,16 @@ class EntityPermissionRepository extends RepositoryBase {
     const results = await EntityPermissionMongoose.aggregate([
       { $match: match },
       {
+        // let + $expr instead of localField with a pipeline, which needs MongoDB 5.0
+        // (production runs 4.4).
         $lookup: {
           from: 'users',
-          localField: '_userId',
-          foreignField: '_id',
+          let: { userId: '$_userId' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$userId'] } } },
+            { $project: { username: 1, email: 1 } },
+          ],
           as: 'user',
-          pipeline: [{ $project: { username: 1, email: 1 } }],
         },
       },
       {
