@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Editor, { loader, OnMount } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
@@ -24,17 +24,35 @@ export interface ContractTextEditorHandle {
   append: (text: string) => void;
 }
 
+// Monaco does not support touch devices: typing with an on-screen keyboard,
+// selecting and scrolling break. Phones and tablets get a plain text area.
+const isTouchDevice = () =>
+  typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
 const ContractTextEditor = forwardRef<ContractTextEditorHandle, {
   value: string;
   onChange: (value: string) => void;
   markedLines?: MarkedLine[];
 }>(function ContractTextEditor({ value, onChange, markedLines = [] }, ref) {
   const { mode } = useMode();
+  const [touch] = useState(isTouchDevice);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const decorationsRef = useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
 
   useImperativeHandle(ref, () => ({
     revealLine: (line) => {
+      const area = textareaRef.current;
+      if (touch) {
+        if (!area) return;
+        const lines = area.value.split('\n');
+        const start = lines.slice(0, line - 1).reduce((sum, l) => sum + l.length + 1, 0);
+        area.focus();
+        area.setSelectionRange(start, start + (lines[line - 1]?.length ?? 0));
+        // Text areas do not scroll to the selection on their own everywhere.
+        area.scrollTop = Math.max(0, ((line - 1) / Math.max(lines.length, 1)) * area.scrollHeight - area.clientHeight / 2);
+        return;
+      }
       const editor = editorRef.current;
       if (!editor) return;
       editor.revealLineInCenter(line);
@@ -42,6 +60,19 @@ const ContractTextEditor = forwardRef<ContractTextEditorHandle, {
       editor.focus();
     },
     append: (text) => {
+      if (touch) {
+        const current = textareaRef.current?.value ?? value;
+        const separator = current.endsWith('\n\n') ? '' : current.endsWith('\n') ? '\n' : '\n\n';
+        onChange(current + separator + text);
+        requestAnimationFrame(() => {
+          const area = textareaRef.current;
+          if (!area) return;
+          area.focus();
+          area.setSelectionRange(area.value.length, area.value.length);
+          area.scrollTop = area.scrollHeight;
+        });
+        return;
+      }
       const editor = editorRef.current;
       const model = editor?.getModel();
       if (!editor || !model) return;
@@ -79,6 +110,19 @@ const ContractTextEditor = forwardRef<ContractTextEditorHandle, {
   };
 
   useEffect(paintMarks, [markedLines]);
+
+  if (touch) {
+    return (
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Contract text"
+        spellCheck
+        className="block h-full w-full resize-none bg-transparent px-4 py-3 font-mono text-[15px] leading-relaxed text-tp-ink outline-none"
+      />
+    );
+  }
 
   return (
     <Editor
