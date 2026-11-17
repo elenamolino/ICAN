@@ -79,7 +79,7 @@ function ContractEditor() {
       try {
         const contract = await getContract(organizationId, contractSlug);
         const versions = await listContractVersions(organizationId, contractSlug);
-        const versionId = searchParams.get('version') ?? versions.find((v) => v.label === 'last')?.id ?? versions.at(-1)?.id;
+        const versionId = searchParams.get('version') ?? versions.find((v) => v.label === 'last')?.id ?? versions[versions.length - 1]?.id;
         if (!versionId || !contract.collection) throw new Error('This contract has no saved version to edit.');
         const version = await getContractVersion(organizationId, contractSlug, versionId);
         if (cancelled) return;
@@ -308,8 +308,8 @@ function ContractEditor() {
         )}
       </div>
 
-      <div className="grid h-[calc(100vh-11rem)] min-h-[520px] grid-cols-1 overflow-hidden rounded-xl border border-tp-hairline bg-tp-canvas lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="flex min-h-[360px] min-w-0 flex-col">
+      <div className="grid grid-cols-1 rounded-xl border border-tp-hairline bg-tp-canvas lg:h-[calc(100vh-11rem)] lg:min-h-[520px] lg:grid-cols-[minmax(0,1fr)_380px] lg:overflow-hidden">
+        <div className="flex h-[65vh] min-h-[360px] min-w-0 flex-col lg:h-auto">
           {/* The editor's own bar: which template the text started from. */}
           <div className="flex items-center gap-2 border-b border-tp-hairline-soft px-3 py-1.5">
             <Iconify icon="mdi:view-dashboard-outline" width={15} className="text-tp-steel" />
