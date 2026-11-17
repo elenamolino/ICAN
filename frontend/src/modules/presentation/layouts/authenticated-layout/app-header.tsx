@@ -107,52 +107,6 @@ export default function AppHeader() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-3">
-            <div
-              className="relative hidden md:block"
-              onMouseEnter={() => setOpenDropdown('new')}
-              onMouseLeave={() => setOpenDropdown(null)}
-            >
-              <button
-                type="button"
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-tp-primary px-3 py-1.5 text-sm font-medium text-tp-on-primary transition-colors hover:bg-tp-primary-deep"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                New
-                <svg
-                  className={`h-3.5 w-3.5 transition-transform ${openDropdown === 'new' ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              <div
-                className={`absolute right-0 top-full z-50 min-w-45 pt-1 transition-all ${
-                  openDropdown === 'new'
-                    ? 'pointer-events-auto translate-y-0 opacity-100'
-                    : 'pointer-events-none -translate-y-1 opacity-0'
-                }`}
-              >
-                <div className="rounded-lg border border-tp-hairline bg-tp-canvas py-1 shadow-elevation-4">
-                  <button
-                    type="button"
-                    onClick={() => handleNavigate('/orgs/new')}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-left text-sm text-tp-slate transition-colors hover:bg-tp-surface hover:text-tp-ink"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                    </svg>
-                    Organization
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <div className="hidden md:block">
               <CommandPalette />
             </div>
