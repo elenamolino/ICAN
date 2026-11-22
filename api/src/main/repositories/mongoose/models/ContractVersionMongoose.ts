@@ -6,6 +6,8 @@ const contractVersionSchema = new Schema(
     commitHash: { type: String, required: true },
     capturedAt: { type: Date, required: true },
     label: { type: String, enum: ['first', 'intermediate', 'last'], required: true },
+    // "0.1", given by the editor and never changed. Null for versions numbered by date.
+    number: { type: String, required: false, default: null },
     // A name the author gives the version when saving it ("Adds a refund policy").
     name: { type: String, required: false, default: null, trim: true, maxlength: 80 },
     // The version this one was edited from, when it was not the latest: the

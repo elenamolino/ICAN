@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ContractVersionListItem } from '../../api/contractCollectionsApi';
 import Iconify from '../../../core/components/iconify';
-import { parentOf } from '../../utils/versions';
+import { parentOf, versionLabel } from '../../utils/versions';
 
 const ACTION = 'cursor-pointer rounded-md p-1.5 text-tp-steel transition-colors hover:bg-tp-primary/10 hover:text-tp-primary';
 
@@ -20,7 +20,8 @@ export default function VersionList({
   onView: (id: string) => void;
   onCompareWithPrevious: (id: string) => void;
   onDownload: (id: string) => void;
-  linkTo: (id: string) => string;
+  /** Absent when the viewer cannot share the contract. */
+  linkTo?: (id: string) => string;
   onDelete?: (id: string) => void;
 }) {
   // Newest first, as a history reads; the numbers keep the release order.
@@ -29,7 +30,7 @@ export default function VersionList({
 
   const copyLink = async (id: string) => {
     try {
-      await navigator.clipboard.writeText(linkTo(id));
+      await navigator.clipboard.writeText(linkTo!(id));
       setCopiedId(id);
       setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 1500);
     } catch {
@@ -47,7 +48,7 @@ export default function VersionList({
           }`}
         >
           <span className="min-w-10 text-base text-tp-ink">
-            <span className="font-mono">v{n}</span>
+            <span className="font-mono">{versionLabel(v, n)}</span>
             {v.name && <span className="ml-2 font-medium">{v.name}</span>}
           </span>
           {v.label === 'last' && (
@@ -69,7 +70,7 @@ export default function VersionList({
               <button
                 type="button"
                 onClick={() => onCompareWithPrevious(v.id)}
-                title={`Compare with v${versions.indexOf(parentOf(versions, v.id)!) + 1}, the version it came from`}
+                title={`Compare with ${versionLabel(parentOf(versions, v.id)!, versions.indexOf(parentOf(versions, v.id)!) + 1)}, the version it came from`}
                 className={ACTION}
               >
                 <Iconify icon="mdi:compare-horizontal" width={18} />
@@ -79,14 +80,14 @@ export default function VersionList({
             <button type="button" onClick={() => onDownload(v.id)} title="Download the text (.md)" className={ACTION}>
               <Iconify icon="mdi:download-outline" width={18} />
             </button>
-            <button
+            {linkTo && <button
               type="button"
               onClick={() => copyLink(v.id)}
               title={copiedId === v.id ? 'Link copied' : 'Copy a link to this version'}
               className={ACTION}
             >
               <Iconify icon={copiedId === v.id ? 'mdi:check' : 'mdi:link-variant'} width={18} />
-            </button>
+            </button>}
             {onDelete && (
               <button
                 type="button"

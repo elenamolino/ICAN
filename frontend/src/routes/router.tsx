@@ -33,6 +33,7 @@ import ApiKeysPage from '../modules/api-keys/pages/ApiKeysPage';
 import CollectionsListPage from '../modules/contract-collection/pages/collections-list';
 import CollectionDetailPage from '../modules/contract-collection/pages/collection-detail';
 import ContractDetailPage from '../modules/contract-collection/pages/contract-detail';
+import ContractPermalinkPage from '../modules/contract-collection/pages/contract-permalink';
 import ContractsListPage from '../modules/contract-collection/pages/contracts-list';
 
 function RootPage() {
@@ -87,6 +88,7 @@ export default function Router() {
         { element: <TeamPage />, path: '/team' },
         { element: <ResearchPage />, path: '/research' },
         { element: <ContributionsPage />, path: '/contributions' },
+        { element: <ContractPermalinkPage />, path: '/a/:token' },
         { element: <ContractsListPage />, path: '/contracts' },
         { element: <ContractDetailPage />, path: '/contracts/:organizationId/:contractSlug' },
         { element: <CollectionsListPage />, path: '/collections' },

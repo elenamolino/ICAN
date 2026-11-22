@@ -147,6 +147,21 @@ class ContractRepository extends RepositoryBase {
     return contract.toObject<LeanContract>();
   }
 
+  async findByShareToken(shareToken: string) {
+    return ContractMongoose.findOne({ shareToken }).select('slug _organizationId').lean<any>();
+  }
+
+  /** The contract's link secret, set to `candidate` the first time. Two first readers get the same one. */
+  async ensureShareToken(id: string, candidate: string): Promise<string | null> {
+    await ContractMongoose.updateOne(
+      { _id: id, shareToken: null },
+      { $set: { shareToken: candidate } },
+      { timestamps: false }
+    );
+    const contract = await ContractMongoose.findById(id).select('+shareToken').lean<any>();
+    return contract?.shareToken ?? null;
+  }
+
   async findExistingSlug(slug: string, organizationId: string): Promise<boolean> {
     const existing = await ContractMongoose.findOne({
       slug,

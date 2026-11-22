@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClauseAnalysis } from '../../analysis/api/analysisApi';
-import { describeTextChanges, layoutVersionGraph, parentOf, summariseChanges } from './versions';
+import { nextVersionNumbers, describeTextChanges, layoutVersionGraph, parentOf, summariseChanges } from './versions';
 import { ContractVersionListItem } from '../api/contractCollectionsApi';
 
 const clause = (term: string, unfair?: 'ter' | 'ch'): ClauseAnalysis => ({
@@ -108,5 +108,13 @@ describe('layoutVersionGraph', () => {
     ]);
     expect(parentOf(versions, 'v4')?.id).toBe('v1');
     expect(parentOf(versions, 'v6')?.id).toBe('v3');
+  });
+});
+
+describe('nextVersionNumbers', () => {
+  it('starts at 0.1 and follows the highest number', () => {
+    expect(nextVersionNumbers([])).toEqual({ minor: '0.1', major: '1.0' });
+    expect(nextVersionNumbers([{}, {}, {}]).minor).toBe('0.4');
+    expect(nextVersionNumbers([{ number: '1.0' }, { number: '0.9' }, { number: '1.10' }, {}])).toEqual({ minor: '1.11', major: '2.0' });
   });
 });

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import container from '../config/container';
 import { ContractIndexQueryParams } from '../types/services/ContractService';
 import ContractCollectionService from './ContractCollectionService';
@@ -12,6 +13,8 @@ import { Organization } from '../types/database/Organization';
 import UserService from './UserService';
 import PermissionService from './PermissionService';
 import { pickDefined } from '../utils/pickDefined';
+
+const SHARE_TOKEN = /^[a-f0-9]{32}$/;
 
 class ContractService {
   private contractRepository: ContractRepository;
@@ -107,6 +110,32 @@ class ContractService {
     return this.contractRepository.findAll(enhancedQueryParams, permissions);
   }
 
+  /** Where the contract of a permanent link lives now. The secret is the only credential needed. */
+  async resolvePermalink(token: string) {
+    const found = SHARE_TOKEN.test(token) ? await this.contractRepository.findByShareToken(token) : null;
+    if (!found) throw new Error('NOT FOUND: Contract not found');
+    return { organizationId: String(found._organizationId), contractSlug: found.slug };
+  }
+
+  /**
+   * The secret of a contract's permanent link. It opens the contract to anybody, so
+   * for a private one it is only given to who can edit it.
+   */
+  async getShareToken(slug: string, organizationId: string, reqUser?: LeanUser) {
+    const contract: any = await this.show(slug, organizationId, reqUser);
+    if (contract.private && !contract.canEdit) {
+      throw new Error('PERMISSION ERROR: Only who can edit a private contract can share it');
+    }
+    const id = String(contract.id ?? contract._id);
+    return { token: await this.contractRepository.ensureShareToken(id, crypto.randomBytes(16).toString('hex')) };
+  }
+
+  private async opensWith(share: unknown, contract: any) {
+    if (typeof share !== 'string' || !SHARE_TOKEN.test(share)) return false;
+    const shared = await this.contractRepository.findByShareToken(share);
+    return !!shared && String(shared._id) === String(contract.id ?? contract._id);
+  }
+
   async indexByCollection(collectionId: string) {
     return this.contractRepository.findByCollection(collectionId);
   }
@@ -115,7 +144,7 @@ class ContractService {
     slug: string,
     organizationId: string,
     reqUser?: LeanUser,
-    queryParams: { collectionSlug?: string; includePrivate: boolean } = { includePrivate: false }
+    queryParams: { collectionSlug?: string; includePrivate: boolean; share?: unknown } = { includePrivate: false }
   ) {
     // Fetch regardless of the flag and let the policy engine decide: filtering here
     // would make "private" mean "hidden from every non-member", which is looser than
@@ -129,11 +158,13 @@ class ContractService {
     }
 
     const isPrivate = Boolean((contract as any).private);
+    // The permanent link's secret allows reading, and nothing else.
+    const needsPermission = isPrivate && !(await this.opensWith(queryParams.share, contract));
 
     // A caller who may not read a private contract is told it does not exist, rather
     // than that it exists and is forbidden — its very name can be sensitive.
     if (!reqUser) {
-      if (isPrivate) {
+      if (needsPermission) {
         throw new Error('NOT FOUND: Contract not found');
       }
       return { ...contract, canEdit: false, canDelete: false };
@@ -163,7 +194,7 @@ class ContractService {
         : undefined,
     };
 
-    if (isPrivate) {
+    if (needsPermission) {
       const readResult = this.permissionEngine.evaluate({ ...evaluationContext, action: 'GET' });
       if (!readResult.allowed) {
         throw new Error('NOT FOUND: Contract not found');

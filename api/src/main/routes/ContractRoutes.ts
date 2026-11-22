@@ -8,6 +8,8 @@ const loadFileRoutes = function (app: express.Application) {
 
   const baseUrl = (process.env.BASE_URL_PATH ?? '') + '/api/v1';
 
+  app.route(baseUrl + '/permalinks/contract/:token').get(contractController.resolvePermalink);
+  app.route(baseUrl + '/contracts/:organizationId/:contractSlug/permalink').get(contractController.getShareToken);
   app.route(baseUrl + '/contracts').get(contractController.index);
 
   app

@@ -9,9 +9,11 @@ import SaveAnalysisModal from '../../components/SaveAnalysisModal';
 import { CONTRACT_TEMPLATES } from '../../data/contract-templates';
 import { analyseSections, sectionStarter } from '../../utils/contract-sections';
 import { findPlaceholders, locateClause } from '../../utils/contract-checks';
+import { editText, FieldId, linkSavedText, pricingIn, setField, setPricing, unlinked } from '../../utils/linked-fields';
+import { nextVersionNumbers } from '../../../contract-collection/utils/versions';
 import { topCategories } from '../../constants/clauseCategories';
 import { AnalyzeResponse, useAnalysisApi } from '../../api/analysisApi';
-import { useContractCollectionsApi } from '../../../contract-collection/api/contractCollectionsApi';
+import { ContractVersionListItem, useContractCollectionsApi } from '../../../contract-collection/api/contractCollectionsApi';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { useDebouncedValue } from '../../../core/hooks/useDebouncedValue';
 import customConfirm from '../../../core/utils/custom-confirm';
@@ -35,6 +37,10 @@ interface SaveTarget {
 // Template value while editing a saved contract, which comes from no template.
 const FROM_CONTRACT = 'saved-contract';
 
+// A draft can be saved without them, and a contract needs a name.
+const NO_COMPANY = 'Unnamed company';
+const NO_TITLE = 'Untitled contract';
+
 const FIELD = 'min-w-0 rounded-lg border border-tp-hairline bg-tp-canvas px-2.5 py-1.5 text-sm text-tp-ink focus:border-tp-primary focus:outline-none';
 const BUTTON = 'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -56,12 +62,20 @@ function ContractEditor() {
   const { authUser } = useAuth();
 
   const [templateId, setTemplateId] = useState(CONTRACT_TEMPLATES[0].id);
-  const [text, setText] = useState(CONTRACT_TEMPLATES[0].text);
-  const [company, setCompany] = useState('');
+  const [linked, setLinked] = useState(() => unlinked(CONTRACT_TEMPLATES[0].text));
+  const { text } = linked;
+  const [values, setValues] = useState<Record<FieldId, string>>({ service: '', company: '', pricing: '' });
+  const { company, service, pricing } = values;
+  const [savedVersions, setSavedVersions] = useState<ContractVersionListItem[]>([]);
+  const [step, setStep] = useState<'minor' | 'major'>('minor');
   const [title, setTitle] = useState('Terms of Service');
   const [target, setTarget] = useState<SaveTarget | null>(null);
   const editorRef = useRef<ContractTextEditorHandle>(null);
-  const fieldRefs = { Company: useRef<HTMLInputElement>(null), Title: useRef<HTMLInputElement>(null) };
+  const fieldRefs = {
+    Service: useRef<HTMLInputElement>(null),
+    Company: useRef<HTMLInputElement>(null),
+    Title: useRef<HTMLInputElement>(null),
+  };
 
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [analysedText, setAnalysedText] = useState<string | null>(null);
@@ -86,10 +100,20 @@ function ContractEditor() {
 
         // Contracts saved from the editor are named "Company — Title".
         const [namedCompany, ...rest] = contract.name.split(' — ');
-        setText(version.content ?? '');
+        const content = version.content ?? '';
+        const savedCompany = rest.length ? namedCompany : contract.service?.name ?? namedCompany;
+        const savedTitle = rest.length ? rest.join(' — ') : contract.name;
+        const savedValues = {
+          // A field still in brackets in the text was left empty when the draft was saved.
+          service: content.includes('[Service]') ? '' : contract.service?.name ?? '',
+          company: savedCompany === NO_COMPANY || content.includes('[Company]') ? '' : savedCompany,
+          pricing: pricingIn(content),
+        };
+        setValues(savedValues);
+        setLinked(linkSavedText(content, savedValues));
+        setSavedVersions(versions);
         setTemplateId(FROM_CONTRACT);
-        setCompany(rest.length ? namedCompany : contract.service?.name ?? namedCompany);
-        setTitle(rest.length ? rest.join(' — ') : contract.name);
+        setTitle(savedTitle === NO_TITLE ? '' : savedTitle);
         setTarget({
           organizationId,
           collectionId: contract.collection.id,
@@ -140,7 +164,8 @@ function ContractEditor() {
     return counts;
   }, [report, unfair]);
 
-  const missingFields: ('Company' | 'Title')[] = [
+  const missingFields: ('Service' | 'Company' | 'Title')[] = [
+    ...(service.trim() ? [] : ['Service' as const]),
     ...(company.trim() ? [] : ['Company' as const]),
     ...(title.trim() ? [] : ['Title' as const]),
   ];
@@ -149,9 +174,11 @@ function ContractEditor() {
     ...missingFields.map((field) => ({
       id: `field-${field}`,
       kind: 'field' as const,
-      text: field === 'Company'
-        ? 'Company is empty: write who provides the service, in Contract.'
-        : 'Title is empty: write the name of the document, in Contract.',
+      text: {
+        Service: 'Service is empty: write its name, in Contract.',
+        Company: 'Company is empty: write who provides the service, in Contract.',
+        Title: 'Title is empty: write the name of the document, in Contract.',
+      }[field],
       onSelect: () => fieldRefs[field].current?.focus(),
     })),
     ...placeholders.map((p, i) => ({ id: `ph-${i}`, kind: 'placeholder' as const, text: `Replace ${p.text}.`, line: p.line })),
@@ -167,7 +194,7 @@ function ContractEditor() {
   ];
 
   const markedLines: MarkedLine[] = useMemo(() => [
-    ...placeholders.map((p) => ({ line: p.line, kind: 'warning' as const, message: `Replace **${p.text}** before saving.` })),
+    ...placeholders.map((p) => ({ line: p.line, kind: 'warning' as const, message: `Replace **${p.text}**. Until then it is a draft.` })),
     ...unfair.map((u) => ({ line: u.line, kind: 'error' as const, message: `**Potentially unfair:** ${u.category}` })),
   ], [placeholders, unfair]);
 
@@ -180,12 +207,27 @@ function ContractEditor() {
         ? 'Text changed since the analysis'
         : `${analysis.summary.unfairClauses} unfair of ${analysis.summary.totalClauses} clauses`;
 
-  // Saving needs the text finished: no placeholder left and the details filled in.
+  // Anything can be saved. An unfinished contract can only take a minor version.
   const saveBlockers = [
     ...(authUser.isAuthenticated ? [] : ['log in']),
-    ...missingFields.map((f) => `fill in ${f}`),
-    ...(placeholders.length ? [`replace ${placeholders.length} ${placeholders.length === 1 ? 'placeholder' : 'placeholders'}`] : []),
+    ...(text.trim() ? [] : ['write some text']),
   ];
+  // On the text as it is now, not settled: Save can be pressed right after typing.
+  const incomplete =
+    missingFields.length > 0 ||
+    findPlaceholders(text).length > 0 ||
+    report.sections.some((s) => s.status === 'missing');
+  const versionStep = incomplete ? 'minor' : step;
+  const nextNumbers = nextVersionNumbers(target ? savedVersions : []);
+
+  const changeField = (field: FieldId, value: string) => {
+    setValues((current) => ({ ...current, [field]: value }));
+    setLinked((current) => {
+      if (field !== 'pricing') return setField(current, field, value);
+      const fees = analyseSections(current.text).sections.find((s) => s.section.id === 'payment');
+      return setPricing(current, value, fees?.status === 'present' ? fees.line : null);
+    });
+  };
 
   const runAnalysis = async (): Promise<AnalyzeResponse> => {
     if (analysis && analysedText === text) return analysis;
@@ -232,6 +274,7 @@ function ContractEditor() {
         ...(target.parentVersionId ? { parentVersionId: target.parentVersionId } : {}),
         date: new Date().toISOString(),
         text,
+        versionNumber: nextNumbers[versionStep],
         summary: result.summary,
         clauses: result.clauses,
         ...(versionName.trim() ? { versionName: versionName.trim() } : {}),
@@ -259,7 +302,8 @@ function ContractEditor() {
       }
     }
     setTemplateId(next.id);
-    setText(next.text);
+    setLinked(unlinked(next.text));
+    setValues({ service: '', company: '', pricing: '' });
   };
 
   const template = CONTRACT_TEMPLATES.find((t) => t.id === templateId);
@@ -333,7 +377,7 @@ function ContractEditor() {
             </select>
           </div>
           <div className="min-h-0 flex-1">
-            <ContractTextEditor ref={editorRef} value={text} onChange={setText} markedLines={markedLines} />
+            <ContractTextEditor ref={editorRef} value={text} onChange={(next) => setLinked((current) => editText(current, next))} markedLines={markedLines} />
           </div>
         </div>
         <aside className="flex min-h-0 flex-col border-t border-tp-hairline lg:border-l lg:border-t-0">
@@ -342,14 +386,22 @@ function ContractEditor() {
           <div className="flex flex-col gap-2 border-b border-tp-hairline px-4 py-3">
             <h2 className="text-sm font-semibold text-tp-ink">Contract</h2>
             {[
+              { label: 'Service', field: (
+                <input
+                  ref={fieldRefs.Service}
+                  value={service}
+                  onChange={(e) => changeField('service', e.target.value)}
+                  placeholder="Name of the service"
+                  className={`${FIELD} w-full`}
+                />
+              ) },
               { label: 'Company', field: (
                 <input
                   ref={fieldRefs.Company}
                   value={company}
-                  onChange={(e) => setCompany(e.target.value)}
+                  onChange={(e) => changeField('company', e.target.value)}
                   placeholder="Who provides the service"
-                  aria-invalid={!company.trim()}
-                  className={`${FIELD} w-full ${company.trim() ? '' : 'border-tp-severity-error'}`}
+                  className={`${FIELD} w-full`}
                 />
               ) },
               { label: 'Title', field: (
@@ -357,18 +409,41 @@ function ContractEditor() {
                   ref={fieldRefs.Title}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  aria-invalid={!title.trim()}
-                  className={`${FIELD} w-full ${title.trim() ? '' : 'border-tp-severity-error'}`}
+                  className={`${FIELD} w-full`}
+                />
+              ) },
+              { label: 'Pricing', field: (
+                <input
+                  type="url"
+                  value={pricing}
+                  onChange={(e) => changeField('pricing', e.target.value)}
+                  placeholder="Permanent link from SPHERE"
+                  className={`${FIELD} w-full`}
                 />
               ) },
               { label: 'Version', field: (
-                <input
-                  value={versionName}
-                  onChange={(e) => setVersionName(e.target.value)}
-                  maxLength={80}
-                  placeholder="Name, optional"
-                  className={`${FIELD} w-full`}
-                />
+                <div className="flex min-w-0 gap-2">
+                  <select
+                    value={versionStep}
+                    onChange={(e) => setStep(e.target.value as 'minor' | 'major')}
+                    aria-label="Version number"
+                    title={incomplete ? 'An incomplete contract can only take a minor version' : undefined}
+                    className={`${FIELD} w-[5rem] shrink-0 cursor-pointer`}
+                  >
+                    <option value="minor">{nextNumbers.minor}</option>
+                    <option value="major" disabled={incomplete}>
+                      {nextNumbers.major}{incomplete ? ' (when complete)' : ''}
+                    </option>
+                  </select>
+                  <input
+                    value={versionName}
+                    onChange={(e) => setVersionName(e.target.value)}
+                    maxLength={80}
+                    placeholder="Name, optional"
+                    aria-label="Version name"
+                    className={`${FIELD} w-full`}
+                  />
+                </div>
               ) },
             ].map(({ label, field }) => (
               <label key={label} className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2 text-xs text-tp-steel">
@@ -406,8 +481,10 @@ function ContractEditor() {
           onClose={() => setModalOpen(false)}
           text={text}
           result={analysis}
-          provider={company.trim()}
-          title={title.trim()}
+          provider={company.trim() || NO_COMPANY}
+          title={title.trim() || NO_TITLE}
+          serviceName={service}
+          versionStep={versionStep}
           date={new Date().toISOString()}
           heading="Save contract"
           submitLabel="Save contract"

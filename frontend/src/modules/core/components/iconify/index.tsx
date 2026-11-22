@@ -48,6 +48,7 @@ import {
     MdOutlineViewColumn,
     MdOutlineFileDownload,
     MdOutlineDriveFileMove,
+    MdPublic,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
@@ -101,6 +102,7 @@ const iconMap: Record<string, IconType> = {
     'mdi:open-in-new': MdOpenInNew,
     'mdi:compare-horizontal': MdOutlineViewColumn,
     'mdi:download-outline': MdOutlineFileDownload,
+    'mdi:earth': MdPublic,
 };
 
 type IconifyProps = {

@@ -25,6 +25,8 @@ Keep your password secret. You are responsible for what happens in your account 
 
 ## 4. Fees and payment
 
+The plans and their prices are set out in the pricing at [Pricing link], which is part of these terms.
+
 Some plans are paid. Prices are shown before you buy, taxes included. Plans are billed monthly or yearly in advance and renew automatically until you cancel.
 
 You can cancel at any time from your account settings; the plan stays active until the end of the period you paid for. If you are a consumer in the EU you can withdraw within 14 days of buying and get a full refund.

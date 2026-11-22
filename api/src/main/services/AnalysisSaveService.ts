@@ -30,6 +30,8 @@ export interface SaveAnalysisPayload {
   versionId?: string;
   /** Name for the new version, such as "Adds a refund policy". */
   versionName?: string;
+  /** Number of the new version: "0.1". */
+  versionNumber?: string;
   /** Version of `contractId` the new one was edited from, to draw it as a branch. */
   parentVersionId?: string;
   provider?: string;
@@ -110,6 +112,7 @@ class AnalysisSaveService {
         label: 'last',
         content: payload.text,
         name: payload.versionName?.trim() || null,
+        number: payload.versionNumber ?? null,
         parentVersionId: payload.parentVersionId ?? null,
         precomputedAnalysis: { summary: payload.summary, clauses: payload.clauses },
       });

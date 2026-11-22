@@ -127,6 +127,41 @@ tags:
     description: Redis cache operations for temporary data storage
 
 paths:
+  /contracts/{organizationId}/{contractSlug}/permalink:
+    get:
+      summary: Get the secret of a contract's permanent link
+      description: |
+        Anybody with the token can read the contract and its versions, private or not, adding `?share={token}`.
+        For a private contract, only who can edit it gets the token.
+      parameters:
+        - $ref: '#/components/parameters/OrganizationId'
+        - name: contractSlug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The token
+        '403':
+          description: The contract is private and the caller cannot edit it
+        '404':
+          description: Contract not found
+  /permalinks/contract/{token}:
+    get:
+      summary: Resolve the permanent link of a contract
+      description: Returns where the contract lives now. Public, as the token is the credential.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The organizationId and contractSlug of the contract
+        '404':
+          description: Contract not found
   /healthcheck:
     get:
       summary: Service health check

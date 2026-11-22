@@ -204,6 +204,11 @@ export const openApiSpec = {
                 required: ['collectionId', 'date', 'text', 'summary', 'clauses'],
                 properties: {
                   ...saveBodyCommon,
+                  versionNumber: {
+                    type: 'string',
+                    pattern: '^\\d{1,4}\\.\\d{1,4}$',
+                    description: 'Number of the new version, such as 0.1. Kept when the same text is saved again.',
+                  },
                   versionName: {
                     type: 'string',
                     maxLength: 80,
@@ -341,6 +346,23 @@ export const openApiSpec = {
           { name: 'offset', in: 'query', schema: { type: 'integer' } },
         ],
         responses: { '200': { description: 'Contracts and total.' } },
+      },
+    },
+    '/contracts/{organizationId}/{contractSlug}/permalink': {
+      get: {
+        tags: ['Contracts'],
+        summary: 'Get the secret of a contract\'s permanent link',
+        description: 'Anybody with it can read the contract and its versions, adding `?share={token}`. For a private contract, only who can edit it gets it.',
+        parameters: [orgParam, { name: 'contractSlug', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'The token.' }, '404': errorResponse('Not found.') },
+      },
+    },
+    '/permalinks/contract/{token}': {
+      get: {
+        tags: ['Contracts'],
+        summary: 'Find where the contract of a permanent link lives now',
+        parameters: [{ name: 'token', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Its organizationId and contractSlug.' }, '404': errorResponse('Not found.') },
       },
     },
     '/contracts/{organizationId}/{contractSlug}': {

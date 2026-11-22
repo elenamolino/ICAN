@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
+import { nextVersionNumbers } from '../../contract-collection/utils/versions';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useOrganizationsApi } from '../../organization/api/organizationsApi';
 import { flattenOrganizations, OrganizationChoice } from '../../core/utils/flatten-organizations';
@@ -32,10 +33,15 @@ interface SaveAnalysisModalProps {
   submitLabel?: string;
   /** Name for the version this save creates. */
   versionName?: string;
+  /** Given by the editor: the service written in the contract. */
+  serviceName?: string;
+  /** Given by the editor: number the version, a major or a minor step after the last one. */
+  versionStep?: 'minor' | 'major';
 }
 
 export default function SaveAnalysisModal({
   open, onClose, text, result, provider, title, date, onSaved, heading = 'Save analysis', submitLabel = 'Save analysis', versionName,
+  serviceName, versionStep,
 }: SaveAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
@@ -156,7 +162,13 @@ export default function SaveAnalysisModal({
 
     setLoadingServices(true);
     listServices({ collectionId: selectedCollection.id }, fetchWithInterceptor)
-      .then(setServices)
+      .then((found) => {
+        setServices(found);
+        const name = serviceName?.trim();
+        if (!name) return;
+        const same = found.find((s) => s.name.toLowerCase() === name.toLowerCase());
+        setServiceSelection(same ? { mode: 'existing', id: same.id, name: same.name } : { mode: 'new', name });
+      })
       .catch(() => setServices([]))
       .finally(() => setLoadingServices(false));
   }, [selectedCollection]);
@@ -207,7 +219,8 @@ export default function SaveAnalysisModal({
   }, [selectedCollection, contractSelection, contracts]);
 
   const isNewContract = !contractSelection || contractSelection.mode === 'new';
-  const canSubmit = !!selectedCollection && !!serviceSelection && !!contractSelection;
+  // The next number comes from the contract's versions, so wait for them.
+  const canSubmit = !!selectedCollection && !!serviceSelection && !!contractSelection && !(versionStep && loadingVersions);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +238,9 @@ export default function SaveAnalysisModal({
           ? { contractId: contractSelection.id, ...(attachVersionId ? { versionId: attachVersionId } : {}) }
           : { contractName: contractSelection.name, provider: provider.trim(), title: title.trim() }),
         date: new Date(date).toISOString(),
+        ...(versionStep && !attachVersionId
+          ? { versionNumber: nextVersionNumbers(existingVersions)[versionStep] }
+          : {}),
         ...(versionName?.trim() && !attachVersionId ? { versionName: versionName.trim() } : {}),
         text,
         summary: result.summary,
