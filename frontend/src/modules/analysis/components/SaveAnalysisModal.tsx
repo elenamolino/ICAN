@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
-import { Organization, useOrganizationsApi } from '../../organization/api/organizationsApi';
+import { useOrganizationsApi } from '../../organization/api/organizationsApi';
+import { flattenOrganizations, OrganizationChoice } from '../../core/utils/flatten-organizations';
 import {
   ContractCollectionSummary,
   ContractVersionListItem,
@@ -30,26 +31,6 @@ interface SaveAnalysisModalProps {
   submitLabel?: string;
   /** Name for the version this save creates. */
   versionName?: string;
-}
-
-type OrganizationChoice = Organization & { label: string };
-
-// getMyOrganizations returns a tree (subOrganizations nested): flatten it so
-// orgs the user only has access to via a sub-org still show up as choices.
-// A sub-org is labelled with its parent ("FIS › 2026-2027"), since names
-// like "2026-2027" mean nothing alone, and appears once even when the user
-// is also a direct member of it.
-function flattenOrganizations(orgs: Organization[], parent?: Organization): OrganizationChoice[] {
-  const all = orgs.flatMap<OrganizationChoice>((org) => [
-    { ...org, label: parent ? `${parent.displayName} › ${org.displayName}` : org.displayName },
-    ...flattenOrganizations(org.subOrganizations ?? [], org),
-  ]);
-  const byId = new Map<string, OrganizationChoice>();
-  for (const choice of all) {
-    const seen = byId.get(choice.id);
-    if (!seen || choice.label.length > seen.label.length) byId.set(choice.id, choice);
-  }
-  return [...byId.values()];
 }
 
 export default function SaveAnalysisModal({
@@ -103,6 +84,7 @@ export default function SaveAnalysisModal({
     setLoading(false);
     setSavedResult(null);
     setShowCreateCollection(false);
+    setNewCollectionOrgId('');
     setNewCollectionName('');
     setNewCollectionPrivate(true);
     setCreateCollectionError(null);
@@ -120,7 +102,6 @@ export default function SaveAnalysisModal({
         const orgsData = await getMyOrganizations({ limit: 100 });
         const myOrgs = flattenOrganizations(Array.isArray(orgsData) ? orgsData : orgsData.items || []);
         setOrgs(myOrgs);
-        setNewCollectionOrgId((prev) => prev || myOrgs.find((o) => o.isPersonal)?.id || myOrgs[0]?.id || '');
 
         const orgIds = myOrgs.map((o) => o.id);
         if (orgIds.length === 0) {
@@ -151,6 +132,7 @@ export default function SaveAnalysisModal({
       setCollections((prev) => [...prev, collection]);
       setSelectedCollection(collection);
       setShowCreateCollection(false);
+      setNewCollectionOrgId('');
       setNewCollectionName('');
       setNewCollectionPrivate(true);
     } catch (err: any) {
@@ -360,23 +342,22 @@ export default function SaveAnalysisModal({
                   )}
                   {/* Organization names can be long: each field takes its own row
                       on narrow screens and half the width otherwise, never more. */}
-                  <div className={`grid gap-2 ${orgs.length > 1 ? 'sm:grid-cols-2' : ''}`}>
-                    {orgs.length > 1 && (
-                      <label className="flex min-w-0 flex-col gap-1 text-xs text-tp-steel">
-                        Organization
-                        <select
-                          value={newCollectionOrgId}
-                          onChange={(e) => setNewCollectionOrgId(e.target.value)}
-                          className="w-full min-w-0 cursor-pointer truncate rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-                        >
-                          {orgs.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex min-w-0 flex-col gap-1 text-xs text-tp-steel">
+                      Organization
+                      <select
+                        value={newCollectionOrgId}
+                        onChange={(e) => setNewCollectionOrgId(e.target.value)}
+                        className="w-full min-w-0 cursor-pointer truncate rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      >
+                        <option value="">Select an organization</option>
+                        {orgs.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <label className="flex min-w-0 flex-col gap-1 text-xs text-tp-steel">
                       Collection name
                       <input

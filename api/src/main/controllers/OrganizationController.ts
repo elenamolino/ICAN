@@ -118,8 +118,14 @@ class OrganizationController {
 
   async addMember(req: any, res: any) {
     try {
-      const { userId, role } = req.body;
-      const membership = await this.organizationService.addMember(userId, req.params.organizationId, role);
+      const { userId, identifier, role } = req.body;
+      const memberId = identifier ? await this.organizationService.resolveMemberId(identifier) : userId;
+      const membership = await this.organizationService.addMember(
+        memberId,
+        req.params.organizationId,
+        role,
+        req.user.orgRole
+      );
       res.status(201).json(membership);
     } catch (err: any) {
       const { status, message } = handleError(err);

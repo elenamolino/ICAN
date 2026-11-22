@@ -106,6 +106,14 @@ class UserRepository extends RepositoryBase {
     }
   }
 
+  /** Every account whose username, or email, is exactly `value` ignoring case. */
+  async findAllByExact(field: 'username' | 'email', value: string): Promise<LeanUser[]> {
+    const users = await UserMongoose.find({
+      [field]: { $regex: `^${escapeRegex(value)}$`, $options: 'i' },
+    }).exec();
+    return users.map(user => user.toObject());
+  }
+
   async findByUsername(username: string, selector: string = ''): Promise<LeanUser | null> {
     try {
       const user = await UserMongoose.findOne({ username }).select(selector).exec();

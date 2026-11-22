@@ -11,6 +11,7 @@ import OrganizationService from './OrganizationService';
 import { Organization } from '../types/database/Organization';
 import UserService from './UserService';
 import PermissionService from './PermissionService';
+import { pickDefined } from '../utils/pickDefined';
 
 class ContractService {
   private contractRepository: ContractRepository;
@@ -204,6 +205,10 @@ class ContractService {
       throw new Error(`PERMISSION ERROR: ${createResult.reason}`);
     }
 
+    if (collectionId) {
+      await this.contractCollectionService.assertBelongsTo(collectionId, organizationId);
+    }
+
     const baseSlug = generateSlug(data.name);
     const slug = await deduplicateSlug(baseSlug, slugToCheck =>
       this.contractRepository.findExistingSlug(slugToCheck, organizationId)
@@ -333,13 +338,15 @@ class ContractService {
       throw new Error(`PERMISSION ERROR: ${updateResult.reason}`);
     }
 
-    if (data.name) {
-      data.slug = await deduplicateSlug(generateSlug(data.name), slugToCheck =>
+    // Never the organization or the collection: those have their own checked endpoints.
+    const changes = pickDefined(data, ['name', 'private', 'url', 'content', 'version']);
+    if (changes.name) {
+      changes.slug = await deduplicateSlug(generateSlug(changes.name), slugToCheck =>
         this.contractRepository.findExistingSlug(slugToCheck, organizationId)
       );
     }
 
-    return this.contractRepository.update((contract as any).id, data);
+    return this.contractRepository.update((contract as any).id, changes);
   }
 
   async destroy(contractSlug: string, organizationId: string, reqUser: LeanUser) {

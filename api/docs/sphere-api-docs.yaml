@@ -2357,8 +2357,13 @@ paths:
         - **USER**: Must have the `OWNER` or `ADMIN` role within the organization.
 
         **Request Body**:
-        - `userId` (required): The MongoDB ObjectId of the user to add as a member.
+        - `identifier`: The person's exact username (with or without a leading `@`) or
+          email, ignoring case. Takes precedence over `userId`.
+        - `userId`: The MongoDB ObjectId of the user to add. Required without `identifier`.
         - `role` (required): The role to assign — one of `OWNER`, `ADMIN`, or `MEMBER`.
+          Only an OWNER (or a global ADMIN) can add another OWNER.
+
+        Returns **404** when no account has that username or email.
 
         **Constraints**:
         - The target user must not already be a member of the organization. If they are,
@@ -4136,6 +4141,58 @@ paths:
   # Entity Permission Management Routes
   # ============================================
 
+  /contractCollections/{organizationId}/{collectionSlug}/transfer:
+    post:
+      summary: Move a collection to another organization
+      description: |
+        Moves the collection with its services, contracts and versions. Visibility is kept.
+        Permissions granted to individual users on the collection or its contracts are
+        removed, and the URLs change with the organization.
+
+        **Authentication**: User token. API keys are rejected.
+
+        **Permission**: OWNER or ADMIN of both organizations, or global ADMIN.
+
+        Names and slugs are unique within an organization, so the move fails with **409**
+        when the target already has a collection or contract with the same one.
+      tags:
+        - Collections
+      parameters:
+        - name: organizationId
+          in: path
+          required: true
+          description: Organization that has the collection now
+          schema:
+            type: string
+        - name: collectionSlug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organizationId]
+              properties:
+                organizationId:
+                  type: string
+                  description: Organization to move the collection to
+      responses:
+        '200':
+          description: The moved collection, with its new organization
+        '401':
+          description: Authentication required
+        '403':
+          description: Not an owner or admin of both organizations, or an API key was used
+        '404':
+          description: Collection or organization not found
+        '409':
+          description: The target already has a collection or contract with the same name
+        '422':
+          description: Invalid target, or the collection already belongs to it
   /orgs/{orgId}/permissions:
     get:
       summary: List entity permissions for an organization
@@ -6356,9 +6413,16 @@ components:
           schema:
             type: object
             required:
-              - userId
               - role
+            anyOf:
+              - required: [userId]
+              - required: [identifier]
             properties:
+              identifier:
+                type: string
+                maxLength: 254
+                description: Exact username (optionally starting with @) or email, ignoring case
+                example: "jdoe@us.es"
               userId:
                 type: string
                 description: The MongoDB ObjectId of the user to add as a member

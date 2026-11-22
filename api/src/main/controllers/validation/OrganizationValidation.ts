@@ -63,9 +63,17 @@ const update = [
 ];
 
 const addMember = [
+  check('identifier')
+    .optional()
+    .isString()
+    .withMessage('The identifier field must be a string')
+    .trim()
+    .isLength({ min: 1, max: 254 })
+    .withMessage('The identifier must be a username or an email'),
   check('userId')
+    .if((_value, { req }) => req.body.identifier === undefined)
     .exists()
-    .withMessage('A userId must be provided')
+    .withMessage('A userId or an identifier (username or email) must be provided')
     .isString()
     .withMessage('The userId field must be a string'),
   check('role')

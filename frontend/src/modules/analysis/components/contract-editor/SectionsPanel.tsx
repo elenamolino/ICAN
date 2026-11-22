@@ -2,7 +2,8 @@ import { ContractReport, ExpectedSection, SectionReport } from '../../utils/cont
 import Iconify from '../../../core/components/iconify';
 import ProblemsPanel, { Problem } from './ProblemsPanel';
 
-const clausesLabel = (n: number) => `${n} ${n === 1 ? 'clause' : 'clauses'}`;
+// Paragraphs and list items, so "provisions": the clauses the classifier judges are sentences.
+const provisionsLabel = (n: number) => `${n} ${n === 1 ? 'provision' : 'provisions'}`;
 
 function StatusDot({ status }: { status: SectionReport['status'] }) {
   if (status === 'present') {
@@ -59,7 +60,7 @@ function SectionRow({ report, unfair, onReveal, onAdd }: {
           {unfair > 0 && (
             <span className="rounded-full bg-tp-severity-error-bg px-2 py-0.5 font-semibold text-tp-severity-error">{unfair} unfair</span>
           )}
-          {clausesLabel(clauses.length)}
+          {provisionsLabel(clauses.length)}
         </span>
       )}
       {status !== 'present' && (
@@ -112,7 +113,7 @@ export default function SectionsPanel({ report, unfairBySection, problems, probl
                     className="flex w-full cursor-pointer items-center justify-between gap-2 text-left text-tp-ink hover:text-tp-primary"
                   >
                     <span className="truncate">{block.heading}</span>
-                    <span className="whitespace-nowrap text-xs text-tp-steel">{clausesLabel(block.clauses.length)}</span>
+                    <span className="whitespace-nowrap text-xs text-tp-steel">{provisionsLabel(block.clauses.length)}</span>
                   </button>
                 </li>
               ))}

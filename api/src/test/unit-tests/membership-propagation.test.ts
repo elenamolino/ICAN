@@ -327,7 +327,7 @@ describe('OrganizationService - Membership Propagation', () => {
     });
 
     it('throws when user is already a member', async () => {
-      membershipRepo.findUserRoleInOrganization.mockResolvedValue('MEMBER');
+      membershipRepo.findExistingMembership.mockResolvedValue({ role: 'MEMBER' });
 
       await expect(
         service.addMember('user-1', 'parent-1', 'MEMBER')

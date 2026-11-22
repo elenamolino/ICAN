@@ -12,17 +12,16 @@ interface Props {
 }
 
 export default function AddMemberModal({ orgId, onClose, onAdded }: Props) {
-  const [username, setUsername] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [role, setRole] = useState<OrgRole>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { lookupUserByUsername, addMember } = useOrganizationsApi();
+  const { addMember } = useOrganizationsApi();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const user = await lookupUserByUsername(username.trim());
-      await addMember(orgId, user.id, role);
+      await addMember(orgId, identifier.trim(), role);
       onAdded();
       onClose();
     } catch (err: any) {
@@ -55,12 +54,16 @@ export default function AddMemberModal({ orgId, onClose, onAdded }: Props) {
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-tp-steel">Username</label>
+            <label htmlFor="add-member-identifier" className="text-xs font-medium uppercase tracking-wide text-tp-steel">
+              Username or email
+            </label>
             <input
+              id="add-member-identifier"
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="john-doe"
+              autoCapitalize="none"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="jdoe or jdoe@us.es"
               required
               className="rounded-lg border border-tp-input-border bg-tp-input-bg px-3 py-2.5 text-sm text-tp-ink outline-none transition-colors focus:border-tp-primary focus:ring-1 focus:ring-tp-primary/20 dark:focus:ring-tp-primary/20"
             />
@@ -70,7 +73,7 @@ export default function AddMemberModal({ orgId, onClose, onAdded }: Props) {
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as OrgRole)}
-              className="rounded-lg border border-tp-input-border bg-tp-input-bg px-3 py-2.5 text-sm text-tp-ink outline-none transition-colors focus:border-tp-primary focus:ring-1 focus:ring-tp-primary/20 dark:focus:ring-tp-primary/20"
+              className="cursor-pointer rounded-lg border border-tp-input-border bg-tp-input-bg px-3 py-2.5 text-sm text-tp-ink outline-none transition-colors focus:border-tp-primary focus:ring-1 focus:ring-tp-primary/20 dark:focus:ring-tp-primary/20"
             >
               <option value="MEMBER">Member</option>
               <option value="ADMIN">Admin</option>

@@ -20,6 +20,8 @@ export interface ContractCollectionSummary {
   /** Server-computed, only on the detail endpoint: what the current user may do. */
   canEdit?: boolean;
   canDelete?: boolean;
+  /** Whether the user may move it to another organization. */
+  canMove?: boolean;
   organization: ContractCollectionOrganization;
   /** Only on the detail endpoint. The documents themselves come from listCollectionServices. */
   contractCount?: number;
@@ -226,6 +228,26 @@ export function useContractCollectionsApi() {
     return res.json();
   }
 
+  async function transferCollection(
+    organizationId: string,
+    collectionSlug: string,
+    targetOrganizationId: string
+  ): Promise<ContractCollectionSummary> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}/transfer`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: targetOrganizationId }),
+      }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to move collection');
+    }
+    return res.json();
+  }
+
   async function updateCollection(
     organizationId: string,
     collectionSlug: string,
@@ -310,6 +332,7 @@ export function useContractCollectionsApi() {
     getContractVersion,
     createCollection,
     updateCollection,
+    transferCollection,
     updateContract,
     deleteCollection,
     deleteContract,

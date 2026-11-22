@@ -3555,4 +3555,79 @@ describe('Organizations API integration', () => {
       expect(parentInResponse.subOrganizations.length).toBe(2);
     });
   });
+
+  describe('Adding members by username or email', () => {
+    const add = (token: string, orgId: string, body: Record<string, unknown>) =>
+      request(app).post(`${BASE_PATH}/orgs/${orgId}/members`).set('Authorization', `Bearer ${token}`).send(body);
+
+    it.each(['username', '@username', 'email', 'upper-case email'])('adds an ADMIN by %s', async form => {
+      const { user: owner, organizationId } = await createAndLoginUser('USER', `own_${randomSuffix()}`);
+      const { user: person } = await createAndLoginUser('USER', `per_${randomSuffix()}`);
+      const identifier = {
+        username: person.username,
+        '@username': `@${person.username}`,
+        email: person.email,
+        'upper-case email': person.email.toUpperCase(),
+      }[form];
+
+      const response = await add(owner.token, organizationId, { identifier, role: 'ADMIN' });
+
+      expect(response.status).toBe(201);
+      expect(response.body._userId).toBe(person.id);
+      expect(response.body.role).toBe('ADMIN');
+    });
+
+    it('does not match part of a name, nor a pattern', async () => {
+      const { user: owner, organizationId } = await createAndLoginUser('USER', `own_${randomSuffix()}`);
+      const { user: person } = await createAndLoginUser('USER', `per_${randomSuffix()}`);
+
+      for (const identifier of [person.username.slice(0, -1), '.*', '.*@.*']) {
+        expect((await add(owner.token, organizationId, { identifier, role: 'ADMIN' })).status).toBe(404);
+      }
+    });
+
+    it('never takes a username shaped like an email for that email', async () => {
+      const { user: owner, organizationId } = await createAndLoginUser('USER', `own_${randomSuffix()}`);
+      const { user: impostor } = await createAndLoginUser('USER', `imp_${randomSuffix()}`);
+      const address = `v${Date.now()}@us.es`;
+      const renamed = await request(app)
+        .put(`${BASE_PATH}/users/${impostor.username}`)
+        .set('Authorization', `Bearer ${impostor.token}`)
+        .send({ username: address });
+      expect(renamed.status).toBe(200);
+
+      expect((await add(owner.token, organizationId, { identifier: address, role: 'ADMIN' })).status).toBe(404);
+    });
+
+    it('rejects an empty or non-text identifier', async () => {
+      const { user: owner, organizationId } = await createAndLoginUser('USER', `own_${randomSuffix()}`);
+
+      for (const identifier of ['', '   ', { $ne: null }]) {
+        expect((await add(owner.token, organizationId, { identifier, role: 'ADMIN' })).status).toBe(422);
+      }
+    });
+
+    it('adds someone who only inherits a role from a grandparent', async () => {
+      const { user: owner } = await createAndLoginUser('USER', `own_${randomSuffix()}`);
+      const { user: person } = await createAndLoginUser('USER', `per_${randomSuffix()}`);
+      const top = await createTestOrganization(owner.token);
+      const middle = await createTestOrganization(owner.token, { _parentId: top.id });
+      const bottom = await createTestOrganization(owner.token, { _parentId: middle.id });
+      expect((await add(owner.token, top.id, { identifier: person.email, role: 'ADMIN' })).status).toBe(201);
+
+      expect((await add(owner.token, bottom.id, { identifier: person.email, role: 'ADMIN' })).status).toBe(201);
+      expect((await add(owner.token, bottom.id, { identifier: person.email, role: 'ADMIN' })).status).toBe(422);
+    });
+
+    it('does not let an organization ADMIN add an OWNER', async () => {
+      const { user: owner } = await createAndLoginUser('USER', `own_${randomSuffix()}`);
+      const { user: admin } = await createAndLoginUser('USER', `adm_${randomSuffix()}`);
+      const { user: person } = await createAndLoginUser('USER', `per_${randomSuffix()}`);
+      const org = await createTestOrganization(owner.token);
+      await createMembership(admin.id, org.id, 'ADMIN');
+
+      expect((await add(admin.token, org.id, { identifier: person.username, role: 'OWNER' })).status).toBe(403);
+      expect((await add(admin.token, org.id, { identifier: person.username, role: 'ADMIN' })).status).toBe(201);
+    });
+  });
 });

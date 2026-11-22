@@ -4,6 +4,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { shutdownApp, TestApp } from './utils/testApp';
 import { createAndLoginUser, deleteTestUser } from './utils/users/userTestUtils';
 import { randomSuffix } from './utils/helpers';
+import { createMembership, createTestOrganization } from './utils/organizations/organizationTestUtils';
+import EntityPermissionMongoose from '../main/repositories/mongoose/models/EntityPermissionMongoose';
+import OrganizationMongoose from '../main/repositories/mongoose/models/OrganizationMongoose';
 import { BASE_PATH } from './utils/config/variables';
 import testContainer from './utils/config/testContainer';
 import ContractCollectionMongoose from '../main/repositories/mongoose/models/ContractCollectionMongoose';
@@ -346,6 +349,247 @@ describe('Contract Collections API integration', () => {
         .set('Authorization', `Bearer ${user.token}`);
 
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe('Organization ownership', () => {
+    const call = (method: 'get' | 'post' | 'put' | 'delete', path: string, token: string, body?: object) => {
+      const pending = request(app)[method](`${BASE_PATH}${path}`).set('Authorization', `Bearer ${token}`);
+      return body ? pending.send(body) : pending;
+    };
+
+    async function setUp() {
+      const { user, organizationId: source } = await createAndLoginUser('USER', `owner_${randomSuffix()}`);
+      const target = (await createTestOrganization(user.token)).id;
+      const created = await call('post', `/contractCollections/${source}`, user.token, {
+        name: `Coll ${randomSuffix()}`,
+        private: true,
+      });
+      expect(created.status).toBe(201);
+      const { id, slug, name } = created.body;
+      collectionIdsToDelete.add(id);
+      const service = await ServiceMongoose.create({
+        name: 'Service',
+        slug: 'service',
+        _collectionId: id,
+        _organizationId: source,
+      });
+      const contract = await ContractMongoose.create({
+        name: 'Terms',
+        slug: `terms-${randomSuffix()}`.toLowerCase(),
+        _collectionId: id,
+        _organizationId: source,
+        _serviceId: String(service._id),
+        private: true,
+        url: '',
+        content: 'Text.',
+      });
+      return { user, source, target, id, slug, name, service, contract };
+    }
+
+    type SetUp = Awaited<ReturnType<typeof setUp>>;
+    const transfer = ({ source, slug, target }: SetUp, token: string, organizationId: string = target) =>
+      call('post', `/contractCollections/${source}/${slug}/transfer`, token, { organizationId });
+
+    async function organizationsOf({ id, service, contract }: SetUp) {
+      const found: any[] = await Promise.all([
+        ContractCollectionMongoose.findById(id).lean(),
+        ServiceMongoose.findById(service._id).lean(),
+        ContractMongoose.findById(contract._id).lean(),
+      ]);
+      return found.map(document => String(document._organizationId));
+    }
+
+    it('moves the collection with its services and contracts, keeping it private', async () => {
+      const data = await setUp();
+      const { user, source, target, slug, contract } = data;
+
+      const response = await transfer(data, user.token);
+
+      expect(response.status).toBe(200);
+      expect(response.body.private).toBe(true);
+      expect(await organizationsOf(data)).toEqual([target, target, target]);
+      expect((await call('get', `/contracts/${target}/${contract.slug}`, user.token)).status).toBe(200);
+      expect((await call('get', `/contractCollections/${source}/${slug}`, user.token)).status).toBe(404);
+      expect((await request(app).get(`${BASE_PATH}/contractCollections/${target}/${slug}`)).status).toBe(403);
+    });
+
+    it('drops grants on the moved entities at both ends and keeps the others', async () => {
+      const data = await setUp();
+      const { user, source, target, slug, contract } = data;
+      const grant = (organization: string, entityType: string, entitySlug: string | null) => ({
+        _userId: user.id,
+        _organizationId: organization,
+        entityType,
+        entitySlug,
+        permissions: { GET: true, PUT: true, DELETE: true, CREATE: true },
+      });
+      await EntityPermissionMongoose.create([
+        grant(source, 'contractCollection', slug),
+        grant(target, 'contract', contract.slug as string),
+        grant(source, 'contract', 'another-contract'),
+      ]);
+
+      expect((await transfer(data, user.token)).status).toBe(200);
+
+      const left: any[] = await EntityPermissionMongoose.find({ _userId: user.id }).lean();
+      expect(left.map(permission => permission.entitySlug)).toEqual(['another-contract']);
+    });
+
+    it('refuses a move by a MEMBER of the source', async () => {
+      const data = await setUp();
+      const { user: member } = await createAndLoginUser('USER', `member_${randomSuffix()}`);
+      const ownOrg = (await createTestOrganization(member.token)).id;
+      await createMembership(member.id, data.source, 'MEMBER');
+
+      expect((await transfer(data, member.token, ownOrg)).status).toBe(403);
+      expect(await organizationsOf(data)).toEqual([data.source, data.source, data.source]);
+    });
+
+    it('refuses a move into an organization where the user is only a MEMBER', async () => {
+      const data = await setUp();
+      const { user: other } = await createAndLoginUser('USER', `other_${randomSuffix()}`);
+      const otherOrg = (await createTestOrganization(other.token)).id;
+      await createMembership(data.user.id, otherOrg, 'MEMBER');
+
+      expect((await transfer(data, data.user.token, otherOrg)).status).toBe(403);
+      expect(await organizationsOf(data)).toEqual([data.source, data.source, data.source]);
+    });
+
+    it('refuses a move by someone outside the source', async () => {
+      const data = await setUp();
+      const { user: outsider } = await createAndLoginUser('USER', `out_${randomSuffix()}`);
+      const ownOrg = (await createTestOrganization(outsider.token)).id;
+
+      expect((await transfer(data, outsider.token, ownOrg)).status).toBe(403);
+    });
+
+    it('refuses an invalid target and the organization it is already in', async () => {
+      const data = await setUp();
+
+      expect((await transfer(data, data.user.token, 'not-an-id')).status).toBe(422);
+      expect((await transfer(data, data.user.token, data.source)).status).toBe(422);
+    });
+
+    it('requires signing in to move', async () => {
+      const { source, target, slug } = await setUp();
+      const response = await request(app)
+        .post(`${BASE_PATH}/contractCollections/${source}/${slug}/transfer`)
+        .send({ organizationId: target });
+
+      expect(response.status).toBe(401);
+    });
+
+    it('refuses a move onto a collection with the same name', async () => {
+      const data = await setUp();
+      const twin = await call('post', `/contractCollections/${data.target}`, data.user.token, { name: data.name });
+      collectionIdsToDelete.add(twin.body.id);
+
+      expect((await transfer(data, data.user.token)).status).toBe(409);
+    });
+
+    it('refuses a move onto a contract with the same slug', async () => {
+      const data = await setUp();
+      await ContractMongoose.create({
+        name: 'Terms',
+        slug: data.contract.slug,
+        _organizationId: data.target,
+        private: true,
+        url: '',
+        content: 'Other.',
+      });
+
+      expect((await transfer(data, data.user.token)).status).toBe(409);
+      expect(await organizationsOf(data)).toEqual([data.source, data.source, data.source]);
+    });
+
+    it('puts everything back when a step of the move fails', async () => {
+      const data = await setUp();
+      const original = ContractMongoose.updateMany;
+      let failed = false;
+      (ContractMongoose as any).updateMany = function (...args: any[]) {
+        if (!failed) {
+          failed = true;
+          return Promise.reject(new Error('Simulated failure'));
+        }
+        return (original as any).apply(this, args);
+      };
+
+      try {
+        expect((await transfer(data, data.user.token)).status).toBe(500);
+      } finally {
+        (ContractMongoose as any).updateMany = original;
+      }
+      expect(await organizationsOf(data)).toEqual([data.source, data.source, data.source]);
+    });
+
+    it('says who can move it', async () => {
+      const { user, source, slug } = await setUp();
+      const { user: member } = await createAndLoginUser('USER', `member_${randomSuffix()}`);
+      await createMembership(member.id, source, 'MEMBER');
+      const path = `/contractCollections/${source}/${slug}`;
+
+      expect((await call('get', path, user.token)).body.canMove).toBe(true);
+      expect((await call('get', path, member.token)).body.canMove).not.toBe(true);
+    });
+
+    it('ignores the organization when editing a collection', async () => {
+      const data = await setUp();
+      const path = `/contractCollections/${data.source}/${data.slug}`;
+
+      for (const _organizationId of [null, data.target]) {
+        await call('put', path, data.user.token, { description: 'Edited', _organizationId });
+        expect((await organizationsOf(data))[0]).toBe(data.source);
+      }
+    });
+
+    it('ignores the organization and collection when editing a contract', async () => {
+      const data = await setUp();
+      const response = await call('put', `/contracts/${data.source}/${data.contract.slug}`, data.user.token, {
+        version: '2',
+        _organizationId: data.target,
+        _collectionId: null,
+      });
+
+      expect(response.status).toBe(200);
+      const stored: any = await ContractMongoose.findById(data.contract._id).lean();
+      expect(String(stored._organizationId)).toBe(data.source);
+      expect(stored._collectionId).toBe(data.id);
+    });
+
+    it('does not create a contract in a collection of another organization', async () => {
+      const { user, target, id } = await setUp();
+      const response = await call('post', `/contracts/${target}`, user.token, {
+        name: `Stray ${randomSuffix()}`,
+        content: 'Text.',
+        private: true,
+        collectionId: id,
+      });
+
+      expect(response.status).toBe(404);
+    });
+
+    it('does not save a collection without an organization', async () => {
+      const orphan = new ContractCollectionMongoose({ name: 'Orphan', slug: 'orphan' });
+
+      await expect(orphan.validate()).rejects.toThrow(/_organizationId/);
+    });
+
+    it('does not delete an organization that still has content', async () => {
+      const data = await setUp();
+      expect((await transfer(data, data.user.token)).status).toBe(200);
+
+      expect((await call('delete', `/orgs/${data.target}`, data.user.token)).status).toBe(409);
+      expect(await OrganizationMongoose.findById(data.target)).not.toBeNull();
+    });
+
+    it('does not delete a user whose personal organization has content, nor half delete it', async () => {
+      const { user, source, target } = await setUp();
+
+      expect((await call('delete', `/users/${user.username}`, user.token)).status).toBe(409);
+      expect(await OrganizationMongoose.findById(source)).not.toBeNull();
+      expect(await OrganizationMongoose.findById(target)).not.toBeNull();
+      expect((await call('get', '/users/me', user.token)).status).toBe(200);
     });
   });
 });

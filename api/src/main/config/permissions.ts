@@ -142,6 +142,13 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['GET'],
     isPublic: true, // Allow public access to view collections
   },
+  // Moving a collection: the service also checks the role in the target organization.
+  {
+    path: '/contractCollections/*/*/transfer',
+    methods: ['POST'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+    allowedOrganizationRoles: ['OWNER', 'ADMIN'],
+  },
   {
     path: '/contractCollections/**',
     methods: ['POST', 'PUT', 'DELETE', 'PATCH'],

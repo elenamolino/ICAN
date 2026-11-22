@@ -153,11 +153,12 @@ export function useOrganizationsApi() {
     return response.json();
   }, [fetchWithInterceptor, token]);
 
-  const addMember = useCallback(async (orgId: string, userId: string, role: OrgRole) => {
+  /** `identifier` is the person's username or email. */
+  const addMember = useCallback(async (orgId: string, identifier: string, role: OrgRole) => {
     const response = await fetchWithInterceptor(`${ORGS_BASE_PATH}/${orgId}/members`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ userId, role }),
+      body: JSON.stringify({ identifier, role }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error ?? 'Failed to add member');
@@ -233,16 +234,6 @@ export function useOrganizationsApi() {
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error ?? 'Failed to join organization');
     return body as Organization;
-  }, [fetchWithInterceptor, token]);
-
-  const lookupUserByUsername = useCallback(async (username: string) => {
-    const response = await fetchWithInterceptor(`${import.meta.env.VITE_API_URL}/users/${username}`, {
-      method: 'GET',
-      headers,
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error ?? 'User not found');
-    return body;
   }, [fetchWithInterceptor, token]);
 
   const getOrgChildren = useCallback(async (orgId: string): Promise<Organization[]> => {
@@ -345,7 +336,6 @@ export function useOrganizationsApi() {
     revokeInvitation,
     previewInvitation,
     joinViaInvitation,
-    lookupUserByUsername,
     getOrgChildren,
     getOrgContracts,
     getOrgContractCollections,

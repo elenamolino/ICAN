@@ -230,6 +230,14 @@ class UserService {
     const userId = userToDelete.id;
     const userMemberships = await this.organizationMembershipRepository.findByUserId(userId);
 
+    // Checked before changing anything: the loop below deletes as it goes.
+    for (const { organization } of userMemberships) {
+      const deletedWithUser =
+        organization.isPersonal ||
+        (await this.organizationService.listMembers(organization.id, userId)).length === 0;
+      if (deletedWithUser) await this.organizationService.assertHasNoContent(organization.id);
+    }
+
     for (const membership of userMemberships) {
       const org = membership.organization;
       const isPersonal = org.isPersonal;
