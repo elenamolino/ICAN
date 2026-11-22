@@ -6,6 +6,7 @@ import { LeanContract } from '../../types/models/Contract';
 import { OrgUserPermissionsContext } from '../../types/policies';
 import { generateSlug } from '../../utils/slug-manager';
 import { processFileUris } from '../../services/FileService';
+import { grantFilters } from '../../utils/grantFilters';
 import { escapeRegex } from '../../utils/regex';
 
 class ContractRepository extends RepositoryBase {
@@ -32,7 +33,7 @@ class ContractRepository extends RepositoryBase {
         ? [{ _organizationId: { $in: permissions.adminOrgIds.map(id => new mongoose.Types.ObjectId(id)) } }]
         : []),
       { private: false },
-      { slug: { $in: permissions.contracts } },
+      ...grantFilters(permissions.contracts),
     ];
 
     return filter;
@@ -70,7 +71,8 @@ class ContractRepository extends RepositoryBase {
     if (queryParams.excludeContractsInCollection) {
       filter._collectionId = { $exists: false };
     }
-    if (queryParams.selectedOrganizations) {
+    // Never over the organization in the path: the caller's role was resolved for that one.
+    if (!organizationId && queryParams.selectedOrganizations) {
       filter._organizationId = { $in: queryParams.selectedOrganizations.map(id => new mongoose.Types.ObjectId(id)) };
     }
 

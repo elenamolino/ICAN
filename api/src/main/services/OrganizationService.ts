@@ -10,6 +10,7 @@ import { LeanUser } from '../types/models/User';
 import { processFileUris } from './FileService';
 import { generateSlug } from '../utils/slug-manager';
 import { OrganizationIndexByUserOptions } from '../types/services/Organization';
+import { pickDefined } from '../utils/pickDefined';
 
 class OrganizationService {
   private organizationRepository: OrganizationRepository;
@@ -69,6 +70,15 @@ class OrganizationService {
     }
     processFileUris(organization, ['avatar']);
     return organization;
+  }
+
+  async assertCanAddChild(parentId: string, reqUser: LeanUser) {
+    await this.show(parentId);
+    if (reqUser.role === 'ADMIN') return;
+    const role = await this.getUserOrgRole(reqUser.id, parentId);
+    if (role !== 'OWNER' && role !== 'ADMIN') {
+      throw new Error('PERMISSION ERROR: Only owners and admins of an organization can create sub-organizations in it');
+    }
   }
 
   async createWithOwner(data: any, userId: string) {
@@ -202,7 +212,11 @@ class OrganizationService {
       }
     }
 
-    const organization = await this.organizationRepository.update(id, data);
+    // Never the parent or the ancestors, which is where inherited roles come from.
+    const organization = await this.organizationRepository.update(
+      id,
+      pickDefined(data, ['name', 'displayName', 'description', 'avatar', 'avatarBgColor', 'avatarFgColor'])
+    );
     if (!organization) {
       throw new Error('NOT FOUND: Organization not found');
     }
@@ -438,8 +452,8 @@ class OrganizationService {
     return this.organizationInvitationRepository.findByOrganizationId(organizationId);
   }
 
-  async revokeInvitation(invitationId: string) {
-    const result = await this.organizationInvitationRepository.destroy(invitationId);
+  async revokeInvitation(invitationId: string, organizationId: string) {
+    const result = await this.organizationInvitationRepository.destroy(invitationId, organizationId);
     if (!result) {
       throw new Error('NOT FOUND: Invitation not found');
     }

@@ -9,6 +9,7 @@ import { RetrievedContractCollection } from '../../types/database/ContractCollec
 import { CollectionIndexQueryParams } from '../../types/services/ContractCollection';
 import { OrgUserPermissionsContext } from '../../types/policies';
 import { processFileUris } from '../../services/FileService';
+import { grantFilters } from '../../utils/grantFilters';
 import { escapeRegex } from '../../utils/regex';
 
 class ContractCollectionRepository extends RepositoryBase {
@@ -34,7 +35,7 @@ class ContractCollectionRepository extends RepositoryBase {
         ? [{ _organizationId: { $in: permissions.adminOrgIds.map(id => new mongoose.Types.ObjectId(id)) } }]
         : []),
       { private: false },
-      { slug: { $in: writableOnly ? permissions.collectionsWritable ?? [] : permissions.collections } },
+      ...grantFilters(writableOnly ? permissions.collectionsWritable ?? [] : permissions.collections),
     ];
 
     return filter;
@@ -65,7 +66,8 @@ class ContractCollectionRepository extends RepositoryBase {
     if (queryParams.name) {
       filter.name = { $regex: escapeRegex(queryParams.name), $options: 'i' };
     }
-    if (queryParams.organizationIds) {
+    // Never over the organization in the path: the caller's role was resolved for that one.
+    if (!organizationId && queryParams.organizationIds) {
       filter._organizationId = { $in: queryParams.organizationIds.map(id => new mongoose.Types.ObjectId(id)) };
     }
 

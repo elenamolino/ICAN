@@ -16,10 +16,6 @@ class ServiceService {
     this.permissionService = container.resolve('permissionService');
   }
 
-  async listByCollection(collectionId: string) {
-    return this.serviceRepository.findByCollectionId(collectionId);
-  }
-
   async findOrCreate(collectionId: string, organizationId: string, name: string) {
     const slug = generateSlug(name);
     const existing = await this.serviceRepository.findByCollectionAndSlug(collectionId, slug);

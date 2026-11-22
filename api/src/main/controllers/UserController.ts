@@ -86,11 +86,17 @@ class UserController {
           'phone',
           'role',
           'email',
+          'identities',
+          'apiKeys',
           'address',
           'postalCode'
         ];
 
-        const userObject = Object.assign({}, user);
+        const userObject: any = Object.assign({}, user);
+        if (userObject.settings) {
+          const { phone: _phone, ...settings } = userObject.settings;
+          userObject.settings = settings;
+        }
         propertiesToBeRemoved.forEach(property => {
           delete (userObject as Record<string, any>)[property];
         });

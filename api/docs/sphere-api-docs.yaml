@@ -1765,7 +1765,8 @@ paths:
 
         **Authentication**: User token
 
-        **Permission**: Users can only create API keys for themselves. ADMIN users
+        **Permission**: Users can only create API keys for themselves, scoped to organizations
+        they belong to. A key stops working in an organization its user leaves. ADMIN users
         can create API keys for any user.
 
         **Security**: The key value is hashed with SHA-256 before storage.
@@ -1946,6 +1947,8 @@ paths:
         Creates a new organization. The authenticated user automatically becomes the
         **OWNER** of the newly created organization (an `OrganizationMembership` with
         role `OWNER` is created alongside the organization).
+
+        With `_parentId`, the caller must be OWNER or ADMIN of that organization (or a global ADMIN).
 
         **Authentication**: User token
 
@@ -2314,7 +2317,8 @@ paths:
         - `id`: The membership record ID
         - `role`: The member's role (`OWNER`, `ADMIN`, or `MEMBER`)
         - `joinedAt`: When the user joined the organization
-        - `user`: Nested object with `id`, `username`, `email`, `avatar`, `avatarBgColor`, and `avatarFgColor` of the member
+        - `user`: Nested object with `id`, `username`, `avatar`, `avatarBgColor`, and `avatarFgColor` of the member.
+          `email` is only included when the caller belongs to the organization, or is a global ADMIN.
 
         Returns an empty array if the organization has no members (should not happen in
         practice, as the creator is always added as OWNER).

@@ -232,10 +232,7 @@ class ContractCollectionService {
   ) {
     const collection = await this.show(organizationId, collectionSlug, reqUser);
 
-    const [services, contracts] = await Promise.all([
-      this.serviceRepository.findByCollectionId(collection.id),
-      this.contractRepository.findSummariesByCollection(collection.id),
-    ]);
+    const { services, contracts } = await this.visibleContent(organizationId, collection, reqUser);
 
     const serviceRefs = services.map((service: any) => ({
       id: String(service._id),
@@ -267,6 +264,60 @@ class ContractCollectionService {
       service.contracts = service.contracts.map(({ serviceId: _serviceId, ...contract }) => contract) as any;
     });
     return page;
+  }
+
+  /** The services of a collection, for whoever may open it. */
+  async listVisibleServices(collectionId: string, reqUser?: LeanUser) {
+    const found: any = await this.contractCollectionRepository.findById(collectionId);
+    if (!found?.organization) throw new Error('NOT FOUND: Collection not found');
+    const organizationId = String(found.organization.id);
+    const collection = await this.show(organizationId, found.slug, reqUser);
+    return (await this.visibleContent(organizationId, collection, reqUser)).services;
+  }
+
+  /**
+   * A public collection may hold private contracts. Those are left out, and so is a
+   * service with nothing else in it: its name is the provider's.
+   */
+  private async visibleContent(organizationId: string, collection: any, reqUser?: LeanUser) {
+    const [services, contracts] = await Promise.all([
+      this.serviceRepository.findByCollectionId(collection.id),
+      this.contractRepository.findSummariesByCollection(collection.id),
+    ]);
+    if (!contracts.some((contract: any) => contract.private)) return { services, contracts };
+
+    const orgRole = reqUser ? await this.permissionService.resolveOrgRole(reqUser.id, organizationId) : null;
+    const batch = reqUser
+      ? await this.permissionService.buildBatchContext(reqUser.id, organizationId, orgRole, reqUser.role === 'ADMIN')
+      : null;
+
+    const visible = contracts.filter((contract: any) => {
+      if (!contract.private) return true;
+      if (!reqUser || !batch) return false;
+      return this.permissionEngine.evaluate({
+        userId: reqUser.id,
+        organizationId,
+        entityType: 'contract',
+        entitySlug: contract.slug,
+        action: 'GET',
+        isPrivate: true,
+        userOrgRole: orgRole,
+        isGlobalAdmin: reqUser.role === 'ADMIN',
+        entityPermissions: batch.entityPermissions.get(`contract:${contract.slug}`),
+        collectionSlug: collection.slug,
+        collectionPermissions: batch.entityPermissions.get(`contractCollection:${collection.slug}`),
+      }).allowed;
+    });
+
+    const used = new Set(contracts.map((contract: any) => String(contract._serviceId)));
+    const shown = new Set(visible.map((contract: any) => String(contract._serviceId)));
+    return {
+      contracts: visible,
+      services: services.filter((service: any) => {
+        const id = String(service._id ?? service.id);
+        return !used.has(id) || shown.has(id);
+      }),
+    };
   }
 
   async create(newCollection: Record<string, any>, organizationId: string, reqUser: LeanUser) {

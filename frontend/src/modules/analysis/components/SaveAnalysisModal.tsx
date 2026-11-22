@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
+import { useAuth } from '../../auth/hooks/useAuth';
 import { useOrganizationsApi } from '../../organization/api/organizationsApi';
 import { flattenOrganizations, OrganizationChoice } from '../../core/utils/flatten-organizations';
 import {
@@ -39,6 +40,7 @@ export default function SaveAnalysisModal({
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
   const { listCollections, listContracts, listContractVersions, createCollection } = useContractCollectionsApi();
+  const { fetchWithInterceptor } = useAuth();
 
   const [orgs, setOrgs] = useState<OrganizationChoice[]>([]);
   const [collections, setCollections] = useState<ContractCollectionSummary[]>([]);
@@ -153,7 +155,7 @@ export default function SaveAnalysisModal({
     }
 
     setLoadingServices(true);
-    listServices({ collectionId: selectedCollection.id })
+    listServices({ collectionId: selectedCollection.id }, fetchWithInterceptor)
       .then(setServices)
       .catch(() => setServices([]))
       .finally(() => setLoadingServices(false));

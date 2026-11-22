@@ -1913,7 +1913,7 @@ describe('Organizations API integration', () => {
       expect(response.body.length).toBe(0);
     });
 
-    it('returns 200 when org MEMBER lists invitations (general org GET rule applies)', async () => {
+    it('returns 403 when org MEMBER lists invitations, whose codes let anyone join', async () => {
       const { user: owner, organizationId } = await createAndLoginUser('USER');
       const { user: member } = await createAndLoginUser('USER');
       await createMembership(member.id, organizationId, 'MEMBER');
@@ -1923,9 +1923,7 @@ describe('Organizations API integration', () => {
         .get(`${BASE_PATH}/orgs/${organizationId}/invitations`)
         .set('Authorization', `Bearer ${member.token}`);
 
-      // MEMBER can list because the general /orgs/** GET rule allows all org members
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.status).toBe(403);
     });
 
     it('returns 403 when non-member USER tries to list invitations', async () => {

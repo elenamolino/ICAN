@@ -7,6 +7,11 @@ import { processFileUris } from './FileService';
 import bcrypt from 'bcryptjs';
 import { generateUserTokenDTO, generateJwtToken, hashPassword } from '../utils/users/helpers';
 import OrganizationService from './OrganizationService';
+import { pickDefined } from '../utils/pickDefined';
+
+const UPDATABLE_FIELDS = [
+  'firstName', 'lastName', 'username', 'email', 'phone', 'address', 'postalCode', 'avatar', 'password', 'role',
+];
 
 class UserService {
   private userRepository: UserRepository;
@@ -42,7 +47,7 @@ class UserService {
     }
 
     const projection: Record<string, 0 | 1> | undefined = shouldExcludeSensitive
-      ? { password: 0, email: 0, role: 0, phone: 0, token: 0, tokenExpiration: 0, apiKeys: 0, createdAt: 0, updatedAt: 0 }
+      ? { password: 0, email: 0, identities: 0, 'settings.phone': 0, role: 0, phone: 0, token: 0, tokenExpiration: 0, apiKeys: 0, createdAt: 0, updatedAt: 0 }
       : undefined;
 
     const users = await this.userRepository.find(filter, offset, limit, sortBy, sortOrder, projection);
@@ -153,7 +158,7 @@ class UserService {
     
     if(reqUser.username !== targetUsername && reqUser.role !== 'ADMIN') {
       throw new Error('PERMISSION ERROR: You can only update your own user data');
-    }else if (data.role && reqUser.role !== 'ADMIN') {
+    }else if (data.role !== undefined && reqUser.role !== 'ADMIN') {
       throw new Error('PERMISSION ERROR: You can only update user roles if you are an admin');
     }
 
@@ -183,7 +188,8 @@ class UserService {
       data.password = await hashPassword(data.password);
     }
 
-    const user = await this.userRepository.update(targetUsername, data);
+    // Named fields only: the body becomes a MongoDB update, where "$set" would be an operator.
+    const user = await this.userRepository.update(targetUsername, pickDefined(data, UPDATABLE_FIELDS));
 
     if (!user) {
       throw new Error('NOT FOUND: User not found after update attempt');

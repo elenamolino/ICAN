@@ -210,6 +210,19 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     allowedUserRoles: ['ADMIN', 'USER'],
     allowedOrganizationRoles: ['OWNER', 'ADMIN'],
   },
+  // Invitation codes let anyone join. Before /orgs/**, as the first matching rule wins.
+  {
+    path: '/orgs/*/invitations',
+    methods: ['GET'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+    allowedOrganizationRoles: ['OWNER', 'ADMIN'],
+  },
+  {
+    path: '/orgs/*/invitations/**',
+    methods: ['GET'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+    allowedOrganizationRoles: ['OWNER', 'ADMIN'],
+  },
   // Everything under /orgs/:organizationId/** requires membership context.
   // Global ADMIN bypasses membership checks.
   {

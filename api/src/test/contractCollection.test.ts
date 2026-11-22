@@ -592,4 +592,50 @@ describe('Contract Collections API integration', () => {
       expect((await call('get', '/users/me', user.token)).status).toBe(200);
     });
   });
+
+  describe('lists never show what is private in another organization', () => {
+    const post = async (path: string, token: string, body: object) => {
+      const response = await request(app).post(BASE_PATH + path).set('Authorization', `Bearer ${token}`).send(body);
+      expect(response.status).toBe(201);
+      return response.body;
+    };
+    const list = async (path: string, token: string) =>
+      (await request(app).get(BASE_PATH + path).set('Authorization', `Bearer ${token}`)).body;
+
+    it('ignores selectedOrganizations when the organization is in the path', async () => {
+      const victim = await createAndLoginUser('USER', `victim_${randomSuffix()}`);
+      const other = await createAndLoginUser('USER', `other_${randomSuffix()}`);
+      await post(`/contracts/${victim.organizationId}`, victim.user.token, {
+        name: `Private ${randomSuffix()}`, content: 'Secret.', private: true,
+      });
+
+      const body = await list(
+        `/contracts/${other.organizationId}?selectedOrganizations=${victim.organizationId}`,
+        other.user.token
+      );
+      expect(body.contracts).toEqual([]);
+    });
+
+    it.each([
+      ['contract', 'contracts'],
+      ['contractCollection', 'contractCollections'],
+    ])('applies a %s grant only in its organization', async (entityType, path) => {
+      const victim = await createAndLoginUser('USER', `victim_${randomSuffix()}`);
+      const granter = await createAndLoginUser('USER', `granter_${randomSuffix()}`);
+      const reader = await createAndLoginUser('USER', `reader_${randomSuffix()}`);
+      const data = { name: `Samename ${randomSuffix()}`, content: 'Text.', private: true };
+
+      await post(`/${path}/${victim.organizationId}`, victim.user.token, data);
+      const granted = await post(`/${path}/${granter.organizationId}`, granter.user.token, data);
+      await createMembership(reader.user.id, granter.organizationId, 'MEMBER');
+      await post(`/orgs/${granter.organizationId}/permissions`, granter.user.token, {
+        userId: reader.user.id, entityType, entitySlug: granted.slug,
+        permissions: { GET: true, PUT: false, DELETE: false, CREATE: false },
+      });
+
+      const body = await list(`/${path}?limit=100&name=${encodeURIComponent(data.name)}`, reader.user.token);
+      const found = body.contracts ?? body.collections;
+      expect(found.map((item: any) => item.organization.id)).toEqual([granter.organizationId]);
+    });
+  });
 });

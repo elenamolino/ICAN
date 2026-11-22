@@ -60,7 +60,7 @@ export const openApiSpec = {
       '**Same clauses in both analysers.** The text is cut into sentences once, by the API, and both analysers receive those sentences, so their clause lists match one to one.',
       '',
       '**Authentication.** Send `Authorization: Bearer <token>` (from the login) or `x-api-key: <key>`. ' +
-        'Create a key with `POST /users/{username}/api-keys` and give it a scope per organization (`VIEW`, `MANAGEMENT` or `ALL`). ' +
+        'Create a key with `POST /users/{username}/api-keys` and give it a scope per organization (`VIEW`, `MANAGEMENT` or `ALL`). Only organizations you belong to can be in its scopes. ' +
         'Endpoints marked as public need no credentials.',
     ].join('\n'),
   },

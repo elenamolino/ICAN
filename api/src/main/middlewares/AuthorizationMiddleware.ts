@@ -136,7 +136,8 @@ async function populateOrganizationContext(req: Request): Promise<void> {
           organization.ancestors
         );
 
-        if (!scope) {
+        // The scope narrows the role of the key's user. It never replaces a membership.
+        if (!scope || (!role && (req as any).user.role !== 'ADMIN')) {
           throw new Error('PERMISSION ERROR: API Key does not have access to this organization');
         }
 

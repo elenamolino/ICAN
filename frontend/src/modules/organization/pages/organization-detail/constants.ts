@@ -18,6 +18,8 @@ export const TAB_META: Record<Tab, { label: string; icon: string; iconComponent?
   overview: { label: 'Overview', icon: 'mdi:view-dashboard-outline' },
   members: { label: 'Members', icon: 'mdi:account-group-outline' },
   invitations: { label: 'Invitations', icon: 'mdi:link-variant' },
+  contracts: { label: 'Contracts', icon: 'mdi:file-document-outline' },
+  collections: { label: 'Collections', icon: 'mdi:folder-outline' },
   children: { label: 'Hierarchy', icon: 'mdi:graph-outline' },
   permissions: { label: 'Permissions', icon: 'mdi:shield-lock-outline' },
 };
