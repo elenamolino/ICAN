@@ -11,6 +11,7 @@ import { analyseSections, sectionStarter } from '../../utils/contract-sections';
 import { findPlaceholders, locateClause } from '../../utils/contract-checks';
 import { editText, FieldId, linkSavedText, pricingIn, setField, setPricing, unlinked } from '../../utils/linked-fields';
 import { nextVersionNumbers } from '../../../contract-collection/utils/versions';
+import { DEFAULT_TITLE, followHeading, isServiceLevelAgreement, retitle } from '../../utils/document-title';
 import { topCategories } from '../../constants/clauseCategories';
 import { AnalyzeResponse, useAnalysisApi } from '../../api/analysisApi';
 import { ContractVersionListItem, useContractCollectionsApi } from '../../../contract-collection/api/contractCollectionsApi';
@@ -68,7 +69,7 @@ function ContractEditor() {
   const { company, service, pricing } = values;
   const [savedVersions, setSavedVersions] = useState<ContractVersionListItem[]>([]);
   const [step, setStep] = useState<'minor' | 'major'>('minor');
-  const [title, setTitle] = useState('Terms of Service');
+  const [title, setTitle] = useState(DEFAULT_TITLE);
   const [target, setTarget] = useState<SaveTarget | null>(null);
   const editorRef = useRef<ContractTextEditorHandle>(null);
   const fieldRefs = {
@@ -216,7 +217,8 @@ function ContractEditor() {
   const incomplete =
     missingFields.length > 0 ||
     findPlaceholders(text).length > 0 ||
-    report.sections.some((s) => s.status === 'missing');
+    // The expected sections are those of Terms of Service: an SLA has others.
+    (!isServiceLevelAgreement(title) && report.sections.some((s) => s.status === 'missing'));
   const versionStep = incomplete ? 'minor' : step;
   const nextNumbers = nextVersionNumbers(target ? savedVersions : []);
 
@@ -303,6 +305,7 @@ function ContractEditor() {
     }
     setTemplateId(next.id);
     setLinked(unlinked(templateText(next)));
+    setTitle(DEFAULT_TITLE);
     setValues({ service: '', company: '', pricing: '' });
   };
 
@@ -377,7 +380,10 @@ function ContractEditor() {
             </select>
           </div>
           <div className="min-h-0 flex-1">
-            <ContractTextEditor ref={editorRef} value={text} onChange={(next) => setLinked((current) => editText(current, next))} markedLines={markedLines} />
+            <ContractTextEditor ref={editorRef} value={text} onChange={(next) => {
+              setTitle((current) => followHeading(current, text, next));
+              setLinked((current) => editText(current, next));
+            }} markedLines={markedLines} />
           </div>
         </div>
         <aside className="flex min-h-0 flex-col border-t border-tp-hairline lg:border-l lg:border-t-0">
@@ -408,7 +414,11 @@ function ContractEditor() {
                 <input
                   ref={fieldRefs.Title}
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setTitle(next);
+                    setLinked((current) => editText(current, retitle(current.text, title, next)));
+                  }}
                   className={`${FIELD} w-full`}
                 />
               ) },

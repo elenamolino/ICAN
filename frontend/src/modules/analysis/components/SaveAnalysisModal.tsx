@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
 import { nextVersionNumbers } from '../../contract-collection/utils/versions';
+import { titleFromName } from '../utils/document-title';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { useOrganizationsApi } from '../../organization/api/organizationsApi';
 import { flattenOrganizations, OrganizationChoice } from '../../core/utils/flatten-organizations';
@@ -174,7 +175,8 @@ export default function SaveAnalysisModal({
   }, [selectedCollection]);
 
   useEffect(() => {
-    setContractSelection(null);
+    // From the editor, a new service's contract is the one just written.
+    setContractSelection(versionStep && serviceSelection?.mode === 'new' ? { mode: 'new', name: title } : null);
 
     if (!selectedCollection || !serviceSelection || serviceSelection.mode !== 'existing') {
       setContracts([]);
@@ -236,7 +238,7 @@ export default function SaveAnalysisModal({
           : { serviceName: serviceSelection.name }),
         ...(contractSelection.mode === 'existing'
           ? { contractId: contractSelection.id, ...(attachVersionId ? { versionId: attachVersionId } : {}) }
-          : { contractName: contractSelection.name, provider: provider.trim(), title: title.trim() }),
+          : { contractName: contractSelection.name, provider: provider.trim(), title: titleFromName(contractSelection.name, provider) || title.trim() }),
         date: new Date(date).toISOString(),
         ...(versionStep && !attachVersionId
           ? { versionNumber: nextVersionNumbers(existingVersions)[versionStep] }
@@ -472,7 +474,7 @@ export default function SaveAnalysisModal({
 
             {isNewContract && contractSelection && (
               <p className="text-xs text-tp-steel">
-                Will be saved as "{provider} — {title}", dated {date}.
+                Will be saved as "{provider} — {(contractSelection && titleFromName(contractSelection.name, provider)) || title}", dated {date}.
               </p>
             )}
 
