@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 export interface ContractTemplate {
   id: string;
   name: string;
@@ -86,3 +88,8 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     text: SAAS_TERMS,
   },
 ];
+
+/** A template as a new contract starts from it: last updated today, written out ("22 November 2026"). */
+export function templateText(template: ContractTemplate): string {
+  return template.text.replace('[date]', format(new Date(), 'd MMMM yyyy'));
+}

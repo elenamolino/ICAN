@@ -6,7 +6,7 @@ import ContractTextEditor, { ContractTextEditorHandle, MarkedLine } from '../../
 import SectionsPanel from '../../components/contract-editor/SectionsPanel';
 import { Problem } from '../../components/contract-editor/ProblemsPanel';
 import SaveAnalysisModal from '../../components/SaveAnalysisModal';
-import { CONTRACT_TEMPLATES } from '../../data/contract-templates';
+import { CONTRACT_TEMPLATES, templateText } from '../../data/contract-templates';
 import { analyseSections, sectionStarter } from '../../utils/contract-sections';
 import { findPlaceholders, locateClause } from '../../utils/contract-checks';
 import { editText, FieldId, linkSavedText, pricingIn, setField, setPricing, unlinked } from '../../utils/linked-fields';
@@ -62,7 +62,7 @@ function ContractEditor() {
   const { authUser } = useAuth();
 
   const [templateId, setTemplateId] = useState(CONTRACT_TEMPLATES[0].id);
-  const [linked, setLinked] = useState(() => unlinked(CONTRACT_TEMPLATES[0].text));
+  const [linked, setLinked] = useState(() => unlinked(templateText(CONTRACT_TEMPLATES[0])));
   const { text } = linked;
   const [values, setValues] = useState<Record<FieldId, string>>({ service: '', company: '', pricing: '' });
   const { company, service, pricing } = values;
@@ -290,7 +290,7 @@ function ContractEditor() {
   const handleTemplateChange = async (nextId: string) => {
     const next = CONTRACT_TEMPLATES.find((t) => t.id === nextId);
     if (!next) return;
-    const untouched = CONTRACT_TEMPLATES.some((t) => t.text === text);
+    const untouched = CONTRACT_TEMPLATES.some((t) => templateText(t) === text);
     if (!untouched) {
       try {
         await customConfirm(`Replace your text with the “${next.name}” template? What you wrote will be lost.`, {
@@ -302,7 +302,7 @@ function ContractEditor() {
       }
     }
     setTemplateId(next.id);
-    setLinked(unlinked(next.text));
+    setLinked(unlinked(templateText(next)));
     setValues({ service: '', company: '', pricing: '' });
   };
 
