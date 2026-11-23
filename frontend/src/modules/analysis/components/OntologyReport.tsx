@@ -51,7 +51,7 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
     .map(([category]) => category.replace(/_/g, ' '));
 
   return (
-    <div className="rounded-lg border border-tp-hairline bg-tp-canvas">
+    <div className={`rounded-lg border bg-tp-canvas ${unfair > 0 ? 'border-tp-severity-error-border' : 'border-tp-hairline'}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -192,7 +192,7 @@ function AggregateSummary({
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <SummaryStat label="Clauses" value={aggregate.total_clauses} />
+      <SummaryStat label="Provisions" value={aggregate.total_clauses} />
       <SummaryStat label="Potentially unfair" value={aggregate.unfair_count} />
       <SummaryStat label="Words" value={words} />
       <SummaryStat
@@ -242,7 +242,7 @@ export default function OntologyReport({ report }: { report: JobReport }) {
       )}
 
       <div>
-        <h3 className="mb-3 font-semibold text-tp-ink">All clauses</h3>
+        <h3 className="mb-3 font-semibold text-tp-ink">All provisions</h3>
         <div className="space-y-2">
           {clauses.map((clause) => (
             <ClauseCard key={clause.clause_id} clause={clause} />

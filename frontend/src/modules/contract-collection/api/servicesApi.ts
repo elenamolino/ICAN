@@ -6,6 +6,8 @@ export interface ServiceSummary {
   id: string;
   name: string;
   slug: string;
+  /** Where the service's pricing is published, if it is. */
+  pricingUrl?: string | null;
 }
 
 // Takes the caller's fetchWithInterceptor: the services of a private collection need the token.

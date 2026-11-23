@@ -7,6 +7,11 @@ const serviceSchema = new Schema(
     slug: { type: String, required: false },
     _collectionId: { type: String, ref: 'ContractCollection', required: true },
     _organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
+    // Where the service's pricing is published, such as its permanent link in SPHERE.
+    pricingUrl: { type: String, required: false, default: null },
+    // The secret of the permanent link to this service's Customer Agreement: who has it
+    // reads all its documents. Never selected, so no list hands it out.
+    shareToken: { type: String, required: false, select: false, index: { unique: true, sparse: true } },
   },
   {
     timestamps: true,

@@ -6,8 +6,8 @@ import unfairCategories, { type UnfairCategory } from './data/unfair-categories'
 const SECTIONS = [
   { id: 'introduction', label: 'Introduction' },
   { id: 'unfair-terms', label: 'Unfair terms' },
-  { id: 'ai-classify', label: 'AI Classify' },
-  { id: 'ontology-analysis', label: 'Ontology Analysis' },
+  { id: 'ai-classify', label: 'Abusive Analysis' },
+  { id: 'ontology-analysis', label: 'Full Analysis' },
   { id: 'privacy-and-limits', label: 'Privacy and limits' },
   { id: 'credits', label: 'Credits and data' },
 ];
@@ -138,8 +138,8 @@ export default function DocsPage() {
               . Even so, these terms still appear in many online ToS.
             </p>
             <p>
-              ICAN helps users find these terms with two analysers. <strong>AI Classify</strong>{' '}
-              classifies each clause with a language model. <strong>Ontology Analysis</strong>{' '}
+              ICAN helps users find these terms with two analysers. <strong>Abusive Analysis</strong>{' '}
+              classifies each provision with a language model. <strong>Full Analysis</strong>{' '}
               translates the ToS into a formal model and queries it.
             </p>
 
@@ -150,7 +150,7 @@ export default function DocsPage() {
               the rights and obligations of the parties, against the requirement of good faith.
             </p>
             <p>
-              AI Classify works with the following categories. Open each one to see a definition and
+              Abusive Analysis works with the following categories. Open each one to see a definition and
               an example.
             </p>
             <div className="overflow-hidden rounded-lg border border-tp-hairline bg-tp-canvas">
@@ -159,9 +159,9 @@ export default function DocsPage() {
               ))}
             </div>
 
-            <SectionHeading id="ai-classify">AI Classify</SectionHeading>
+            <SectionHeading id="ai-classify">Abusive Analysis</SectionHeading>
             <p>
-              AI Classify runs{' '}
+              Abusive Analysis runs{' '}
               <ExternalLink href="https://huggingface.co/marmolpen3/lexglue-unfair-tos">
                 lexglue-unfair-tos
               </ExternalLink>
@@ -174,34 +174,34 @@ export default function DocsPage() {
               <ExternalLink href="https://huggingface.co/datasets/marmolpen3/memnet_tos">
                 memnet_tos
               </ExternalLink>
-              , a dataset of about 20,400 clauses taken from the Terms of Service of commercial
+              , a dataset of about 20,400 provisions taken from the Terms of Service of commercial
               services.
             </p>
             <p>
-              It solves a multi-label classification task. One clause can belong to several
+              It solves a multi-label classification task. One provision can belong to several
               categories at the same time. The model has one output for each category. A sigmoid
               function turns each output into a value between 0 and 1. If the value is above 0.5,
-              the clause is flagged for that category.
+              the provision is flagged for that category.
             </p>
             <p>
               The interface shows these values. They are not probabilities. Read them as a relative
-              indicator of how strongly a clause matches a category.
+              indicator of how strongly a provision matches a category.
             </p>
             <h3 className="pt-2 text-base font-semibold text-tp-ink">Reading the result</h3>
             <ul className="list-disc space-y-1 pl-6">
               <li>
-                The summary shows the number of clauses, how many are potentially unfair, and the
+                The summary shows the number of provisions, how many are potentially unfair, and the
                 number of words.
               </li>
               <li>
-                Each clause lists its score for each of the eight categories above. A clause marked
+                Each provision lists its score for each of the eight categories above. A provision marked
                 as potentially unfair has at least one category above 0.5.
               </li>
             </ul>
 
-            <SectionHeading id="ontology-analysis">Ontology Analysis</SectionHeading>
+            <SectionHeading id="ontology-analysis">Full Analysis</SectionHeading>
             <p>
-              Ontology Analysis uses LLMs to translate ToS written in natural language into the{' '}
+              Full Analysis uses LLMs to translate ToS written in natural language into the{' '}
               <ExternalLink href="https://w3id.org/tosl/">
                 Terms of Service Language (TOSL)
               </ExternalLink>{' '}
@@ -243,28 +243,28 @@ export default function DocsPage() {
                 the party each one applies to.
               </li>
               <li>
-                <strong>Unfair term categories</strong> flagged by the queries for each clause.
+                <strong>Unfair term categories</strong> flagged by the queries for each provision.
               </li>
               <li>
                 <strong>Semantic similarity</strong>, when semantic evaluation is enabled. It
                 measures how close the text regenerated from the graph (the back-translation) is to
-                the original clause. A low value suggests the graph may not capture the clause well.
+                the original provision. A low value suggests the graph may not capture the provision well.
               </li>
               <li>
                 <strong>Conforms</strong> and <strong>repair rounds</strong> show whether the graph
                 passed validation and how many correction attempts it needed.
               </li>
               <li>
-                <strong>Turtle (TTL)</strong> for each clause, which you can copy to reuse the
+                <strong>Turtle (TTL)</strong> for each provision, which you can copy to reuse the
                 graph.
               </li>
             </ul>
 
             <p>
-              Both analysers read the same clauses: ICAN cuts the text into sentences once and gives
+              Both analysers read the same provisions: ICAN cuts the text into sentences once and gives
               them to each. They can still flag different ones, because “potentially unfair” does
-              not mean the same thing in each. AI Classify flags a clause when the model scores it
-              above 0.5 in one of the eight categories. Ontology Analysis flags a right, obligation
+              not mean the same thing in each. Abusive Analysis flags a provision when the model scores it
+              above 0.5 in one of the eight categories. Full Analysis flags a right, obligation
               or prohibition when one of its SPARQL queries matches it in the graph. This is
               expected, not an error.
             </p>
@@ -277,8 +277,8 @@ export default function DocsPage() {
                 For a legal decision, ask a qualified professional.
               </li>
               <li>
-                <strong>Where your text goes.</strong> AI Classify is processed by the classifier
-                service that runs with ICAN. Ontology Analysis sends the text of your document to
+                <strong>Where your text goes.</strong> Abusive Analysis is processed by the classifier
+                service that runs with ICAN. Full Analysis sends the text of your document to
                 the external LLM provider behind the pipeline model you select (for example
                 OpenRouter, OpenAI or Hugging Face). Do not analyse confidential documents with it.
               </li>

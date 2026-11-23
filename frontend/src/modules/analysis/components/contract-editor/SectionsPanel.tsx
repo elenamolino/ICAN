@@ -90,7 +90,7 @@ export default function SectionsPanel({ report, unfairBySection, problems, probl
       <div className="flex items-baseline justify-between gap-2 border-b border-tp-hairline-soft px-4 py-3">
         <h2 className="text-sm font-semibold text-tp-ink">Sections</h2>
         <span className="font-mono text-xs text-tp-steel">
-          {report.present} of {report.total} expected
+          {report.total ? `${report.present} of ${report.total} expected` : 'No model for this type'}
         </span>
       </div>
 

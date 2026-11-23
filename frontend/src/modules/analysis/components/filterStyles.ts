@@ -9,3 +9,6 @@ export function pillClass(active: boolean) {
 }
 
 export const CHIP_CLASS = 'rounded-full bg-tp-surface px-2 py-0.5 text-xs text-tp-slate';
+/** The categories of a potentially unfair provision. */
+export const UNFAIR_CHIP_CLASS =
+  'rounded-full border border-tp-severity-error-border bg-tp-severity-error-bg px-2 py-0.5 text-xs text-tp-severity-error';

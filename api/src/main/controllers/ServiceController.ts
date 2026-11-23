@@ -12,6 +12,7 @@ class ServiceController {
     this.contractCollectionService = container.resolve('contractCollectionService');
     this.index = this.index.bind(this);
     this.destroy = this.destroy.bind(this);
+    this.update = this.update.bind(this);
   }
 
   async index(req: any, res: any) {
@@ -22,6 +23,17 @@ class ServiceController {
       }
       const services = await this.contractCollectionService.listVisibleServices(collectionId as string, req.user);
       res.json({ services });
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async update(req: any, res: any) {
+    try {
+      const scopes = req.authType === 'api-key' ? req.user.apiKey?.scopes ?? [] : undefined;
+      const service = await this.serviceService.update(req.params.id, { pricingUrl: req.body.pricingUrl }, req.user, scopes);
+      res.json(service);
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });

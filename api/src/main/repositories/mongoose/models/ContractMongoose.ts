@@ -1,5 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import { generateSlug } from '../../../utils/slug-manager';
+import { DOCUMENT_TYPES } from '../../../utils/documentTypes';
 
 const contractSchema = new Schema(
   {
@@ -13,6 +14,8 @@ const contractSchema = new Schema(
     _serviceId: { type: String, ref: 'Service', required: false },
     _latestVersionId: { type: String, ref: 'ContractVersion', required: false },
     version: { type: String, required: false },
+    // Null for contracts saved before there were types: guessed from the name.
+    documentType: { type: String, enum: [...DOCUMENT_TYPES, null], required: false, default: null },
     createdAt: { type: Date, required: true, default: Date.now },
     url: { type: String, required: false },
     content: { type: String, required: false },

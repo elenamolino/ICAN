@@ -115,6 +115,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['GET'],
     isPublic: true, // The unguessable token is the credential
   },
+  {
+    path: '/permalinks/agreement/*',
+    methods: ['GET'],
+    isPublic: true, // The unguessable token is the credential
+  },
   // Contract entity permissions (before general /contracts/** for GET)
   {
     path: '/contracts/*/*/permissions',
@@ -267,7 +272,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
   {
     path: '/services/*',
-    methods: ['DELETE'],
+    methods: ['PUT', 'DELETE'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
 

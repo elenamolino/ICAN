@@ -158,7 +158,7 @@ export default function VersionGraph({
               {format(new Date(selected.capturedAt), 'MMM d, yyyy')}
               {selected.createdAt && <> · added to iCan {format(new Date(selected.createdAt), 'MMM d, yyyy, HH:mm')}</>}
               {selected.summary && (
-                <> · {selected.summary.totalClauses} clauses, {selected.summary.unfairClauses} potentially unfair</>
+                <> · {selected.summary.totalClauses} provisions, {selected.summary.unfairClauses} potentially unfair</>
               )}
             </p>
             {!parent ? (
@@ -183,7 +183,7 @@ export default function VersionGraph({
                 )}
                 {changes && changes.unfairBefore !== changes.unfairAfter && (
                   <p className="mt-1 text-tp-steel">
-                    Unfair clauses {changes.unfairBefore} → {changes.unfairAfter}
+                    Unfair provisions {changes.unfairBefore} → {changes.unfairAfter}
                     {changes.newUnfairCategories.length > 0 && <> (new: {changes.newUnfairCategories.join(', ')})</>}.
                   </p>
                 )}
