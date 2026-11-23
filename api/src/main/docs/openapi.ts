@@ -457,10 +457,10 @@ export const openApiSpec = {
       put: {
         tags: ['Services'],
         summary: 'Set where the pricing of a service is published',
-        description: 'Owners and admins of its organization. `pricingUrl` is shown as the Pricing card of the Customer Agreement; null removes it.',
+        description: 'Owners and admins of its organization. `pricingUrl` is shown as the Pricing card of the Customer Agreement and `pricingSourceUrl`, the provider\'s own pricing page, as its official source. A field left out keeps its value; null removes it.',
         security: secured,
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { pricingUrl: { type: 'string', nullable: true } } } } } },
+        requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { pricingUrl: { type: 'string', nullable: true }, pricingSourceUrl: { type: 'string', nullable: true } } } } } },
         responses: { '200': { description: 'The service.' }, '403': errorResponse('Not an owner or admin.') },
       },
     },

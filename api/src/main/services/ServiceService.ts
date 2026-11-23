@@ -29,8 +29,12 @@ class ServiceService {
     });
   }
 
-  /** Sets where the service's pricing is. Like deleting, only for owners and admins of its organization. */
-  async update(serviceId: string, data: { pricingUrl?: string | null }, reqUser: LeanUser, apiKeyScopes?: { organizationId: string }[]) {
+  /**
+   * Sets where the service's pricing is: its page in SPHERE and the provider's own page.
+   * A field left out keeps its value, null removes it. Like deleting, only for owners and
+   * admins of its organization.
+   */
+  async update(serviceId: string, data: { pricingUrl?: string | null; pricingSourceUrl?: string | null }, reqUser: LeanUser, apiKeyScopes?: { organizationId: string }[]) {
     const service: any = await this.serviceRepository.findById(serviceId);
     if (!service) throw new Error('NOT FOUND: Service not found');
     const organizationId = String(service._organizationId);
@@ -42,8 +46,17 @@ class ServiceService {
     if (reqUser.role !== 'ADMIN' && orgRole !== 'OWNER' && orgRole !== 'ADMIN') {
       throw new Error('PERMISSION ERROR: Only organization owners/admins can change a service');
     }
-    const updated = await this.serviceRepository.update(serviceId, { pricingUrl: data.pricingUrl ?? null });
-    return { id: String(updated._id), name: updated.name, slug: updated.slug, pricingUrl: updated.pricingUrl ?? null };
+    const changes: { pricingUrl?: string | null; pricingSourceUrl?: string | null } = {};
+    if (data.pricingUrl !== undefined) changes.pricingUrl = data.pricingUrl;
+    if (data.pricingSourceUrl !== undefined) changes.pricingSourceUrl = data.pricingSourceUrl;
+    const updated = await this.serviceRepository.update(serviceId, changes);
+    return {
+      id: String(updated._id),
+      name: updated.name,
+      slug: updated.slug,
+      pricingUrl: updated.pricingUrl ?? null,
+      pricingSourceUrl: updated.pricingSourceUrl ?? null,
+    };
   }
 
   // Services have no per-entity permission grants of their own (unlike

@@ -39,7 +39,7 @@ class ServiceRepository extends RepositoryBase {
     return service.toObject();
   }
 
-  async update(id: string, data: { pricingUrl?: string | null }) {
+  async update(id: string, data: { pricingUrl?: string | null; pricingSourceUrl?: string | null }) {
     return ServiceMongoose.findByIdAndUpdate(id, { $set: data }, { new: true }).lean<any>();
   }
 

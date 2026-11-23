@@ -35,8 +35,8 @@ interface ExampleFile {
   collection: string;
   description?: string;
   documents: ExampleDocument[];
-  /** Per service name: where its pricing is published (its Pricing card). */
-  services?: Record<string, { pricingUrl?: string }>;
+  /** Per service name: where its pricing is published (its Pricing card) and the provider's own page. */
+  services?: Record<string, { pricingUrl?: string; pricingSourceUrl?: string }>;
 }
 
 const base = (process.env.ICAN_URL ?? 'http://localhost:8080').replace(/\/$/, '') + '/api/v1';
@@ -104,9 +104,9 @@ async function main() {
   const services: any[] = (await call('GET', `/services?collectionId=${collectionId}`)).services;
   for (const [name, settings] of Object.entries(examples.services ?? {})) {
     const service = services.find(s => s.name === name);
-    if (!service || !settings.pricingUrl) continue;
-    await call('PUT', `/services/${service.id ?? service._id}`, { pricingUrl: settings.pricingUrl });
-    console.log(`${name}: pricing at ${settings.pricingUrl}`);
+    if (!service || (!settings.pricingUrl && !settings.pricingSourceUrl)) continue;
+    await call('PUT', `/services/${service.id ?? service._id}`, settings);
+    console.log(`${name}: pricing at ${settings.pricingUrl ?? '-'} (official ${settings.pricingSourceUrl ?? '-'})`);
   }
   console.log(`Done: ${examples.documents.length} documents in "${examples.collection}".`);
 }

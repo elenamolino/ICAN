@@ -7,6 +7,7 @@ import customAlert from '../../../core/utils/custom-alert';
 import { DOCUMENT_TYPES, documentTypeDescription, documentTypeLabel, documentTypeOf } from '../../../core/utils/document-types';
 import { splitContractName } from '../../../core/utils/editor-import';
 import { Agreement, useContractCollectionsApi } from '../../api/contractCollectionsApi';
+import { formatVersionNumber } from '../../utils/versions';
 
 const ORDER = DOCUMENT_TYPES.map((t) => t.id);
 
@@ -51,6 +52,7 @@ export default function AgreementPage() {
   }
 
   const pricingUrl = agreement.service.pricingUrl;
+  const pricingSourceUrl = agreement.service.pricingSourceUrl;
   const documents = [...agreement.contracts].sort(
     (a, b) => ORDER.indexOf(documentTypeOf(a)) - ORDER.indexOf(documentTypeOf(b)) || a.name.localeCompare(b.name)
   );
@@ -112,7 +114,7 @@ export default function AgreementPage() {
                 <h2 className="mt-2 text-lg font-medium leading-snug text-tp-ink">{splitContractName(doc.name).title}</h2>
                 {doc.current && (
                   <p className="mt-1 text-xs text-tp-steel">
-                    {doc.current.number ? `v${doc.current.number} · ` : ''}
+                    {doc.current.number ? `${formatVersionNumber(doc.current.number)} · ` : ''}
                     {format(new Date(doc.current.capturedAt), 'MMM d, yyyy')}
                   </p>
                 )}
@@ -153,7 +155,7 @@ export default function AgreementPage() {
               <p className="mt-3 flex-1 text-sm leading-relaxed text-tp-slate">
                 The plans, their prices and what each one includes. The documents of the agreement refer to it.
               </p>
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
                 <a
                   href={pricingUrl}
                   target="_blank"
@@ -163,6 +165,18 @@ export default function AgreementPage() {
                   View pricing
                   <Iconify icon="mdi:open-in-new" width={14} />
                 </a>
+                {pricingSourceUrl && (
+                  <a
+                    href={pricingSourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={`The provider's page: ${pricingSourceUrl}`}
+                    className="inline-flex cursor-pointer items-center gap-1 text-xs text-tp-steel hover:text-tp-ink hover:underline"
+                  >
+                    Official source
+                    <Iconify icon="mdi:open-in-new" width={12} />
+                  </a>
+                )}
               </div>
             </li>
           )}

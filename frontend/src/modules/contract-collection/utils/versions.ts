@@ -3,8 +3,12 @@ import { ClauseAnalysis } from '../../analysis/api/analysisApi';
 import { topCategories } from '../../analysis/constants/clauseCategories';
 import { parseContract } from '../../analysis/utils/contract-sections';
 
+/** "v2" for 2.0 and "v0.2" for 0.2: a whole version reads as one number. */
+export const formatVersionNumber = (number: string) => `v${number.replace(/\.0$/, '')}`;
+
 /** "v0.2" for a version saved with a number, or "v2", its place by capture date. */
-export const versionLabel = (version: ContractVersionListItem, position: number) => `v${version.number ?? position}`;
+export const versionLabel = (version: ContractVersionListItem, position: number) =>
+  version.number ? formatVersionNumber(version.number) : `v${position}`;
 
 /** "v0.2 · Adds a refund policy", or "v0.2" for a version without a name. */
 export const versionTitle = (version: ContractVersionListItem, position: number) =>

@@ -103,7 +103,7 @@ export interface Contract {
 export interface Agreement {
   collection: { name: string; slug: string; private: boolean };
   organization: ContractCollectionOrganization;
-  service: { id: string; name: string; pricingUrl: string | null };
+  service: { id: string; name: string; pricingUrl: string | null; pricingSourceUrl: string | null };
   contracts: (Pick<Contract, 'id' | 'name' | 'slug' | 'documentType' | 'private' | 'latestVersionSummary' | 'url'> & {
     current: { id: string; number: string | null; name: string | null; capturedAt: string } | null;
   })[];

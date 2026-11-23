@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClauseAnalysis } from '../../analysis/api/analysisApi';
-import { nextVersionNumbers, describeTextChanges, layoutVersionGraph, parentOf, summariseChanges } from './versions';
+import { formatVersionNumber, nextVersionNumbers, describeTextChanges, layoutVersionGraph, parentOf, summariseChanges } from './versions';
 import { ContractVersionListItem } from '../api/contractCollectionsApi';
 
 const clause = (term: string, unfair?: 'ter' | 'ch'): ClauseAnalysis => ({
@@ -108,6 +108,14 @@ describe('layoutVersionGraph', () => {
     ]);
     expect(parentOf(versions, 'v4')?.id).toBe('v1');
     expect(parentOf(versions, 'v6')?.id).toBe('v3');
+  });
+});
+
+describe('formatVersionNumber', () => {
+  it('reads a whole version as one number and keeps the minors', () => {
+    expect(formatVersionNumber('2.0')).toBe('v2');
+    expect(formatVersionNumber('0.2')).toBe('v0.2');
+    expect(formatVersionNumber('1.10')).toBe('v1.10');
   });
 });
 

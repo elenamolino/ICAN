@@ -1,6 +1,5 @@
 {
  "collection": "FIS 25-26",
- "description": "Customer Agreements of real services for FIS students: each service with its terms, policies, SLA and pricing.",
  "documents": [
   {
    "service": "Elsevier APIs",
@@ -7775,13 +7774,16 @@
  ],
  "services": {
   "Overleaf": {
-   "pricingUrl": "https://sphere.score.us.es/p/6aff51536b77f124b0283ec2"
+   "pricingUrl": "https://sphere.score.us.es/p/6aff51536b77f124b0283ec2",
+   "pricingSourceUrl": "https://www.overleaf.com/user/subscription/plans"
   },
   "GitHub": {
-   "pricingUrl": "https://sphere.score.us.es/p/6ab0a323697330667ccce999"
+   "pricingUrl": "https://sphere.score.us.es/p/6ab0a323697330667ccce999",
+   "pricingSourceUrl": "https://github.com/pricing"
   },
   "SendGrid": {
-   "pricingUrl": "https://sphere.score.us.es/p/6ae0c15940e55445692c2daf"
+   "pricingUrl": "https://sphere.score.us.es/p/6ae0c15940e55445692c2daf",
+   "pricingSourceUrl": "https://www.twilio.com/en-us/products/email-api/pricing"
   }
  }
 }

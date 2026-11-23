@@ -169,7 +169,13 @@ describe('Contract permalinks and version numbers', () => {
     expect((await request(app).put(`${BASE_PATH}/services/${id}`).set('Authorization', `Bearer ${stranger.token}`).send({ pricingUrl: url })).status).toBe(403);
     expect((await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingUrl: 'javascript:alert(1)' })).status).toBe(422);
     expect((await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingUrl: url })).body.pricingUrl).toBe(url);
+    // The provider's own page comes apart, and leaves the SPHERE link as it was.
+    const source = 'https://github.com/pricing';
+    expect((await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingSourceUrl: 'ftp://x' })).status).toBe(422);
+    const updated = (await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingSourceUrl: source })).body;
+    expect(updated).toMatchObject({ pricingUrl: url, pricingSourceUrl: source });
     const agreement = (await request(app).get(`${BASE_PATH}/contractCollections/${organizationId}/${collection.slug}/services/${id}`)).body;
-    expect(agreement.service.pricingUrl).toBe(url);
+    expect(agreement.service).toMatchObject({ pricingUrl: url, pricingSourceUrl: source });
+    expect((await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingUrl: null })).body.pricingUrl).toBeNull();
   });
 });
