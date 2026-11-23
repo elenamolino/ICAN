@@ -48,8 +48,8 @@ class NotificationRepository extends RepositoryBase {
     return result.modifiedCount;
   }
 
-  async destroy(id: string): Promise<boolean> {
-    const result = await NotificationMongoose.deleteOne({ _id: id });
+  async destroy(id: string, userId: string): Promise<boolean> {
+    const result = await NotificationMongoose.deleteOne({ _id: id, _userId: userId });
     return result.deletedCount === 1;
   }
 }

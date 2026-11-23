@@ -22,6 +22,7 @@ import {
 } from '../../api/contractCollectionsApi';
 import CollectionTree from '../../components/collection-tree';
 import DocumentList from '../../components/document-list';
+import MoveCollectionModal from '../../components/move-collection-modal';
 import { buildServiceTree, findCategory, firstCategory } from '../../components/collection-tree/model';
 
 // Services are fetched a page at a time: a large collection used to arrive whole,
@@ -70,6 +71,7 @@ export default function CollectionDetailPage() {
   const [reviewFilters, setReviewFilters] = useState<ReviewState[]>([]);
   const [captureAgeFilters, setCaptureAgeFilters] = useState<CaptureAge[]>([]);
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
 
   const servicesQuery = useMemo(() => ({
     name: debouncedTextFilter || undefined,
@@ -207,6 +209,11 @@ export default function CollectionDetailPage() {
     }
   };
 
+  const handleMoved = (targetOrganizationId: string) => {
+    setMoveModalOpen(false);
+    router.push(`/collections/${targetOrganizationId}/${collectionSlug}`);
+  };
+
   const handleToggleVisibility = async () => {
     if (!organizationId || !collectionSlug || !collection) return;
     const nextPrivate = !collection.private;
@@ -222,6 +229,7 @@ export default function CollectionDetailPage() {
               ...updated,
               contractCount: prev.contractCount,
               canEdit: updated.canEdit ?? prev.canEdit,
+              canMove: updated.canMove ?? prev.canMove,
               canDelete: updated.canDelete ?? prev.canDelete,
             }
           : updated
@@ -256,8 +264,18 @@ export default function CollectionDetailPage() {
               {collection?.description && <span className="ml-1">· {collection.description}</span>}
             </p>
           </div>
-          {collection && (collection.canEdit || collection.canDelete) && (
-            <div className="flex shrink-0 items-center gap-2">
+          {collection && (collection.canEdit || collection.canDelete || collection.canMove) && (
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:shrink">
+              {collection.canMove && (
+                <button
+                  type="button"
+                  onClick={() => setMoveModalOpen(true)}
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary"
+                >
+                  <Iconify icon="mdi:folder-move-outline" width={14} />
+                  Move
+                </button>
+              )}
               {collection.canEdit && (
                 <button
                   type="button"
@@ -288,6 +306,15 @@ export default function CollectionDetailPage() {
           )}
         </div>
       </motion.div>
+
+      {moveModalOpen && collection && organizationId && (
+        <MoveCollectionModal
+          collection={collection}
+          organizationId={organizationId}
+          onClose={() => setMoveModalOpen(false)}
+          onMoved={handleMoved}
+        />
+      )}
 
       {error ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-tp-hairline bg-tp-canvas py-16 text-center">

@@ -6,6 +6,9 @@ const contractSchema = new Schema(
     name: { type: String, required: true },
     slug: { type: String, required: false },
     _collectionId: { type: String, ref: 'ContractCollection', required: false },
+    // The secret of the permanent link: who has it reads the contract, private or not.
+    // Never selected, so that no list or detail hands it out. Not the id, which can be guessed.
+    shareToken: { type: String, required: false, select: false, index: { unique: true, sparse: true } },
     _organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
     _serviceId: { type: String, ref: 'Service', required: false },
     _latestVersionId: { type: String, ref: 'ContractVersion', required: false },

@@ -32,8 +32,11 @@ class OrganizationInvitationRepository extends RepositoryBase {
     return OrganizationInvitationMongoose.findOneAndUpdate({ _id: id }, { $inc: { useCount: 1 } }, { new: true });
   }
 
-  async destroy(id: string) {
-    const result = await OrganizationInvitationMongoose.deleteOne({ _id: id });
+  async destroy(id: string, organizationId: string) {
+    const result = await OrganizationInvitationMongoose.deleteOne({
+      _id: id,
+      _organizationId: new mongoose.Types.ObjectId(organizationId),
+    });
     return result?.deletedCount === 1;
   }
 

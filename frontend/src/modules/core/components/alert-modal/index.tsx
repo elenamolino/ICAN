@@ -83,7 +83,7 @@ const AlertModal = ({ message, severity = 'auto', onClose }: AlertModalProps): J
       >
         <div className="flex items-center gap-3">
           <Icon className={`h-6 w-6 shrink-0 ${config.iconColor}`} />
-          <p className="text-sm leading-relaxed text-tp-ink">{message}</p>
+          <p className="min-w-0 text-sm leading-relaxed text-tp-ink [overflow-wrap:anywhere]">{message}</p>
         </div>
         <div className="mt-5 flex justify-end">
           <button

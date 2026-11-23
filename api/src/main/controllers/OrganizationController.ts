@@ -73,6 +73,11 @@ class OrganizationController {
       if (req.body.isPersonal) {
         req.body.name = req.user.username;
       }
+      // A child inherits its parent's members, so only who manages the parent may create one.
+      delete req.body.ancestors;
+      if (req.body._parentId) {
+        await this.organizationService.assertCanAddChild(req.body._parentId, req.user);
+      }
       const organization = await this.organizationService.createWithOwner(req.body, req.user.id);
       res.status(201).json(organization);
     } catch (err: any) {
@@ -108,7 +113,13 @@ class OrganizationController {
 
   async listMembers(req: any, res: any) {
     try {
-      const members = await this.organizationService.listMembers(req.params.organizationId);
+      const { organizationId } = req.params;
+      const members = await this.organizationService.listMembers(organizationId);
+      // The list is public, the emails are only for the people in the organization.
+      const canSeeEmails =
+        req.user?.role === 'ADMIN' ||
+        (req.user && (await this.organizationService.getUserOrgRole(req.user.id, organizationId)));
+      if (!canSeeEmails) members.forEach((member: any) => delete member.user?.email);
       res.json(members);
     } catch (err: any) {
       const { status, message } = handleError(err);
@@ -118,8 +129,14 @@ class OrganizationController {
 
   async addMember(req: any, res: any) {
     try {
-      const { userId, role } = req.body;
-      const membership = await this.organizationService.addMember(userId, req.params.organizationId, role);
+      const { userId, identifier, role } = req.body;
+      const memberId = identifier ? await this.organizationService.resolveMemberId(identifier) : userId;
+      const membership = await this.organizationService.addMember(
+        memberId,
+        req.params.organizationId,
+        role,
+        req.user.orgRole
+      );
       res.status(201).json(membership);
     } catch (err: any) {
       const { status, message } = handleError(err);
@@ -174,7 +191,7 @@ class OrganizationController {
 
   async revokeInvitation(req: any, res: any) {
     try {
-      await this.organizationService.revokeInvitation(req.params.invitationId);
+      await this.organizationService.revokeInvitation(req.params.invitationId, req.params.organizationId);
       res.json({ message: 'Invitation revoked.' });
     } catch (err: any) {
       const { status, message } = handleError(err);

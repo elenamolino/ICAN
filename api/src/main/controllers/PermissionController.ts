@@ -54,6 +54,7 @@ class PermissionController {
     try {
       const result = await this.permissionService.removePermission(
         req.params.permissionId,
+        req.params.orgId,
         req.user.orgRole
       );
       if (!result) {

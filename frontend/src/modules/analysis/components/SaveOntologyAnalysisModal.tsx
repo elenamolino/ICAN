@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 import BlockAlert from '../../core/components/block-alert';
-import { Organization, useOrganizationsApi } from '../../organization/api/organizationsApi';
+import { useAuth } from '../../auth/hooks/useAuth';
+import { useOrganizationsApi } from '../../organization/api/organizationsApi';
+import { flattenOrganizations, OrganizationChoice } from '../../core/utils/flatten-organizations';
 import {
   ContractCollectionSummary,
   ContractVersionListItem,
@@ -24,24 +26,13 @@ function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// getMyOrganizations returns a tree (subOrganizations nested) — flatten it so
-// orgs the user only has access to via a sub-org still show up as choices.
-function flattenOrganizations(orgs: Organization[]): Organization[] {
-  return orgs.reduce<Organization[]>((acc, org) => {
-    acc.push(org);
-    if (org.subOrganizations?.length) {
-      acc.push(...flattenOrganizations(org.subOrganizations));
-    }
-    return acc;
-  }, []);
-}
-
 export default function SaveOntologyAnalysisModal({ open, onClose, report, text }: SaveOntologyAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveOntologyAnalysis } = useOntologyAnalysisApi();
   const { listCollections, listContracts, listContractVersions, createCollection } = useContractCollectionsApi();
+  const { fetchWithInterceptor } = useAuth();
 
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [orgs, setOrgs] = useState<OrganizationChoice[]>([]);
   const [collections, setCollections] = useState<ContractCollectionSummary[]>([]);
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<ContractCollectionSummary | null>(null);
@@ -92,6 +83,7 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
     setLoading(false);
     setSavedResult(null);
     setShowCreateCollection(false);
+    setNewCollectionOrgId('');
     setNewCollectionName('');
     setNewCollectionPrivate(true);
     setCreateCollectionError(null);
@@ -109,7 +101,6 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
         const orgsData = await getMyOrganizations({ limit: 100 });
         const myOrgs = flattenOrganizations(Array.isArray(orgsData) ? orgsData : orgsData.items || []);
         setOrgs(myOrgs);
-        setNewCollectionOrgId((prev) => prev || myOrgs.find((o) => o.isPersonal)?.id || myOrgs[0]?.id || '');
 
         const orgIds = myOrgs.map((o) => o.id);
         if (orgIds.length === 0) {
@@ -140,6 +131,7 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
       setCollections((prev) => [...prev, collection]);
       setSelectedCollection(collection);
       setShowCreateCollection(false);
+      setNewCollectionOrgId('');
       setNewCollectionName('');
       setNewCollectionPrivate(true);
     } catch (err: any) {
@@ -160,7 +152,7 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
     }
 
     setLoadingServices(true);
-    listServices({ collectionId: selectedCollection.id })
+    listServices({ collectionId: selectedCollection.id }, fetchWithInterceptor)
       .then(setServices)
       .catch(() => setServices([]))
       .finally(() => setLoadingServices(false));
@@ -347,7 +339,7 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
                   </option>
                   {collections.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.organization.displayName} / {c.name}
+                      {orgs.find((o) => o.id === c.organization.id)?.label ?? c.organization.displayName} / {c.name}
                     </option>
                   ))}
                 </select>
@@ -363,26 +355,26 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
                       {createCollectionError}
                     </BlockAlert>
                   )}
-                  <div className="flex gap-2">
-                    {orgs.length > 1 && (
-                      <select
-                        value={newCollectionOrgId}
-                        onChange={(e) => setNewCollectionOrgId(e.target.value)}
-                        className="rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
-                      >
-                        {orgs.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <select
+                      value={newCollectionOrgId}
+                      onChange={(e) => setNewCollectionOrgId(e.target.value)}
+                      aria-label="Organization"
+                      className="w-full min-w-0 cursor-pointer truncate rounded-lg border border-tp-hairline bg-tp-canvas px-2 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                    >
+                      <option value="">Select an organization</option>
+                      {orgs.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="text"
                       value={newCollectionName}
                       onChange={(e) => setNewCollectionName(e.target.value)}
                       placeholder="Collection name"
-                      className="flex-1 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                      className="w-full min-w-0 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
                     />
                   </div>
                   <label className="flex cursor-pointer items-center gap-2 text-xs text-tp-steel">

@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useAuth } from '../../auth/hooks/useAuth';
+import type { Contract, ContractCollectionSummary } from '../../contract-collection/api/contractCollectionsApi';
 import { EntityPermission, EntityType, SetPermissionPayload } from '../types/permissions';
 
 export const ORGS_BASE_PATH = import.meta.env.VITE_API_URL + '/orgs';
@@ -29,7 +30,8 @@ export interface OrgMemberWithUser {
   user: {
     id: string;
     username: string;
-    email: string;
+    /** Only sent to the organization's own people. */
+    email?: string;
     avatar: string | null;
     avatarBgColor?: string;
     avatarFgColor?: string;
@@ -45,23 +47,8 @@ export interface OrganizationInvitation {
   useCount: number;
 }
 
-export interface OrgContract {
-  id: string;
-  name: string;
-  slug: string;
-  version?: string;
-  createdAt: string;
-  private: boolean;
-  organization: { id: string; name: string; displayName: string; avatar: string };
-  collection: { id: string; name: string; slug: string } | null;
-}
-
-export interface OrgContractCollection {
-  id: string;
-  name: string;
-  slug: string;
-  organization: { id: string; name: string; displayName: string; avatar: string };
-}
+export type OrgContract = Contract;
+export type OrgContractCollection = ContractCollectionSummary;
 
 function extractErrorMessage(response: Response, body: any, fallback: string): string {
   if (typeof body?.error === 'string' && body.error) return body.error;
@@ -153,11 +140,12 @@ export function useOrganizationsApi() {
     return response.json();
   }, [fetchWithInterceptor, token]);
 
-  const addMember = useCallback(async (orgId: string, userId: string, role: OrgRole) => {
+  /** `identifier` is the person's username or email. */
+  const addMember = useCallback(async (orgId: string, identifier: string, role: OrgRole) => {
     const response = await fetchWithInterceptor(`${ORGS_BASE_PATH}/${orgId}/members`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ userId, role }),
+      body: JSON.stringify({ identifier, role }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error ?? 'Failed to add member');
@@ -235,16 +223,6 @@ export function useOrganizationsApi() {
     return body as Organization;
   }, [fetchWithInterceptor, token]);
 
-  const lookupUserByUsername = useCallback(async (username: string) => {
-    const response = await fetchWithInterceptor(`${import.meta.env.VITE_API_URL}/users/${username}`, {
-      method: 'GET',
-      headers,
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error ?? 'User not found');
-    return body;
-  }, [fetchWithInterceptor, token]);
-
   const getOrgChildren = useCallback(async (orgId: string): Promise<Organization[]> => {
     const org = await getOrganization(orgId);
     const children = await Promise.all(
@@ -253,6 +231,8 @@ export function useOrganizationsApi() {
     return children;
   }, [getOrganization]);
 
+  // These two lists are public, so they leave the token to fetchWithInterceptor:
+  // `headers` would send "Bearer undefined" for visitors, which the API rejects.
   const getOrgContracts = useCallback(async (orgId: string, filters?: Record<string, string>, signal?: AbortSignal): Promise<{ contracts: OrgContract[]; total: number }> => {
     const params = new URLSearchParams();
     if (filters) {
@@ -262,7 +242,6 @@ export function useOrganizationsApi() {
     }
     const response = await fetchWithInterceptor(`${import.meta.env.VITE_API_URL}/contracts/${orgId}?${params.toString()}`, {
       method: 'GET',
-      headers,
       signal,
     });
     if (!response.ok) throw new Error('Failed to fetch organization contracts');
@@ -270,7 +249,7 @@ export function useOrganizationsApi() {
     return { contracts: data.contracts ?? [], total: data.total ?? 0 };
   }, [fetchWithInterceptor, token]);
 
-  const getOrgContractCollections = useCallback(async (orgId: string, filters?: Record<string, string>): Promise<{ collections: OrgContractCollection[]; total: number }> => {
+  const getOrgContractCollections = useCallback(async (orgId: string, filters?: Record<string, string>, signal?: AbortSignal): Promise<{ collections: OrgContractCollection[]; total: number }> => {
     const params = new URLSearchParams();
     if (filters) {
       Object.entries(filters).forEach(([k, v]) => {
@@ -280,7 +259,7 @@ export function useOrganizationsApi() {
     const qs = params.toString();
     const response = await fetchWithInterceptor(`${import.meta.env.VITE_API_URL}/contractCollections/${orgId}${qs ? `?${qs}` : ''}`, {
       method: 'GET',
-      headers,
+      signal,
     });
     if (!response.ok) throw new Error('Failed to fetch organization contract collections');
     const data = await response.json();
@@ -345,7 +324,6 @@ export function useOrganizationsApi() {
     revokeInvitation,
     previewInvitation,
     joinViaInvitation,
-    lookupUserByUsername,
     getOrgChildren,
     getOrgContracts,
     getOrgContractCollections,

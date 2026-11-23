@@ -20,7 +20,7 @@ import {
 import SummaryStat from '../../../analysis/components/SummaryStat';
 import SavedOntologyReport from '../../../analysis/components/SavedOntologyReport';
 import VersionGraph from '../../components/version-graph';
-import { describeTextChanges, parentOf, summariseChanges, versionTitle } from '../../utils/versions';
+import { describeTextChanges, parentOf, summariseChanges, versionLabel, versionTitle } from '../../utils/versions';
 import VersionList from '../../components/version-list';
 import FilterableClauseList from '../../components/filterable-clause-list';
 import VersionEvolutionChart from '../../components/version-evolution-chart';
@@ -47,6 +47,7 @@ export default function ContractDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const {
     getContract,
+    getShareToken,
     getContractVersion,
     listContractVersions,
     updateContract,
@@ -67,6 +68,9 @@ export default function ContractDetailPage() {
     return linked && linked in TAB_LABELS ? (linked as Tab) : 'content';
   });
   const [togglingVisibility, setTogglingVisibility] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  // Who arrived with the link already has its secret.
+  const [shareToken, setShareToken] = useState<string | null>(() => searchParams.get('share'));
   // The pair the comparison in the Versions tab shows; a new pair remounts it.
   const [comparePair, setComparePair] = useState<{ before: string; after: string } | null>(null);
 
@@ -96,6 +100,13 @@ export default function ContractDetailPage() {
       .catch(() => setError('Contract not found'))
       .finally(() => setIsLoading(false));
   }, [organizationId, contractSlug]);
+
+  useEffect(() => {
+    if (!organizationId || !contractSlug || !contract || searchParams.get('share')) return;
+    if (contract.private && !contract.canEdit) return;
+    getShareToken(organizationId, contractSlug).then(setShareToken).catch(() => setShareToken(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId, contractSlug, contract?.id]);
 
   useEffect(() => {
     if (!organizationId || !contractSlug || !selectedVersionId) {
@@ -227,10 +238,18 @@ export default function ContractDetailPage() {
     setTab('versions');
   };
 
-  const versionLink = (id: string) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('version', id);
-    return url.toString();
+  // By its secret: the page's own address changes when the contract is renamed or moved.
+  const permalink = (versionId?: string) =>
+    `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/a/${shareToken}${versionId ? `?version=${versionId}` : ''}`;
+
+  const copyPermalink = async () => {
+    try {
+      await navigator.clipboard.writeText(permalink());
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      await customAlert(`Permanent link: ${permalink()}`);
+    }
   };
 
   const handleDownloadVersion = async (id: string) => {
@@ -240,7 +259,8 @@ export default function ContractDetailPage() {
       const blob = new Blob([version.content ?? ''], { type: 'text/markdown' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${contractSlug}-v${versions.findIndex((v) => v.id === id) + 1}.md`;
+      const index = versions.findIndex((v) => v.id === id);
+      link.download = `${contractSlug}-${versionLabel(versions[index], index + 1)}.md`;
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (err: any) {
@@ -320,7 +340,7 @@ export default function ContractDetailPage() {
           <span className="text-tp-ink">{contract.name}</span>
         </div>
 
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-normal text-tp-ink">{contract.name}</h1>
             {hasVersionHistory && selectedVersionListItem && (
@@ -344,50 +364,35 @@ export default function ContractDetailPage() {
               </div>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {/* A contract inside a collection takes its visibility from that collection,
-                so here it is only reported — the control lives on the collection page.
-                A contract with no collection has nothing to inherit from, so it gets
-                its own toggle. */}
-            {contract.collection ? (
-              <span
-                className="inline-flex items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel"
+          <div className="flex max-w-full flex-wrap items-center gap-2">
+            {/* A contract inside a collection takes its visibility from it, and is changed there.
+                One without a collection has its own toggle. */}
+            {!contract.collection && contract.canEdit && (
+              <button
+                type="button"
+                onClick={handleToggleVisibility}
+                disabled={togglingVisibility}
                 title={
                   contract.private
-                    ? 'Private: only members of the organization can see it'
-                    : 'Public: anyone can see it'
+                    ? 'Only members of the organization can see this contract — click to make it public'
+                    : 'Anyone can see this contract — click to make it private'
                 }
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Iconify icon={contract.private ? 'mdi:lock-outline' : 'mdi:earth'} width={14} />
-                {contract.private ? 'Private' : 'Public'}
-                <span className="text-tp-muted">
-                  · from{' '}
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/collections/${organizationId}/${contract.collection!.slug}`)}
-                    className="cursor-pointer underline hover:text-tp-ink"
-                  >
-                    {contract.collection.name}
-                  </button>
-                </span>
-              </span>
-            ) : (
-              contract.canEdit && (
-                <button
-                  type="button"
-                  onClick={handleToggleVisibility}
-                  disabled={togglingVisibility}
-                  title={
-                    contract.private
-                      ? 'Only members of the organization can see this contract — click to make it public'
-                      : 'Anyone can see this contract — click to make it private'
-                  }
-                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Iconify icon={contract.private ? 'mdi:lock-outline' : 'mdi:earth'} width={14} />
-                  {togglingVisibility ? 'Updating…' : contract.private ? 'Private' : 'Public'}
-                </button>
-              )
+                {togglingVisibility ? 'Updating…' : contract.private ? 'Private' : 'Public'}
+              </button>
+            )}
+            {shareToken && (
+              <button
+                type="button"
+                onClick={copyPermalink}
+                title="Copy the permanent link. Anyone with it can read the contract, even if it is private and without logging in"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary"
+              >
+                <Iconify icon={linkCopied ? 'mdi:check' : 'mdi:link-variant'} width={14} />
+                {linkCopied ? 'Copied' : 'Permanent link'}
+              </button>
             )}
             {contract.url && (
               <a
@@ -566,7 +571,7 @@ export default function ContractDetailPage() {
                 }}
                 onCompareWithPrevious={openComparison}
                 onDownload={handleDownloadVersion}
-                linkTo={versionLink}
+                linkTo={shareToken ? permalink : undefined}
                 onDelete={contract?.canDelete ? handleDeleteVersion : undefined}
               />
             </div>

@@ -110,6 +110,11 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     methods: ['GET'],
     isPublic: true, // Allow public access to list contracts
   },
+  {
+    path: '/permalinks/contract/*',
+    methods: ['GET'],
+    isPublic: true, // The unguessable token is the credential
+  },
   // Contract entity permissions (before general /contracts/** for GET)
   {
     path: '/contracts/*/*/permissions',
@@ -141,6 +146,13 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
     path: '/contractCollections/**',
     methods: ['GET'],
     isPublic: true, // Allow public access to view collections
+  },
+  // Moving a collection: the service also checks the role in the target organization.
+  {
+    path: '/contractCollections/*/*/transfer',
+    methods: ['POST'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+    allowedOrganizationRoles: ['OWNER', 'ADMIN'],
   },
   {
     path: '/contractCollections/**',
@@ -200,6 +212,19 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   {
     path: '/orgs/*/permissions/**',
     methods: ['DELETE'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+    allowedOrganizationRoles: ['OWNER', 'ADMIN'],
+  },
+  // Invitation codes let anyone join. Before /orgs/**, as the first matching rule wins.
+  {
+    path: '/orgs/*/invitations',
+    methods: ['GET'],
+    allowedUserRoles: ['ADMIN', 'USER'],
+    allowedOrganizationRoles: ['OWNER', 'ADMIN'],
+  },
+  {
+    path: '/orgs/*/invitations/**',
+    methods: ['GET'],
     allowedUserRoles: ['ADMIN', 'USER'],
     allowedOrganizationRoles: ['OWNER', 'ADMIN'],
   },

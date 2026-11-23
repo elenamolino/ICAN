@@ -30,6 +30,8 @@ export interface UpsertVersionInput {
   content: string;
   /** Optional name given by the author; saving the same text again with a name renames it. */
   name?: string | null;
+  /** "major.minor"; kept when the same text is saved again. */
+  number?: string | null;
   /** The version it was edited from; null or missing for "the one before it by date". */
   parentVersionId?: string | null;
   insertions?: number | null;
@@ -61,8 +63,8 @@ class ContractVersionService {
     this.permissionEngine = new PermissionEngine();
   }
 
-  async resolveContractOrThrow(organizationId: string, contractSlug: string, reqUser?: LeanUser) {
-    return this.contractService.show(contractSlug, organizationId, reqUser);
+  async resolveContractOrThrow(organizationId: string, contractSlug: string, reqUser?: LeanUser, share?: unknown) {
+    return this.contractService.show(contractSlug, organizationId, reqUser, { includePrivate: false, share });
   }
 
   async upsertVersion(
@@ -142,6 +144,7 @@ class ContractVersionService {
         label: input.label,
         content: input.content,
         name: input.name ?? null,
+        number: input.number ?? null,
         _parentVersionId: input.parentVersionId ?? null,
         insertions: input.insertions ?? null,
         deletions: input.deletions ?? null,

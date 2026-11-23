@@ -7,7 +7,7 @@ import FilterBar from '../../../core/components/filter-bar';
 import Pagination from '../../../core/components/pagination';
 import { staggerContainer, fadeInUp, transitionDefault } from '../../../core/utils/motion-variants';
 import { Contract, useContractCollectionsApi } from '../../api/contractCollectionsApi';
-import ContractCard from '../../components/contract-card';
+import ContractCard from '../../../core/components/contract-card';
 
 const PER_PAGE = 12;
 

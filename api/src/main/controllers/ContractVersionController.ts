@@ -17,7 +17,8 @@ class ContractVersionController {
       const contract: any = await this.contractVersionService.resolveContractOrThrow(
         req.params.organizationId,
         req.params.contractSlug,
-        req.user
+        req.user,
+        req.query.share
       );
       const versions = await this.contractVersionService.listByContract(contract.id ?? contract._id?.toString());
       res.json({ versions });
@@ -32,7 +33,8 @@ class ContractVersionController {
       const contract: any = await this.contractVersionService.resolveContractOrThrow(
         req.params.organizationId,
         req.params.contractSlug,
-        req.user
+        req.user,
+        req.query.share
       );
       const version = await this.contractVersionService.getById(
         contract.id ?? contract._id?.toString(),

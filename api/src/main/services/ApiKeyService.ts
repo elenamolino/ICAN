@@ -29,6 +29,15 @@ class ApiKeyService {
     const targetUser = await this.userRepository.findByUsername(targetUsername);
     if (!targetUser) throw new Error('NOT FOUND: User not found');
 
+    if (targetUser.role !== 'ADMIN') {
+      const organizationService = container.resolve('organizationService');
+      for (const { organizationId } of data.scopes ?? []) {
+        if (!(await organizationService.getUserOrgRole(targetUser.id, organizationId))) {
+          throw new Error('PERMISSION ERROR: An API key can only be scoped to organizations its user belongs to');
+        }
+      }
+    }
+
     const plainKey = `sk-${crypto.randomBytes(32).toString('hex')}`;
     const hashedKey = crypto.createHash('sha256').update(plainKey).digest('hex');
 

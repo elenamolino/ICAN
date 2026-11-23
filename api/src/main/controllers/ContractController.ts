@@ -12,6 +12,8 @@ class ContractController {
     this.indexByOrganization = this.indexByOrganization.bind(this);
     this.indexByAuthenticatedUser = this.indexByAuthenticatedUser.bind(this);
     this.show = this.show.bind(this);
+    this.resolvePermalink = this.resolvePermalink.bind(this);
+    this.getShareToken = this.getShareToken.bind(this);
     this.create = this.create.bind(this);
     this.update = this.update.bind(this);
     this.destroy = this.destroy.bind(this);
@@ -64,6 +66,25 @@ class ContractController {
         req.query
       );
       res.json(contract);
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async resolvePermalink(req: any, res: any) {
+    try {
+      res.json(await this.contractService.resolvePermalink(req.params.token));
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async getShareToken(req: any, res: any) {
+    try {
+      const { contractSlug, organizationId } = req.params;
+      res.json(await this.contractService.getShareToken(contractSlug, organizationId, req.user));
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });

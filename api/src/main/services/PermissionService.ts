@@ -9,7 +9,7 @@ import { LeanUser } from '../types/models/User';
 import { ContractIndexQueryParams } from '../types/services/ContractService';
 import { CollectionIndexQueryParams } from '../types/services/ContractCollection';
 import { PermissionQueries } from '../policies/queries/PermissionQueries';
-import { BatchEvaluationContext, OrgUserPermissionsContext } from '../types/policies';
+import { BatchEvaluationContext, OrgUserPermissionsContext, EntityGrant } from '../types/policies';
 
 const FULL_PERMISSIONS: EntityPermissions = { GET: true, PUT: true, DELETE: true, CREATE: true };
 const NO_PERMISSIONS: EntityPermissions = { GET: false, PUT: false, DELETE: false, CREATE: false };
@@ -67,10 +67,10 @@ class PermissionService {
 
     const contractsWithGetPermissions = entriesWithGetPermissions
       .filter(key => key.startsWith('contract:'))
-      .map(key => key.split(':')[1]);
+      .map(key => ({ organizationId, slug: key.split(':')[1] }));
     const collectionsWithGetPermissions = entriesWithGetPermissions
       .filter(key => key.startsWith('contractCollection:'))
-      .map(key => key.split(':')[1]);
+      .map(key => ({ organizationId, slug: key.split(':')[1] }));
 
     return {
       orgRole: orgPermissions.isGlobalAdmin ? 'OWNER' : orgRole,
@@ -89,9 +89,9 @@ class PermissionService {
       reqUser.role === 'ADMIN'
     );
 
-    const contractsWithGetPermissions: string[] = [];
-    const collectionsWithGetPermissions: string[] = [];
-    const collectionsWithPutPermissions: string[] = [];
+    const contractsWithGetPermissions: EntityGrant[] = [];
+    const collectionsWithGetPermissions: EntityGrant[] = [];
+    const collectionsWithPutPermissions: EntityGrant[] = [];
     const adminOrgIds: string[] = [];
 
     for (const [orgId, orgPermissions] of permissions) {
@@ -111,19 +111,19 @@ class PermissionService {
       contractsWithGetPermissions.push(
         ...entriesWithGetPermissions
           .filter(key => key.startsWith('contract:'))
-          .map(key => key.split(':')[1])
+          .map(key => ({ organizationId: orgId, slug: key.split(':')[1] }))
       );
 
       collectionsWithGetPermissions.push(
         ...entriesWithGetPermissions
           .filter(key => key.startsWith('contractCollection:'))
-          .map(key => key.split(':')[1])
+          .map(key => ({ organizationId: orgId, slug: key.split(':')[1] }))
       );
 
       collectionsWithPutPermissions.push(
         ...entriesWithPutPermissions
           .filter(key => key.startsWith('contractCollection:'))
-          .map(key => key.split(':')[1])
+          .map(key => ({ organizationId: orgId, slug: key.split(':')[1] }))
       );
     }
 
@@ -238,12 +238,12 @@ class PermissionService {
   /**
    * Removes a permission by ID. Only OWNER/ADMIN can call this.
    */
-  async removePermission(permissionId: string, granterOrgRole: OrgRole): Promise<boolean> {
+  async removePermission(permissionId: string, organizationId: string, granterOrgRole: OrgRole): Promise<boolean> {
     if (granterOrgRole !== 'OWNER' && granterOrgRole !== 'ADMIN') {
       throw new Error('PERMISSION ERROR: Only OWNER and ADMIN users can manage entity permissions');
     }
 
-    return this.entityPermissionRepository.destroy(permissionId);
+    return this.entityPermissionRepository.destroy(permissionId, organizationId);
   }
 
   /**

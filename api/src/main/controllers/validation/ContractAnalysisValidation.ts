@@ -69,6 +69,13 @@ const save = [
     .trim()
     .isLength({ max: 80 })
     .withMessage('The versionName field must be at most 80 characters'),
+  check('versionNumber')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('The versionNumber field must be a string')
+    .bail()
+    .matches(/^\d{1,4}\.\d{1,4}$/)
+    .withMessage('The versionNumber field must look like 0.1'),
   check('parentVersionId')
     .optional({ values: 'null' })
     .isMongoId()

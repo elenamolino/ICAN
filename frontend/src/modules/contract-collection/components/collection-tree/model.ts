@@ -1,12 +1,12 @@
 import { Contract } from '../../api/contractCollectionsApi';
 import { ServiceSummary } from '../../api/servicesApi';
 
-// Contracts carry no agreement/category of their own, so both levels are derived
-// from the contract name.
-export type AgreementName = 'Customer Agreement' | 'Service Level Agreement';
+// Contracts carry no category of their own, so it is derived from the contract name.
+// A service has one Customer Agreement, and every document, the SLA too, is part of it.
+export type AgreementName = 'Customer Agreement';
 export type CategoryName = 'Terms and Policies' | 'Service Level Agreement' | 'Guidelines' | 'Other documents';
 
-const AGREEMENT_ORDER: AgreementName[] = ['Customer Agreement', 'Service Level Agreement'];
+const CUSTOMER_AGREEMENT: AgreementName = 'Customer Agreement';
 const CATEGORY_ORDER: CategoryName[] = ['Terms and Policies', 'Service Level Agreement', 'Guidelines', 'Other documents'];
 
 export interface CategoryNode {
@@ -36,10 +36,6 @@ function categoryForContract(contract: Contract): CategoryName {
   return 'Other documents';
 }
 
-function agreementForCategory(category: CategoryName): AgreementName {
-  return category === 'Service Level Agreement' ? 'Service Level Agreement' : 'Customer Agreement';
-}
-
 export function buildServiceTree(
   nodes: { service: ServiceSummary; contracts: Contract[] }[]
 ): ServiceNode[] {
@@ -50,18 +46,14 @@ export function buildServiceTree(
       byCategory.set(category, [...(byCategory.get(category) ?? []), contract]);
     }
 
-    const agreements = AGREEMENT_ORDER.flatMap((agreementName) => {
-      const categories = CATEGORY_ORDER.filter(
-        (category) => agreementForCategory(category) === agreementName && byCategory.has(category)
-      ).map((category) => ({
-        key: `${service.id}/${agreementName}/${category}`,
-        name: category,
-        contracts: byCategory.get(category)!,
-      }));
-      return categories.length > 0
-        ? [{ key: `${service.id}/${agreementName}`, name: agreementName, categories }]
-        : [];
-    });
+    const categories = CATEGORY_ORDER.filter((category) => byCategory.has(category)).map((category) => ({
+      key: `${service.id}/${CUSTOMER_AGREEMENT}/${category}`,
+      name: category,
+      contracts: byCategory.get(category)!,
+    }));
+    const agreements = categories.length
+      ? [{ key: `${service.id}/${CUSTOMER_AGREEMENT}`, name: CUSTOMER_AGREEMENT, categories }]
+      : [];
 
     return { service, agreements };
   });

@@ -3,9 +3,27 @@ import { ClauseAnalysis } from '../../analysis/api/analysisApi';
 import { topCategories } from '../../analysis/constants/clauseCategories';
 import { parseContract } from '../../analysis/utils/contract-sections';
 
-/** "v2 · Adds a refund policy", or "v2" for a version without a name. Versions are numbered by capture date. */
-export const versionTitle = (version: ContractVersionListItem, number: number) =>
-  version.name ? `v${number} · ${version.name}` : `v${number}`;
+/** "v0.2" for a version saved with a number, or "v2", its place by capture date. */
+export const versionLabel = (version: ContractVersionListItem, position: number) => `v${version.number ?? position}`;
+
+/** "v0.2 · Adds a refund policy", or "v0.2" for a version without a name. */
+export const versionTitle = (version: ContractVersionListItem, position: number) =>
+  version.name ? `${versionLabel(version, position)} · ${version.name}` : versionLabel(version, position);
+
+/**
+ * The numbers the next version can take, after the highest one there is. A contract
+ * without numbers counts its versions as minors: after three comes 0.4.
+ */
+export function nextVersionNumbers(versions: Pick<ContractVersionListItem, 'number'>[]) {
+  let major = 0, minor = versions.length, found = false;
+  for (const { number } of versions) {
+    if (!number) continue;
+    const [a, b] = number.split('.').map(Number);
+    if (!found || a > major || (a === major && b > minor)) [major, minor] = [a, b];
+    found = true;
+  }
+  return { minor: `${major}.${minor + 1}`, major: `${major + 1}.0` };
+}
 
 export interface VersionChanges {
   changed: number;

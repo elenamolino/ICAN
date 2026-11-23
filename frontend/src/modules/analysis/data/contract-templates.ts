@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 export interface ContractTemplate {
   id: string;
   name: string;
@@ -24,6 +26,8 @@ You must be at least 16 years old to create an account. Give us accurate informa
 Keep your password secret. You are responsible for what happens in your account unless someone used it without your permission and you told us as soon as you knew.
 
 ## 4. Fees and payment
+
+The plans and their prices are set out in the pricing at [Pricing link], which is part of these terms.
 
 Some plans are paid. Prices are shown before you buy, taxes included. Plans are billed monthly or yearly in advance and renew automatically until you cancel.
 
@@ -84,3 +88,8 @@ export const CONTRACT_TEMPLATES: ContractTemplate[] = [
     text: SAAS_TERMS,
   },
 ];
+
+/** A template as a new contract starts from it: last updated today, written out ("22 November 2026"). */
+export function templateText(template: ContractTemplate): string {
+  return template.text.replace('[date]', format(new Date(), 'd MMMM yyyy'));
+}

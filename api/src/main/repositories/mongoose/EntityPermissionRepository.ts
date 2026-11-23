@@ -346,9 +346,10 @@ class EntityPermissionRepository extends RepositoryBase {
     return results as LeanEntityPermission[];
   }
 
-  async destroy(permissionId: string): Promise<boolean> {
+  async destroy(permissionId: string, organizationId: string): Promise<boolean> {
     const result = await EntityPermissionMongoose.deleteOne({
       _id: new mongoose.Types.ObjectId(permissionId),
+      _organizationId: new mongoose.Types.ObjectId(organizationId),
     });
     return result?.deletedCount === 1;
   }

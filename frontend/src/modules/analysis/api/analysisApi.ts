@@ -37,6 +37,8 @@ export interface SaveAnalysisPayload {
   versionId?: string;
   /** Name for the new version, such as "Adds a refund policy". */
   versionName?: string;
+  /** Number of the new version: "0.1". */
+  versionNumber?: string;
   /** Version of `contractId` the text was edited from, drawn as a branch from it. */
   parentVersionId?: string;
   provider?: string;

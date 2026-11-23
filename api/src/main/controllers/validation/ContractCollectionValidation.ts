@@ -40,6 +40,15 @@ const update = [
     .withMessage('The private field must be boolean'),
 ];
 
+const transfer = [
+  check('organizationId')
+    .isString()
+    .withMessage('The organizationId field must be a string')
+    .bail()
+    .isMongoId()
+    .withMessage('The organizationId field must be a valid id'),
+];
+
 function csvOf(field: string, allowed: readonly string[]) {
   return query(field)
     .optional()
@@ -64,4 +73,4 @@ const indexServices = [
   csvOf('captured', CAPTURE_AGES),
 ];
 
-export { create, update, indexServices };
+export { create, update, transfer, indexServices };

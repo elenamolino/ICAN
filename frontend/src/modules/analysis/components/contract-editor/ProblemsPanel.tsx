@@ -9,11 +9,11 @@ export interface Problem {
   onSelect?: () => void;
 }
 
-// Unfair clauses and anything that blocks saving are errors; the rest are advice.
+// Unfair clauses are errors. The rest only make the version a draft.
 const BADGE: Record<ProblemKind, { label: string; className: string }> = {
   unfair: { label: 'Unfair', className: 'bg-tp-severity-error-bg text-tp-severity-error' },
-  placeholder: { label: 'Fill in', className: 'bg-tp-severity-error-bg text-tp-severity-error' },
-  field: { label: 'Required', className: 'bg-tp-severity-error-bg text-tp-severity-error' },
+  placeholder: { label: 'Fill in', className: 'bg-tp-severity-warning-bg text-tp-severity-warning' },
+  field: { label: 'Fill in', className: 'bg-tp-severity-warning-bg text-tp-severity-warning' },
   missing: { label: 'Missing', className: 'bg-tp-severity-warning-bg text-tp-severity-warning' },
   mentioned: { label: 'No section', className: 'bg-tp-severity-warning-bg text-tp-severity-warning' },
 };

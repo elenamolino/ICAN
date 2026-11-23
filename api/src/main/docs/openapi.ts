@@ -60,7 +60,7 @@ export const openApiSpec = {
       '**Same clauses in both analysers.** The text is cut into sentences once, by the API, and both analysers receive those sentences, so their clause lists match one to one.',
       '',
       '**Authentication.** Send `Authorization: Bearer <token>` (from the login) or `x-api-key: <key>`. ' +
-        'Create a key with `POST /users/{username}/api-keys` and give it a scope per organization (`VIEW`, `MANAGEMENT` or `ALL`). ' +
+        'Create a key with `POST /users/{username}/api-keys` and give it a scope per organization (`VIEW`, `MANAGEMENT` or `ALL`). Only organizations you belong to can be in its scopes. ' +
         'Endpoints marked as public need no credentials.',
     ].join('\n'),
   },
@@ -204,6 +204,11 @@ export const openApiSpec = {
                 required: ['collectionId', 'date', 'text', 'summary', 'clauses'],
                 properties: {
                   ...saveBodyCommon,
+                  versionNumber: {
+                    type: 'string',
+                    pattern: '^\\d{1,4}\\.\\d{1,4}$',
+                    description: 'Number of the new version, such as 0.1. Kept when the same text is saved again.',
+                  },
                   versionName: {
                     type: 'string',
                     maxLength: 80,
@@ -341,6 +346,23 @@ export const openApiSpec = {
           { name: 'offset', in: 'query', schema: { type: 'integer' } },
         ],
         responses: { '200': { description: 'Contracts and total.' } },
+      },
+    },
+    '/contracts/{organizationId}/{contractSlug}/permalink': {
+      get: {
+        tags: ['Contracts'],
+        summary: 'Get the secret of a contract\'s permanent link',
+        description: 'Anybody with it can read the contract and its versions, adding `?share={token}`. For a private contract, only who can edit it gets it.',
+        parameters: [orgParam, { name: 'contractSlug', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'The token.' }, '404': errorResponse('Not found.') },
+      },
+    },
+    '/permalinks/contract/{token}': {
+      get: {
+        tags: ['Contracts'],
+        summary: 'Find where the contract of a permanent link lives now',
+        parameters: [{ name: 'token', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Its organizationId and contractSlug.' }, '404': errorResponse('Not found.') },
       },
     },
     '/contracts/{organizationId}/{contractSlug}': {

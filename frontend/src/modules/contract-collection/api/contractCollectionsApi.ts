@@ -20,6 +20,8 @@ export interface ContractCollectionSummary {
   /** Server-computed, only on the detail endpoint: what the current user may do. */
   canEdit?: boolean;
   canDelete?: boolean;
+  /** Whether the user may move it to another organization. */
+  canMove?: boolean;
   organization: ContractCollectionOrganization;
   /** Only on the detail endpoint. The documents themselves come from listCollectionServices. */
   contractCount?: number;
@@ -106,6 +108,8 @@ export interface ContractVersionListItem {
   analysisSkipped: boolean;
   /** When it was saved in iCan, as opposed to when the text was captured. */
   createdAt?: string;
+  /** "0.1" when saved from the editor; null for versions numbered by date. */
+  number?: string | null;
   /** Name its author gave it when saving ("Adds a refund policy"), or null. */
   name?: string | null;
   /** The version it was edited from; null means the one before it by date. */
@@ -130,6 +134,12 @@ function buildQuery(params: Record<string, string | number | string[] | undefine
   }
   const query = qs.toString();
   return query ? `?${query}` : '';
+}
+
+// Opened from a permanent link, the page's address carries the link's secret. The
+// reads of a contract and its versions pass it on, whoever makes them.
+function shareQuery(): string {
+  return buildQuery({ share: new URLSearchParams(window.location.search).get('share') ?? undefined });
 }
 
 // Every read below goes through fetchWithInterceptor: private collections and
@@ -183,16 +193,28 @@ export function useContractCollectionsApi() {
   }
 
   async function getContract(organizationId: string, contractSlug: string): Promise<Contract> {
-    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}`);
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}${shareQuery()}`);
     if (!res.ok) throw new Error('Contract not found');
     return res.json();
+  }
+
+  async function resolvePermalink(token: string): Promise<{ organizationId: string; contractSlug: string }> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/permalinks/contract/${token}`);
+    if (!res.ok) throw new Error('Contract not found');
+    return res.json();
+  }
+
+  async function getShareToken(organizationId: string, contractSlug: string): Promise<string> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/permalink`);
+    if (!res.ok) throw new Error('This contract cannot be shared');
+    return (await res.json()).token;
   }
 
   async function listContractVersions(
     organizationId: string,
     contractSlug: string
   ): Promise<ContractVersionListItem[]> {
-    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions`);
+    const res = await fetchWithInterceptor(`${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions${shareQuery()}`);
     if (!res.ok) throw new Error('Failed to fetch contract versions');
     const data = await res.json();
     return data.versions ?? [];
@@ -204,7 +226,7 @@ export function useContractCollectionsApi() {
     versionId: string
   ): Promise<ContractVersionDetail> {
     const res = await fetchWithInterceptor(
-      `${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}`
+      `${BASE_URL}/contracts/${organizationId}/${contractSlug}/versions/${versionId}${shareQuery()}`
     );
     if (!res.ok) throw new Error('Contract version not found');
     return res.json();
@@ -222,6 +244,26 @@ export function useContractCollectionsApi() {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || 'Failed to create collection');
+    }
+    return res.json();
+  }
+
+  async function transferCollection(
+    organizationId: string,
+    collectionSlug: string,
+    targetOrganizationId: string
+  ): Promise<ContractCollectionSummary> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}/transfer`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: targetOrganizationId }),
+      }
+    );
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to move collection');
     }
     return res.json();
   }
@@ -310,6 +352,9 @@ export function useContractCollectionsApi() {
     getContractVersion,
     createCollection,
     updateCollection,
+    transferCollection,
+    resolvePermalink,
+    getShareToken,
     updateContract,
     deleteCollection,
     deleteContract,

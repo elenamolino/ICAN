@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ContractVersionListItem } from '../../api/contractCollectionsApi';
-import { layoutVersionGraph, parentOf, TextChange, VersionChanges, versionTitle } from '../../utils/versions';
+import { versionLabel, layoutVersionGraph, parentOf, TextChange, VersionChanges, versionTitle } from '../../utils/versions';
 
 const STEP = 88;
 // Height of one row: the dot and its two labels.
@@ -121,7 +121,7 @@ export default function VersionGraph({
                   key={v.id}
                   type="button"
                   onClick={() => onSelect(v.id)}
-                  title={`${versionTitle(v, node.column + 1)} · ${format(new Date(v.capturedAt), 'MMM d, yyyy')}${node.parentId && node.row > 0 && byId.get(node.parentId)!.row !== node.row ? ` · edited from v${byId.get(node.parentId)!.column + 1}` : ''}`}
+                  title={`${versionTitle(v, node.column + 1)} · ${format(new Date(v.capturedAt), 'MMM d, yyyy')}${node.parentId && node.row > 0 && byId.get(node.parentId)!.row !== node.row ? ` · edited from ${versionLabel(versions[byId.get(node.parentId)!.column], byId.get(node.parentId)!.column + 1)}` : ''}`}
                   className="group absolute flex w-[88px] cursor-pointer flex-col items-center gap-1"
                   style={{ left: node.column * STEP, top: node.row * ROW_H }}
                 >
@@ -133,7 +133,7 @@ export default function VersionGraph({
                     <span className="h-3.5 w-3.5 rounded-full bg-tp-primary" />
                   </span>
                   <span className={`font-mono text-xs ${isSelected ? 'font-semibold text-tp-ink' : 'text-tp-steel'}`}>
-                    v{node.column + 1}
+                    {versionLabel(v, node.column + 1)}
                   </span>
                   <span className="text-[11px] text-tp-muted">{format(new Date(v.capturedAt), 'MMM yyyy')}</span>
                 </button>
@@ -166,7 +166,7 @@ export default function VersionGraph({
             ) : textChanges ? (
               <div className="mt-2 text-sm text-tp-ink">
                 <p className="font-medium">
-                  Compared with v{parentNumber}
+                  Compared with {versionLabel(parent, parentNumber!)}
                   {parentNumber !== selectedIndex ? ', the version it was edited from' : ''}:
                 </p>
                 {textChanges.length === 0 ? (

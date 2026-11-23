@@ -47,6 +47,8 @@ import {
     MdOpenInNew,
     MdOutlineViewColumn,
     MdOutlineFileDownload,
+    MdOutlineDriveFileMove,
+    MdPublic,
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 
@@ -87,6 +89,7 @@ const iconMap: Record<string, IconType> = {
     'mdi:tag-off-outline': MdLabelOff,
     'mdi:tag-outline': MdLabelOutline,
     'mdi:folder-outline': MdOutlineFolder,
+    'mdi:folder-move-outline': MdOutlineDriveFileMove,
     'mdi:link-variant': MdLink,
     'mdi:trash-can-outline': MdDelete,
     'mdi:view-dashboard-outline': MdOutlineDashboard,
@@ -99,6 +102,7 @@ const iconMap: Record<string, IconType> = {
     'mdi:open-in-new': MdOpenInNew,
     'mdi:compare-horizontal': MdOutlineViewColumn,
     'mdi:download-outline': MdOutlineFileDownload,
+    'mdi:earth': MdPublic,
 };
 
 type IconifyProps = {

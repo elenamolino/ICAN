@@ -10,6 +10,7 @@ import { LeanUser } from '../types/models/User';
 import { processFileUris } from './FileService';
 import { generateSlug } from '../utils/slug-manager';
 import { OrganizationIndexByUserOptions } from '../types/services/Organization';
+import { pickDefined } from '../utils/pickDefined';
 
 class OrganizationService {
   private organizationRepository: OrganizationRepository;
@@ -69,6 +70,15 @@ class OrganizationService {
     }
     processFileUris(organization, ['avatar']);
     return organization;
+  }
+
+  async assertCanAddChild(parentId: string, reqUser: LeanUser) {
+    await this.show(parentId);
+    if (reqUser.role === 'ADMIN') return;
+    const role = await this.getUserOrgRole(reqUser.id, parentId);
+    if (role !== 'OWNER' && role !== 'ADMIN') {
+      throw new Error('PERMISSION ERROR: Only owners and admins of an organization can create sub-organizations in it');
+    }
   }
 
   async createWithOwner(data: any, userId: string) {
@@ -202,7 +212,11 @@ class OrganizationService {
       }
     }
 
-    const organization = await this.organizationRepository.update(id, data);
+    // Never the parent or the ancestors, which is where inherited roles come from.
+    const organization = await this.organizationRepository.update(
+      id,
+      pickDefined(data, ['name', 'displayName', 'description', 'avatar', 'avatarBgColor', 'avatarFgColor'])
+    );
     if (!organization) {
       throw new Error('NOT FOUND: Organization not found');
     }
@@ -220,6 +234,8 @@ class OrganizationService {
       throw new Error('PERMISSION ERROR: Personal organizations cannot be deleted');
     }
 
+    await this.assertHasNoContent(id);
+
     await this.organizationMembershipRepository.destroyByOrganizationId(id);
     await this.organizationInvitationRepository.destroyByOrganizationId(id);
     const result = await this.organizationRepository.destroy(id);
@@ -227,6 +243,15 @@ class OrganizationService {
       throw new Error('NOT FOUND: Organization not found');
     }
     return true;
+  }
+
+  /** Deleting an organization must not leave collections or contracts without one. */
+  async assertHasNoContent(id: string) {
+    if (await this.organizationRepository.hasContent(id)) {
+      throw new Error(
+        'CONFLICT: This organization still has collections or contracts. Move or delete them first'
+      );
+    }
   }
 
   async listMembers(organizationId: string, excludeUserId?: string) {
@@ -250,8 +275,34 @@ class OrganizationService {
     return members;
   }
 
-  async addMember(userId: string, organizationId: string, role: OrgRole) {
-    const existing = await this.organizationMembershipRepository.findUserRoleInOrganization(userId, organizationId);
+  /**
+   * The id of the account a person means by "aruiz", "@aruiz" or "aruiz@us.es".
+   * Anything with an inner @ is only ever an email: usernames may contain one, and
+   * must not be able to pass for somebody else's address.
+   */
+  async resolveMemberId(identifier: string): Promise<string> {
+    const value = identifier.trim().replace(/^@/, '');
+    const field = value.includes('@') ? 'email' : 'username';
+    const users = await this.userRepository.findAllByExact(field, value);
+    const user = users.length === 1 ? users[0] : users.find(candidate => candidate[field] === value);
+
+    if (user) return user.id;
+    if (users.length) {
+      throw new Error('INVALID DATA: Several accounts match. Write the username with its exact capital letters');
+    }
+    throw new Error(
+      `NOT FOUND: No ICAN account has that ${field}. They need to sign in to ICAN once, or join with an invitation link`
+    );
+  }
+
+  async addMember(userId: string, organizationId: string, role: OrgRole, actorRole?: OrgRole) {
+    if (role === 'OWNER' && actorRole && actorRole !== 'OWNER') {
+      throw new Error('PERMISSION ERROR: Only OWNER users can add another OWNER');
+    }
+
+    // Only a membership of this very organization. Someone who inherits a role from an
+    // ancestor is not listed here, and must still be possible to add.
+    const existing = await this.organizationMembershipRepository.findExistingMembership(userId, organizationId);
     if (existing) {
       throw new Error('INVALID DATA: User is already a member of this organization');
     }
@@ -401,8 +452,8 @@ class OrganizationService {
     return this.organizationInvitationRepository.findByOrganizationId(organizationId);
   }
 
-  async revokeInvitation(invitationId: string) {
-    const result = await this.organizationInvitationRepository.destroy(invitationId);
+  async revokeInvitation(invitationId: string, organizationId: string) {
+    const result = await this.organizationInvitationRepository.destroy(invitationId, organizationId);
     if (!result) {
       throw new Error('NOT FOUND: Invitation not found');
     }

@@ -83,11 +83,17 @@ export interface BatchEvaluationOptions {
   batchContext?: BatchEvaluationContext;
 }
 
+/** A grant on one entity. The slug alone does not identify it. */
+export interface EntityGrant {
+  organizationId: string;
+  slug: string;
+}
+
 export interface OrgUserPermissionsContext {
   orgRole: OrgRole | null;
-  contracts: string[];
-  collections: string[];
-  collectionsWritable?: string[];
+  contracts: EntityGrant[];
+  collections: EntityGrant[];
+  collectionsWritable?: EntityGrant[];
   isGlobalAdmin: boolean;
   /** Org IDs where user has OWNER or ADMIN role (full access to all entities) */
   adminOrgIds: string[];

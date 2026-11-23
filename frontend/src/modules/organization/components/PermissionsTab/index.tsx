@@ -125,7 +125,7 @@ export default function PermissionsTab({ organizationId, canManage }: Permission
     const q = memberSearch.toLowerCase();
     return members.filter(m =>
       m.user.username.toLowerCase().includes(q) ||
-      m.user.email.toLowerCase().includes(q) ||
+      m.user.email?.toLowerCase().includes(q) ||
       m.role.toLowerCase().includes(q)
     );
   }, [members, memberSearch]);

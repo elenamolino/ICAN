@@ -4,10 +4,12 @@ import ContractCollectionMongoose from './models/ContractCollectionMongoose';
 import ContractMongoose from './models/ContractMongoose';
 import ServiceMongoose from './models/ServiceMongoose';
 import ContractVersionMongoose from './models/ContractVersionMongoose';
+import EntityPermissionMongoose from './models/EntityPermissionMongoose';
 import { RetrievedContractCollection } from '../../types/database/ContractCollection';
 import { CollectionIndexQueryParams } from '../../types/services/ContractCollection';
 import { OrgUserPermissionsContext } from '../../types/policies';
 import { processFileUris } from '../../services/FileService';
+import { grantFilters } from '../../utils/grantFilters';
 import { escapeRegex } from '../../utils/regex';
 
 class ContractCollectionRepository extends RepositoryBase {
@@ -33,7 +35,7 @@ class ContractCollectionRepository extends RepositoryBase {
         ? [{ _organizationId: { $in: permissions.adminOrgIds.map(id => new mongoose.Types.ObjectId(id)) } }]
         : []),
       { private: false },
-      { slug: { $in: writableOnly ? permissions.collectionsWritable ?? [] : permissions.collections } },
+      ...grantFilters(writableOnly ? permissions.collectionsWritable ?? [] : permissions.collections),
     ];
 
     return filter;
@@ -64,7 +66,8 @@ class ContractCollectionRepository extends RepositoryBase {
     if (queryParams.name) {
       filter.name = { $regex: escapeRegex(queryParams.name), $options: 'i' };
     }
-    if (queryParams.organizationIds) {
+    // Never over the organization in the path: the caller's role was resolved for that one.
+    if (!organizationId && queryParams.organizationIds) {
       filter._organizationId = { $in: queryParams.organizationIds.map(id => new mongoose.Types.ObjectId(id)) };
     }
 
@@ -97,6 +100,69 @@ class ContractCollectionRepository extends RepositoryBase {
     } catch {
       return null;
     }
+  }
+
+  /** What stops the collection from living in `targetId`, where names and slugs are unique. */
+  async findMoveConflict(collectionId: string, targetId: string): Promise<'collection' | 'contract' | null> {
+    const collection = await ContractCollectionMongoose.findById(collectionId);
+    if (!collection) return null;
+    const target = new mongoose.Types.ObjectId(targetId);
+
+    const sameCollection = await ContractCollectionMongoose.exists({
+      _organizationId: target,
+      $or: [{ name: collection.name }, { slug: collection.slug }],
+    });
+    if (sameCollection) return 'collection';
+
+    const slugs = await ContractMongoose.distinct('slug', {
+      _collectionId: collectionId,
+      _organizationId: collection._organizationId,
+    });
+    const sameContract = await ContractMongoose.exists({ _organizationId: target, slug: { $in: slugs } });
+    return sameContract ? 'contract' : null;
+  }
+
+  /**
+   * Moves the collection with its services and contracts. Production runs a standalone
+   * MongoDB, without transactions, so a failed step puts everything back by hand.
+   * Returns false when the collection was no longer in `sourceId`.
+   */
+  async moveToOrganization(collectionId: string, sourceId: string, targetId: string): Promise<boolean> {
+    const source = new mongoose.Types.ObjectId(sourceId);
+    const target = new mongoose.Types.ObjectId(targetId);
+
+    const moveAll = async (from: mongoose.Types.ObjectId, to: mongoose.Types.ObjectId) => {
+      const filter = { _collectionId: collectionId, _organizationId: from };
+      await ServiceMongoose.updateMany(filter, { $set: { _organizationId: to } });
+      await ContractMongoose.updateMany(filter, { $set: { _organizationId: to } });
+    };
+
+    const collection = await ContractCollectionMongoose.findOneAndUpdate(
+      { _id: collectionId, _organizationId: source },
+      { $set: { _organizationId: target } },
+      { new: true }
+    );
+    if (!collection) return false;
+
+    try {
+      await moveAll(source, target);
+    } catch (err) {
+      await moveAll(target, source);
+      await ContractCollectionMongoose.updateOne({ _id: collectionId }, { $set: { _organizationId: source } });
+      throw err;
+    }
+
+    // Grants are keyed by organization and slug. Left behind, they would apply to the next
+    // entity with that slug; any already in the target belong to entities since deleted.
+    const slugs = await ContractMongoose.distinct('slug', { _collectionId: collectionId, _organizationId: target });
+    await EntityPermissionMongoose.deleteMany({
+      _organizationId: { $in: [source, target] },
+      $or: [
+        { entityType: 'contractCollection', entitySlug: collection.slug },
+        { entityType: 'contract', entitySlug: { $in: slugs } },
+      ],
+    });
+    return true;
   }
 
   async findByOrganizationAndSlug(organizationId: string, slug: string): Promise<any> {

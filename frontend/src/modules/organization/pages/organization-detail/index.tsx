@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Iconify from '../../../core/components/iconify';
 import { useRouter } from '../../../core/hooks/useRouter';
@@ -30,6 +30,8 @@ import OverviewTab from './components/OverviewTab';
 import MembersTab from './components/MembersTab';
 import InvitationsTab from './components/InvitationsTab';
 import HierarchyTab from './components/HierarchyTab';
+import ContractsTab from './components/ContractsTab';
+import CollectionsTab from './components/CollectionsTab';
 
 export default function OrganizationDetailPage() {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -44,7 +46,10 @@ export default function OrganizationDetailPage() {
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [childAccessMap, setChildAccessMap] = useState<Record<string, boolean>>({});
   const [hierarchyTree, setHierarchyTree] = useState<TreeNode | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  // In the URL, so that coming back from a contract or collection lands on the same tab.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setActiveTab = (tab: Tab) => setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+  const [contentTotals, setContentTotals] = useState<{ contracts: number; collections: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +64,8 @@ export default function OrganizationDetailPage() {
     getOrgMembers,
     listInvitations,
     removeMember,
+    getOrgContracts,
+    getOrgContractCollections,
   } = useOrganizationsApi();
 
   const canManage = !isPublicView && (myRole === 'OWNER' || myRole === 'ADMIN');
@@ -316,6 +323,25 @@ export default function OrganizationDetailPage() {
     loadOrgData();
   }, [authUser.isLoading, organizationId]);
 
+  // How much it owns, for the header. The lists themselves load with their tabs.
+  useEffect(() => {
+    if (!org?.id) return;
+    const controller = new AbortController();
+    const { signal } = controller;
+    setContentTotals(null);
+    Promise.all([
+      getOrgContracts(org.id, { limit: '1' }, signal),
+      getOrgContractCollections(org.id, { limit: '1' }, signal),
+    ])
+      .then(([contracts, collections]) => {
+        if (!signal.aborted) setContentTotals({ contracts: contracts.total, collections: collections.total });
+      })
+      .catch(() => {
+        /* the header goes without these two numbers; each tab shows its own error */
+      });
+    return () => controller.abort();
+  }, [org?.id, authUser.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Track visit for recent organizations
   useEffect(() => {
     if (!authUser.isAuthenticated || !org) return;
@@ -340,12 +366,13 @@ export default function OrganizationDetailPage() {
   /* ─── Tabs ─── */
   const availableTabs = useMemo(() => {
     if (isPublicView) {
-      return ['overview', 'members'] as Tab[];
+      return ['overview', 'members', 'contracts', 'collections'] as Tab[];
     }
-    const tabs: Tab[] = ['overview', 'members', 'invitations', 'children'];
+    const tabs: Tab[] = ['overview', 'members', 'invitations', 'contracts', 'collections', 'children'];
     if (canManage) tabs.push('permissions');
     return tabs;
   }, [isPublicView, canManage]);
+  const activeTab = availableTabs.find(tab => tab === searchParams.get('tab')) ?? 'overview';
 
   /* ─── Loading / Error ─── */
   if (isLoading) return <OrgDetailSkeleton />;
@@ -460,6 +487,12 @@ export default function OrganizationDetailPage() {
                   value: org.subOrganizations?.length ?? 0,
                   icon: 'mdi:graph-outline',
                 },
+                ...(contentTotals
+                  ? [
+                      { label: 'Contracts', value: contentTotals.contracts, icon: TAB_META.contracts.icon },
+                      { label: 'Collections', value: contentTotals.collections, icon: TAB_META.collections.icon },
+                    ]
+                  : []),
                 ...(!isPublicView ? [{ label: 'Invitations', value: invitations.length, icon: 'mdi:link-variant' }] : []),
               ].map(stat => (
                 <div key={stat.label} className="flex items-center gap-1.5">
@@ -489,12 +522,12 @@ export default function OrganizationDetailPage() {
       {/* ═══ TAB NAVIGATION ═══ */}
       <div className="sticky top-14 z-30 border-b border-tp-hairline bg-tp-canvas/80 backdrop-blur-xl">
         <div className="mx-auto max-w-5xl px-4 md:px-8">
-          <div className="py-2 md:hidden">
+          <div className="py-2 lg:hidden">
             <div className="relative">
               <select
                 value={activeTab}
                 onChange={e => setActiveTab(e.target.value as Tab)}
-                className="w-full appearance-none rounded-lg border border-tp-input-border bg-tp-input-bg px-3 py-2.5 pr-8 text-sm font-medium text-tp-ink transition-colors focus:border-tp-primary focus:outline-none"
+                className="w-full cursor-pointer appearance-none rounded-lg border border-tp-input-border bg-tp-input-bg px-3 py-2.5 pr-8 text-sm font-medium text-tp-ink transition-colors focus:border-tp-primary focus:outline-none"
               >
                 {availableTabs.map(tab => (
                   <option key={tab} value={tab}>
@@ -514,7 +547,7 @@ export default function OrganizationDetailPage() {
             </div>
           </div>
 
-          <nav className="hidden gap-1 overflow-x-auto py-1 md:flex" role="tablist">
+          <nav className="hidden gap-1 overflow-x-auto py-1 lg:flex" role="tablist">
             {availableTabs.map(tab => {
               const meta = TAB_META[tab];
               return (
@@ -578,6 +611,10 @@ export default function OrganizationDetailPage() {
             />
           )}
 
+          {activeTab === 'contracts' && <ContractsTab key={`contracts-${org.id}`} orgId={org.id} />}
+
+          {activeTab === 'collections' && <CollectionsTab key={`collections-${org.id}`} orgId={org.id} />}
+
           {!isPublicView && activeTab === 'children' && (
             <HierarchyTab
               org={org}
@@ -585,7 +622,7 @@ export default function OrganizationDetailPage() {
               hierarchyTree={hierarchyTree}
               expandedTreeIds={expandedTreeIds}
               onToggle={handleTreeToggle}
-              onNavigate={id => router.push(`/orgs/${id}`)}
+              onNavigate={id => router.push(`/orgs/${id}?tab=children`)}
               onCreateSubOrg={() => setCreateSubOrgModalOpen(true)}
             />
           )}

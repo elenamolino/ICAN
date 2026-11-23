@@ -12,6 +12,7 @@ import PermissionService from './PermissionService';
 import OrganizationService from './OrganizationService';
 import { Organization } from '../types/database/Organization';
 import { buildServicePage, groupContractsByService, ServicePageQuery } from '../utils/collectionServicePage';
+import { pickDefined } from '../utils/pickDefined';
 
 class ContractCollectionService {
   private readonly contractCollectionRepository: ContractCollectionRepository;
@@ -139,7 +140,7 @@ class ContractCollectionService {
 
     // Anonymous callers only ever reach public collections, and can never change them.
     if (!reqUser) {
-      return { ...collection, contractCount, canEdit: false, canDelete: false };
+      return { ...collection, contractCount, canEdit: false, canDelete: false, canMove: false };
     }
 
     const orgRole = await this.permissionService.resolveOrgRole(reqUser.id, organizationId);
@@ -172,7 +173,53 @@ class ContractCollectionService {
     const canEdit = this.permissionEngine.evaluate({ ...evaluationContext, action: 'PUT' }).allowed;
     const canDelete = this.permissionEngine.evaluate({ ...evaluationContext, action: 'DELETE' }).allowed;
 
-    return { ...collection, contractCount, canEdit, canDelete };
+    const canMove = this.canManageOrganization(orgRole, reqUser);
+
+    return { ...collection, contractCount, canEdit, canDelete, canMove };
+  }
+
+  private canManageOrganization(orgRole: OrgRole | null, reqUser: LeanUser) {
+    return reqUser.role === 'ADMIN' || orgRole === 'OWNER' || orgRole === 'ADMIN';
+  }
+
+  async assertBelongsTo(collectionId: string, organizationId: string) {
+    const collection: any = await this.contractCollectionRepository.findById(collectionId);
+    if (!collection || String(collection.organization?.id) !== String(organizationId)) {
+      throw new Error('NOT FOUND: Collection not found in this organization');
+    }
+  }
+
+  /** Moves a collection, with its contracts, between organizations the user manages. */
+  async transfer(sourceId: string, collectionSlug: string, targetId: string, reqUser: LeanUser) {
+    const [sourceRole, targetRole] = await Promise.all([
+      this.permissionService.resolveOrgRole(reqUser.id, sourceId),
+      this.permissionService.resolveOrgRole(reqUser.id, targetId),
+    ]);
+    if (!this.canManageOrganization(sourceRole, reqUser) || !this.canManageOrganization(targetRole, reqUser)) {
+      throw new Error('PERMISSION ERROR: You must be an owner or admin of both organizations');
+    }
+
+    const collection: any = await this.contractCollectionRepository.findByOrganizationAndSlug(sourceId, collectionSlug);
+    if (!collection) {
+      throw new Error('NOT FOUND: Collection not found in this organization');
+    }
+    if (sourceId === targetId) {
+      throw new Error('INVALID DATA: The collection already belongs to that organization');
+    }
+    // A global ADMIN needs no role there, so the target may not even exist.
+    await this.organizationService.show(targetId);
+
+    const conflict = await this.contractCollectionRepository.findMoveConflict(collection.id, targetId);
+    if (conflict) {
+      throw new Error(
+        `CONFLICT: That organization already has a ${conflict} with the same name. Rename it before moving`
+      );
+    }
+
+    if (!(await this.contractCollectionRepository.moveToOrganization(collection.id, sourceId, targetId))) {
+      throw new Error('CONFLICT: The collection was moved meanwhile. Reload the page');
+    }
+    return this.contractCollectionRepository.findById(collection.id);
   }
 
   // One page of the collection's services, each with its documents (without
@@ -185,10 +232,7 @@ class ContractCollectionService {
   ) {
     const collection = await this.show(organizationId, collectionSlug, reqUser);
 
-    const [services, contracts] = await Promise.all([
-      this.serviceRepository.findByCollectionId(collection.id),
-      this.contractRepository.findSummariesByCollection(collection.id),
-    ]);
+    const { services, contracts } = await this.visibleContent(organizationId, collection, reqUser);
 
     const serviceRefs = services.map((service: any) => ({
       id: String(service._id),
@@ -220,6 +264,60 @@ class ContractCollectionService {
       service.contracts = service.contracts.map(({ serviceId: _serviceId, ...contract }) => contract) as any;
     });
     return page;
+  }
+
+  /** The services of a collection, for whoever may open it. */
+  async listVisibleServices(collectionId: string, reqUser?: LeanUser) {
+    const found: any = await this.contractCollectionRepository.findById(collectionId);
+    if (!found?.organization) throw new Error('NOT FOUND: Collection not found');
+    const organizationId = String(found.organization.id);
+    const collection = await this.show(organizationId, found.slug, reqUser);
+    return (await this.visibleContent(organizationId, collection, reqUser)).services;
+  }
+
+  /**
+   * A public collection may hold private contracts. Those are left out, and so is a
+   * service with nothing else in it: its name is the provider's.
+   */
+  private async visibleContent(organizationId: string, collection: any, reqUser?: LeanUser) {
+    const [services, contracts] = await Promise.all([
+      this.serviceRepository.findByCollectionId(collection.id),
+      this.contractRepository.findSummariesByCollection(collection.id),
+    ]);
+    if (!contracts.some((contract: any) => contract.private)) return { services, contracts };
+
+    const orgRole = reqUser ? await this.permissionService.resolveOrgRole(reqUser.id, organizationId) : null;
+    const batch = reqUser
+      ? await this.permissionService.buildBatchContext(reqUser.id, organizationId, orgRole, reqUser.role === 'ADMIN')
+      : null;
+
+    const visible = contracts.filter((contract: any) => {
+      if (!contract.private) return true;
+      if (!reqUser || !batch) return false;
+      return this.permissionEngine.evaluate({
+        userId: reqUser.id,
+        organizationId,
+        entityType: 'contract',
+        entitySlug: contract.slug,
+        action: 'GET',
+        isPrivate: true,
+        userOrgRole: orgRole,
+        isGlobalAdmin: reqUser.role === 'ADMIN',
+        entityPermissions: batch.entityPermissions.get(`contract:${contract.slug}`),
+        collectionSlug: collection.slug,
+        collectionPermissions: batch.entityPermissions.get(`contractCollection:${collection.slug}`),
+      }).allowed;
+    });
+
+    const used = new Set(contracts.map((contract: any) => String(contract._serviceId)));
+    const shown = new Set(visible.map((contract: any) => String(contract._serviceId)));
+    return {
+      contracts: visible,
+      services: services.filter((service: any) => {
+        const id = String(service._id ?? service.id);
+        return !used.has(id) || shown.has(id);
+      }),
+    };
   }
 
   async create(newCollection: Record<string, any>, organizationId: string, reqUser: LeanUser) {
@@ -302,7 +400,11 @@ class ContractCollectionService {
       throw new Error(`PERMISSION ERROR: ${updateResult.reason}`);
     }
 
-    await this.contractCollectionRepository.update((collection as any).id, data);
+    // Only these fields: the organization changes through transfer(), which checks both ends.
+    await this.contractCollectionRepository.update(
+      (collection as any).id,
+      pickDefined(data, ['name', 'description', 'private'])
+    );
 
     // Contract visibility is filtered by the contract's own flag, with no inheritance
     // at query time — so hiding a collection has to hide the contracts inside it too,

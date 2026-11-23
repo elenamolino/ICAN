@@ -8,9 +8,13 @@ export interface ServiceSummary {
   slug: string;
 }
 
-export async function listServices(params: { collectionId: string }): Promise<ServiceSummary[]> {
+// Takes the caller's fetchWithInterceptor: the services of a private collection need the token.
+export async function listServices(
+  params: { collectionId: string },
+  fetcher: (url: string) => Promise<Response>
+): Promise<ServiceSummary[]> {
   const qs = new URLSearchParams({ collectionId: params.collectionId });
-  const response = await fetch(`${BASE_URL}/services?${qs.toString()}`);
+  const response = await fetcher(`${BASE_URL}/services?${qs.toString()}`);
   if (!response.ok) throw new Error('Failed to fetch services');
   const data = await response.json();
   return data.services ?? [];

@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-import { useRouter } from '../../../core/hooks/useRouter';
-import OrgAvatar from '../../../core/components/org-avatar';
-import { Contract } from '../../api/contractCollectionsApi';
+import { useRouter } from '../../hooks/useRouter';
+import OrgAvatar from '../org-avatar';
+import { Contract } from '../../../contract-collection/api/contractCollectionsApi';
 
 interface Props {
   data: Contract;

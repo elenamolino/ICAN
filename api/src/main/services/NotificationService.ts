@@ -59,8 +59,8 @@ class NotificationService {
     return { updated: count };
   }
 
-  async deleteNotification(notificationId: string) {
-    const result = await this.notificationRepository.destroy(notificationId);
+  async deleteNotification(notificationId: string, userId: string) {
+    const result = await this.notificationRepository.destroy(notificationId, userId);
     if (!result) {
       throw new Error('NOT FOUND: Notification not found');
     }

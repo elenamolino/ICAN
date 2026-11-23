@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import { LeanOrganization } from '../../types/models/Organization';
 import RepositoryBase from '../RepositoryBase';
 import OrganizationMongoose from './models/OrganizationMongoose';
+import ContractCollectionMongoose from './models/ContractCollectionMongoose';
+import ContractMongoose from './models/ContractMongoose';
 
 class OrganizationRepository extends RepositoryBase {
   async findAll(queryParams: any) {
@@ -49,6 +51,16 @@ class OrganizationRepository extends RepositoryBase {
   async findExistingSlug(name: string): Promise<boolean> {
     const existing = await OrganizationMongoose.findOne({ name }).collation({ locale: 'en', strength: 2 }).lean();
     return existing !== null;
+  }
+
+  /** Whether any collection or contract belongs to the organization. */
+  async hasContent(organizationId: string): Promise<boolean> {
+    const filter = { _organizationId: new mongoose.Types.ObjectId(organizationId) };
+    const [collection, contract] = await Promise.all([
+      ContractCollectionMongoose.exists(filter),
+      ContractMongoose.exists(filter),
+    ]);
+    return Boolean(collection || contract);
   }
 
   async findChildOrganizationIds(parentId: string): Promise<string[]> {

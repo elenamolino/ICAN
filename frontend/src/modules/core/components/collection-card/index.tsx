@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { useRouter } from '../../../core/hooks/useRouter';
-import { ContractCollectionSummary } from '../../api/contractCollectionsApi';
+import { useRouter } from '../../hooks/useRouter';
+import { ContractCollectionSummary } from '../../../contract-collection/api/contractCollectionsApi';
 
 interface Props {
   collection: ContractCollectionSummary;

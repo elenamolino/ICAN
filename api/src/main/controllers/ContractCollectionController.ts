@@ -20,6 +20,7 @@ class ContractCollectionController {
     this.create = this.create.bind(this);
     this.addContractToCollection = this.addContractToCollection.bind(this);
     this.update = this.update.bind(this);
+    this.transfer = this.transfer.bind(this);
     this.destroy = this.destroy.bind(this);
     this.removeContractFromCollection = this.removeContractFromCollection.bind(this);
   }
@@ -118,6 +119,25 @@ class ContractCollectionController {
         req.user
       );
       res.json({ message: 'Contract added to collection successfully' });
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async transfer(req: any, res: any) {
+    try {
+      // An API key is scoped to organizations, and the target is not in the path to be checked.
+      if (req.authType === 'api-key') {
+        throw new Error('PERMISSION ERROR: Collections cannot be moved with an API key');
+      }
+      const collection = await this.contractCollectionService.transfer(
+        req.params.organizationId,
+        req.params.collectionSlug,
+        req.body.organizationId,
+        req.user
+      );
+      res.json(collection);
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });
