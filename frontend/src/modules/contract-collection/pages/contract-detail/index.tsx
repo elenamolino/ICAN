@@ -29,9 +29,9 @@ import VersionComparison from '../../components/version-comparison';
 type Tab = 'content' | 'clauses' | 'ontology' | 'versions' | 'evolution';
 
 const TAB_LABELS: Record<Tab, string> = {
-  content: 'Text',
-  clauses: 'AI analysis result',
-  ontology: 'Ontology analysis result',
+  content: 'Agreement Template',
+  clauses: 'Abusive Analysis Result',
+  ontology: 'Full Analysis Result',
   versions: 'Versions',
   evolution: 'Evolution',
 };
@@ -69,6 +69,11 @@ export default function ContractDetailPage() {
   });
   const [togglingVisibility, setTogglingVisibility] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  // Renaming: the draft name while the field is open.
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const [savingName, setSavingName] = useState(false);
+  // Pages opened from here read the contract with the same permanent link, when there was one.
+  const shareParam = searchParams.get('share') ? `&share=${searchParams.get('share')}` : '';
   // Who arrived with the link already has its secret.
   const [shareToken, setShareToken] = useState<string | null>(() => searchParams.get('share'));
   // The pair the comparison in the Versions tab shows; a new pair remounts it.
@@ -186,6 +191,29 @@ export default function ContractDetailPage() {
       await customAlert(err.message || 'Failed to update contract visibility', 'error');
     } finally {
       setTogglingVisibility(false);
+    }
+  };
+
+  // The slug follows the name, so the page moves to the new address, with its query.
+  const handleRename = async () => {
+    const name = draftName?.trim();
+    if (!organizationId || !contractSlug || !contract || !name || name === contract.name) {
+      setDraftName(null);
+      return;
+    }
+    setSavingName(true);
+    try {
+      const updated = await updateContract(organizationId, contractSlug, { name });
+      setContract((prev) => (prev ? { ...prev, name: updated.name, slug: updated.slug } : prev));
+      setDraftName(null);
+      if (updated.slug && updated.slug !== contractSlug) {
+        const base = collectionSlug ? `/collections/${organizationId}/${collectionSlug}` : '/contracts/' + organizationId;
+        router.replace(`${base}/${updated.slug}${window.location.search}`);
+      }
+    } catch (err: any) {
+      await customAlert(err.message || 'The contract could not be renamed', 'error');
+    } finally {
+      setSavingName(false);
     }
   };
 
@@ -342,7 +370,55 @@ export default function ContractDetailPage() {
 
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-normal text-tp-ink">{contract.name}</h1>
+            {draftName !== null ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleRename();
+                }}
+                className="flex flex-wrap items-center gap-2"
+              >
+                <input
+                  autoFocus
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setDraftName(null)}
+                  maxLength={255}
+                  aria-label="Contract name"
+                  placeholder="Company — Terms of Service"
+                  className="min-w-0 flex-1 rounded-lg border border-tp-hairline bg-tp-canvas px-3 py-1.5 font-display text-2xl text-tp-ink focus:border-tp-primary focus:outline-none sm:min-w-[24rem]"
+                />
+                <button
+                  type="submit"
+                  disabled={savingName || !draftName.trim()}
+                  className="cursor-pointer rounded-md bg-tp-primary px-3 py-1.5 text-xs font-medium text-tp-on-primary hover:bg-tp-primary-deep disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingName ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDraftName(null)}
+                  className="cursor-pointer rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel hover:text-tp-ink"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <h1 className="flex items-center gap-2 font-display text-2xl font-normal text-tp-ink">
+                {contract.name}
+                {contract.canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setDraftName(contract.name)}
+                    title="Rename the contract"
+                    aria-label="Rename the contract"
+                    className="cursor-pointer rounded-md p-1 text-tp-steel transition-colors hover:bg-tp-surface hover:text-tp-primary"
+                  >
+                    <Iconify icon="mdi:pencil-outline" width={16} />
+                  </button>
+                )}
+              </h1>
+            )}
             {hasVersionHistory && selectedVersionListItem && (
               <div className="mt-2 flex items-center gap-2 text-sm text-tp-steel">
                 <select
@@ -405,6 +481,19 @@ export default function ContractDetailPage() {
                 <Iconify icon="mdi:open-in-new" width={14} />
               </a>
             )}
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  `/editor?organization=${organizationId}&contract=${contractSlug}${selectedVersionId ? `&version=${selectedVersionId}` : ''}&fork=1${shareParam}`
+                )
+              }
+              title="Copy this version into the editor and save it as a contract of yours"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-tp-hairline px-3 py-1.5 text-xs font-medium text-tp-steel transition-colors hover:border-tp-primary hover:text-tp-primary"
+            >
+              <Iconify icon="mdi:source-fork" width={14} />
+              Fork
+            </button>
             {contract.canEdit && hasVersionHistory && selectedVersionId && (
               <button
                 type="button"
@@ -444,7 +533,7 @@ export default function ContractDetailPage() {
         >
           {selectedVersion?.summary && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <SummaryStat label="Clauses" value={selectedVersion.summary.totalClauses} />
+              <SummaryStat label="Provisions" value={selectedVersion.summary.totalClauses} />
               <SummaryStat label="Potentially unfair" value={selectedVersion.summary.unfairClauses} />
               <SummaryStat label="Words" value={selectedVersion.summary.totalWords} />
               <SummaryStat label="Versions" value={versions.length} />
@@ -505,7 +594,7 @@ export default function ContractDetailPage() {
               <FilterableClauseList clauses={selectedVersion.clauses} />
             ) : (
               <p className="text-sm text-tp-steel">
-                No clause analysis available for this version (the snapshot had no usable text).
+                No analysis of its provisions for this version (the snapshot had no usable text).
               </p>
             ))}
 

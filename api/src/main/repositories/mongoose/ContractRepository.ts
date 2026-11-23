@@ -64,7 +64,8 @@ class ContractRepository extends RepositoryBase {
     if (queryParams.collection) {
       const collection = await mongoose
         .model('ContractCollection')
-        .findOne({ slug: queryParams.collection })
+        // A slug is only unique inside its organization.
+        .findOne({ slug: queryParams.collection, ...(organizationId && { _organizationId: new mongoose.Types.ObjectId(organizationId) }) })
         .select('_id');
       filter._collectionId = collection ? String(collection._id) : '__none__';
     }
@@ -129,7 +130,7 @@ class ContractRepository extends RepositoryBase {
   // full text, which is what made loading a large collection slow.
   async findSummariesByCollection(collectionId: string) {
     return ContractMongoose.find({ _collectionId: String(collectionId) })
-      .select('name slug version createdAt url private _organizationId _serviceId latestVersionSummary')
+      .select('name slug version documentType createdAt url private _organizationId _serviceId latestVersionSummary')
       .lean();
   }
 

@@ -137,6 +137,89 @@ export const EXPECTED_SECTIONS: ExpectedSection[] = [
   },
 ];
 
+// The sections a Service Level Agreement is expected to have.
+export const SLA_SECTIONS: ExpectedSection[] = [
+  {
+    id: 'sla-scope',
+    title: 'Scope',
+    covers: 'Which service the agreement covers and how it relates to the terms.',
+    headingKeywords: ['scope', 'introduction', 'applicability', 'about this'],
+    bodyKeywords: ['this service level agreement', 'this sla', 'applies to'],
+    categories: [],
+    starter: 'This Service Level Agreement is part of the [Service] Terms of Service and applies to the paid plans of [Service].',
+  },
+  {
+    id: 'sla-definitions',
+    title: 'Definitions',
+    covers: 'What downtime, availability and the measurement period mean.',
+    headingKeywords: ['definition'],
+    bodyKeywords: ['means', 'downtime is', 'monthly uptime'],
+    categories: [],
+    starter: '"Downtime" means a period in which the service cannot be used. "Monthly Uptime Percentage" is the time in a calendar month without Downtime.',
+  },
+  {
+    id: 'sla-commitment',
+    title: 'Service commitment',
+    covers: 'The availability the provider promises.',
+    headingKeywords: ['commitment', 'availability', 'uptime', 'service level'],
+    bodyKeywords: ['available', 'uptime', '99'],
+    categories: [],
+    starter: 'We will make the service available with a Monthly Uptime Percentage of at least [99.9]%.',
+  },
+  {
+    id: 'sla-exclusions',
+    title: 'Exclusions',
+    covers: 'What does not count as downtime, such as planned maintenance.',
+    headingKeywords: ['exclusion', 'exception', 'maintenance', 'limitation'],
+    bodyKeywords: ['does not apply', 'excluded', 'scheduled maintenance', 'planned maintenance'],
+    categories: [],
+    starter: 'Downtime does not include planned maintenance announced at least [48] hours before, nor problems caused by you or by events beyond our control.',
+  },
+  {
+    id: 'sla-support',
+    title: 'Support and response times',
+    covers: 'How to report a problem and how fast the provider answers.',
+    headingKeywords: ['support', 'response', 'incident'],
+    bodyKeywords: ['respond within', 'response time', 'support'],
+    categories: [],
+    starter: 'Report problems at [support email]. We answer critical incidents within [1] hour and other requests within [1] business day.',
+  },
+  {
+    id: 'sla-credits',
+    title: 'Service credits',
+    covers: 'What the customer gets when the commitment is not met.',
+    headingKeywords: ['credit', 'compensation', 'remed'],
+    bodyKeywords: ['service credit', 'credit of', 'refund'],
+    categories: [],
+    starter: 'If we do not meet the commitment, you get a credit of [10]% of the monthly fee of your plan.',
+  },
+  {
+    id: 'sla-claims',
+    title: 'How to claim',
+    covers: 'How and when the customer asks for the credits.',
+    headingKeywords: ['claim', 'request', 'procedure'],
+    bodyKeywords: ['to receive', 'submit a claim', 'request a credit'],
+    categories: [],
+    starter: 'To receive a credit, write to [support email] within [30] days of the end of the month, with the dates and times of the Downtime.',
+  },
+  {
+    id: 'sla-changes',
+    title: 'Changes',
+    covers: 'How the agreement can change.',
+    headingKeywords: ['change', 'modification', 'amendment', 'update'],
+    bodyKeywords: ['change this', 'modify this', 'update this'],
+    categories: ['ch'],
+    starter: 'We may change this agreement. We will tell you at least 30 days before, and a change never lowers the commitment during a period you already paid for.',
+  },
+];
+
+/** The sections expected in a document of each type. Types without a model expect none. */
+export function sectionsForType(type: string): ExpectedSection[] {
+  if (type === 'terms-of-service') return EXPECTED_SECTIONS;
+  if (type === 'service-level-agreement') return SLA_SECTIONS;
+  return [];
+}
+
 export interface ContractClause {
   text: string;
   /** 1-based line where the clause starts. */
@@ -273,13 +356,13 @@ export interface ContractReport {
  * than one ("Governing law and disputes"). A first heading written as "# ..."
  * is the document title ("# Terms of Service"), not a section.
  */
-export function analyseSections(text: string): ContractReport {
+export function analyseSections(text: string, expected: ExpectedSection[] = EXPECTED_SECTIONS): ContractReport {
   const blocks = parseContract(text);
   const firstHeading = blocks.find(b => b.heading !== null);
   const isDocumentTitle = (block: ContractBlock) => block === firstHeading && block.level === 1;
 
   const matched = new Set<ContractBlock>();
-  const sections = EXPECTED_SECTIONS.map<SectionReport>(section => {
+  const sections = expected.map<SectionReport>(section => {
     const own = blocks.filter(b => b.heading !== null && !isDocumentTitle(b) && headingMatches(section, b.heading));
     if (own.length) {
       own.forEach(b => matched.add(b));

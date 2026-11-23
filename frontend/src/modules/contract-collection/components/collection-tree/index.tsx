@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Iconify from '../../../core/components/iconify';
+import { UNASSIGNED_SERVICE_ID } from './model';
 import { CategorySelection, ServiceNode } from './model';
 
 interface Props {
   tree: ServiceNode[];
   selection: CategorySelection | null;
   onSelect: (categoryKey: string) => void;
+  /** The page of a service's Customer Agreement. */
+  agreementHref?: (serviceId: string) => string;
 }
 
 function Chevron({ open }: { open: boolean }) {
@@ -28,7 +33,7 @@ const rowClass =
 // Vertical guide line for one indentation level; no boxes around the children.
 const guideClass = 'ml-[0.9rem] border-l border-tp-hairline pl-2';
 
-export default function CollectionTree({ tree, selection, onSelect }: Props) {
+export default function CollectionTree({ tree, selection, onSelect, agreementHref }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const selectedCategoryKey = selection?.category.key;
@@ -74,14 +79,26 @@ export default function CollectionTree({ tree, selection, onSelect }: Props) {
                   const agreementOpen = expanded.has(agreement.key);
                   return (
                     <li key={agreement.key} role="treeitem" aria-expanded={agreementOpen}>
-                      <button
-                        type="button"
-                        onClick={() => toggle(agreement.key)}
-                        className={`${rowClass} text-tp-slate hover:bg-tp-surface`}
-                      >
-                        <Chevron open={agreementOpen} />
-                        <span className="min-w-0 flex-1 truncate">{agreement.name}</span>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggle(agreement.key)}
+                          className={`${rowClass} min-w-0 flex-1 text-tp-slate hover:bg-tp-surface`}
+                        >
+                          <Chevron open={agreementOpen} />
+                          <span className="min-w-0 flex-1 truncate">{agreement.name}</span>
+                        </button>
+                        {agreementHref && service.id !== UNASSIGNED_SERVICE_ID && (
+                          <Link
+                            to={agreementHref(service.id)}
+                            title={`Open the ${service.name} Customer Agreement`}
+                            aria-label={`Open the ${service.name} Customer Agreement`}
+                            className="shrink-0 cursor-pointer rounded-md p-1.5 text-tp-steel transition-colors hover:bg-tp-surface hover:text-tp-primary"
+                          >
+                            <Iconify icon="mdi:open-in-new" width={14} />
+                          </Link>
+                        )}
+                      </div>
 
                       {agreementOpen && (
                         <ul role="group" className={guideClass}>

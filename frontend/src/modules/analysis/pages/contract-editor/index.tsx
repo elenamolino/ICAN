@@ -6,12 +6,14 @@ import ContractTextEditor, { ContractTextEditorHandle, MarkedLine } from '../../
 import SectionsPanel from '../../components/contract-editor/SectionsPanel';
 import { Problem } from '../../components/contract-editor/ProblemsPanel';
 import SaveAnalysisModal from '../../components/SaveAnalysisModal';
-import { CONTRACT_TEMPLATES, templateText } from '../../data/contract-templates';
-import { analyseSections, sectionStarter } from '../../utils/contract-sections';
+import { blankDocument, CONTRACT_TEMPLATES, templateText } from '../../data/contract-templates';
+import { DOCUMENT_TYPES, DocumentType, documentTypeLabel, documentTypeOf } from '../../../core/utils/document-types';
+import { splitContractName } from '../../../core/utils/editor-import';
+import { analyseSections, sectionsForType, sectionStarter } from '../../utils/contract-sections';
 import { findPlaceholders, locateClause } from '../../utils/contract-checks';
 import { editText, FieldId, linkSavedText, pricingIn, setField, setPricing, unlinked } from '../../utils/linked-fields';
 import { nextVersionNumbers } from '../../../contract-collection/utils/versions';
-import { DEFAULT_TITLE, followHeading, isServiceLevelAgreement, retitle } from '../../utils/document-title';
+import { DEFAULT_TITLE, followHeading, retitle } from '../../utils/document-title';
 import { topCategories } from '../../constants/clauseCategories';
 import { AnalyzeResponse, useAnalysisApi } from '../../api/analysisApi';
 import { ContractVersionListItem, useContractCollectionsApi } from '../../../contract-collection/api/contractCollectionsApi';
@@ -63,12 +65,15 @@ function ContractEditor() {
   const { authUser } = useAuth();
 
   const [templateId, setTemplateId] = useState(CONTRACT_TEMPLATES[0].id);
+  const [documentType, setDocumentType] = useState<DocumentType>(CONTRACT_TEMPLATES[0].documentType);
   const [linked, setLinked] = useState(() => unlinked(templateText(CONTRACT_TEMPLATES[0])));
   const { text } = linked;
   const [values, setValues] = useState<Record<FieldId, string>>({ service: '', company: '', pricing: '' });
   const { company, service, pricing } = values;
   const [savedVersions, setSavedVersions] = useState<ContractVersionListItem[]>([]);
   const [step, setStep] = useState<'minor' | 'major'>('minor');
+  // Opened with Fork: where the text came from. It saves as a new contract.
+  const [origin, setOrigin] = useState<{ label: string; href?: string } | null>(null);
   const [title, setTitle] = useState(DEFAULT_TITLE);
   const [target, setTarget] = useState<SaveTarget | null>(null);
   const editorRef = useRef<ContractTextEditorHandle>(null);
@@ -84,8 +89,10 @@ function ContractEditor() {
   const [modalOpen, setModalOpen] = useState(false);
 
   // Opened from a contract's Edit button (?organization=&contract=&version=):
-  // load that version and save the next ones to the same contract.
+  // load that version and save the next ones to the same contract. With &fork=1,
+  // the text is copied into a new contract of the user's own.
   useEffect(() => {
+    const forking = searchParams.get('fork') === '1';
     const organizationId = searchParams.get('organization');
     const contractSlug = searchParams.get('contract');
     if (!organizationId || !contractSlug) return;
@@ -95,15 +102,14 @@ function ContractEditor() {
         const contract = await getContract(organizationId, contractSlug);
         const versions = await listContractVersions(organizationId, contractSlug);
         const versionId = searchParams.get('version') ?? versions.find((v) => v.label === 'last')?.id ?? versions[versions.length - 1]?.id;
-        if (!versionId || !contract.collection) throw new Error('This contract has no saved version to edit.');
-        const version = await getContractVersion(organizationId, contractSlug, versionId);
+        if (!forking && (!versionId || !contract.collection)) throw new Error('This contract has no saved version to edit.');
+        const version = versionId ? await getContractVersion(organizationId, contractSlug, versionId) : null;
         if (cancelled) return;
 
         // Contracts saved from the editor are named "Company — Title".
-        const [namedCompany, ...rest] = contract.name.split(' — ');
-        const content = version.content ?? '';
-        const savedCompany = rest.length ? namedCompany : contract.service?.name ?? namedCompany;
-        const savedTitle = rest.length ? rest.join(' — ') : contract.name;
+        // Checked above: only a fork may come from a contract without a collection or versions.
+        const content = version?.content ?? contract.content ?? '';
+        const { company: savedCompany, title: savedTitle } = splitContractName(contract.name, contract.service?.name);
         const savedValues = {
           // A field still in brackets in the text was left empty when the draft was saved.
           service: content.includes('[Service]') ? '' : contract.service?.name ?? '',
@@ -112,21 +118,30 @@ function ContractEditor() {
         };
         setValues(savedValues);
         setLinked(linkSavedText(content, savedValues));
-        setSavedVersions(versions);
+        setDocumentType(documentTypeOf(contract));
         setTemplateId(FROM_CONTRACT);
         setTitle(savedTitle === NO_TITLE ? '' : savedTitle);
+        setAnalysis(null);
+        setAnalysedText(null);
+        if (forking) {
+          setSavedVersions([]);
+          setTarget(null);
+          setOrigin({ label: contract.name, href: `/contracts/${organizationId}/${contractSlug}${versionId ? `?version=${versionId}` : ''}` });
+          setVersionName(`Fork of ${contract.name}`.slice(0, 80));
+          return;
+        }
+        const collection = contract.collection!;
+        setSavedVersions(versions);
         setTarget({
           organizationId,
-          collectionId: contract.collection.id,
-          collectionName: contract.collection.name,
+          collectionId: collection.id,
+          collectionName: collection.name,
           contractId: contract.id,
           serviceId: contract.service?.id,
           contractSlug,
           contractName: contract.name,
           parentVersionId: versionId,
         });
-        setAnalysis(null);
-        setAnalysedText(null);
       } catch (err: any) {
         if (!cancelled) await customAlert(err.message || 'The contract could not be opened.', 'error');
       }
@@ -136,11 +151,12 @@ function ContractEditor() {
     };
     // Only when arriving with a contract in the URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.get('organization'), searchParams.get('contract'), searchParams.get('version')]);
+  }, [searchParams.get('organization'), searchParams.get('contract'), searchParams.get('version'), searchParams.get('fork')]);
 
   // The panel follows the text a moment after typing stops, not on every key.
   const settledText = useDebouncedValue(text, 250);
-  const report = useMemo(() => analyseSections(settledText), [settledText]);
+  const expectedSections = useMemo(() => sectionsForType(documentType), [documentType]);
+  const report = useMemo(() => analyseSections(settledText, expectedSections), [settledText, expectedSections]);
   const placeholders = useMemo(() => findPlaceholders(settledText), [settledText]);
 
   // Unfair clauses of the last analysis, placed in the current text: a clause
@@ -203,10 +219,10 @@ function ContractEditor() {
   const problemsNote = busy === 'analysing'
     ? 'Analysing…'
     : !analysis
-      ? 'Unfair clauses: press Analyse'
+      ? 'Unfair provisions: press Analyse'
       : analysisOutdated
         ? 'Text changed since the analysis'
-        : `${analysis.summary.unfairClauses} unfair of ${analysis.summary.totalClauses} clauses`;
+        : `${analysis.summary.unfairClauses} unfair of ${analysis.summary.totalClauses} provisions`;
 
   // Anything can be saved. An unfinished contract can only take a minor version.
   const saveBlockers = [
@@ -217,8 +233,7 @@ function ContractEditor() {
   const incomplete =
     missingFields.length > 0 ||
     findPlaceholders(text).length > 0 ||
-    // The expected sections are those of Terms of Service: an SLA has others.
-    (!isServiceLevelAgreement(title) && report.sections.some((s) => s.status === 'missing'));
+    analyseSections(text, expectedSections).sections.some((s) => s.status === 'missing');
   const versionStep = incomplete ? 'minor' : step;
   const nextNumbers = nextVersionNumbers(target ? savedVersions : []);
 
@@ -277,6 +292,7 @@ function ContractEditor() {
         date: new Date().toISOString(),
         text,
         versionNumber: nextNumbers[versionStep],
+        documentType,
         summary: result.summary,
         clauses: result.clauses,
         ...(versionName.trim() ? { versionName: versionName.trim() } : {}),
@@ -289,10 +305,29 @@ function ContractEditor() {
     }
   };
 
+  // The text has not been written in yet: a template, or a blank document of a type.
+  const untouched =
+    CONTRACT_TEMPLATES.some((t) => templateText(t) === text) ||
+    DOCUMENT_TYPES.some((t) => templateText({ ...CONTRACT_TEMPLATES[0], text: blankDocument(t.label) }) === text);
+
+  // A type with a template starts from it while nothing has been written; otherwise only the type changes.
+  const handleTypeChange = (next: DocumentType) => {
+    setDocumentType(next);
+    // A title that only said the type follows it, and so does the heading.
+    if (title.trim() === documentTypeLabel(documentType) || !title.trim()) {
+      setTitle(documentTypeLabel(next));
+      setLinked((current) => editText(current, retitle(current.text, title, documentTypeLabel(next))));
+    }
+    if (!untouched || target) return;
+    const nextTemplate = CONTRACT_TEMPLATES.find((t) => t.documentType === next);
+    setTemplateId(nextTemplate?.id ?? FROM_CONTRACT);
+    setLinked(unlinked(templateText(nextTemplate ?? { ...CONTRACT_TEMPLATES[0], text: blankDocument(documentTypeLabel(next)) })));
+    setValues({ service: '', company: '', pricing: '' });
+  };
+
   const handleTemplateChange = async (nextId: string) => {
     const next = CONTRACT_TEMPLATES.find((t) => t.id === nextId);
     if (!next) return;
-    const untouched = CONTRACT_TEMPLATES.some((t) => templateText(t) === text);
     if (!untouched) {
       try {
         await customConfirm(`Replace your text with the “${next.name}” template? What you wrote will be lost.`, {
@@ -305,7 +340,8 @@ function ContractEditor() {
     }
     setTemplateId(next.id);
     setLinked(unlinked(templateText(next)));
-    setTitle(DEFAULT_TITLE);
+    setTitle(documentTypeLabel(next.documentType));
+    setDocumentType(next.documentType);
     setValues({ service: '', company: '', pricing: '' });
   };
 
@@ -369,7 +405,7 @@ function ContractEditor() {
             >
               {!template && (
                 <option value={templateId} disabled>
-                  From a saved contract
+                  {target ? 'From a saved contract' : 'Blank document'}
                 </option>
               )}
               {CONTRACT_TEMPLATES.map((t) => (
@@ -392,6 +428,18 @@ function ContractEditor() {
           <div className="flex flex-col gap-2 border-b border-tp-hairline px-4 py-3">
             <h2 className="text-sm font-semibold text-tp-ink">Contract</h2>
             {[
+              { label: 'Type', field: (
+                <select
+                  value={documentType}
+                  onChange={(e) => handleTypeChange(e.target.value as DocumentType)}
+                  aria-label="Document type"
+                  className={`${FIELD} w-full cursor-pointer`}
+                >
+                  {DOCUMENT_TYPES.map((t) => (
+                    <option key={t.id} value={t.id}>{t.label}</option>
+                  ))}
+                </select>
+              ) },
               { label: 'Service', field: (
                 <input
                   ref={fieldRefs.Service}
@@ -461,6 +509,17 @@ function ContractEditor() {
                 {field}
               </label>
             ))}
+            {origin && !target && (
+              <p className="text-xs text-tp-steel">
+                Copied from{' '}
+                {origin.href ? (
+                  <Link to={origin.href} className="font-medium text-tp-primary hover:underline">{origin.label}</Link>
+                ) : (
+                  origin.label
+                )}
+                . Saving creates a new contract of yours.
+              </p>
+            )}
             {target && (
               <p className="text-xs text-tp-steel">
                 Saves to <span className="font-medium text-tp-ink">{target.collectionName}</span> ·{' '}
@@ -494,6 +553,7 @@ function ContractEditor() {
           provider={company.trim() || NO_COMPANY}
           title={title.trim() || NO_TITLE}
           serviceName={service}
+          documentType={documentType}
           versionStep={versionStep}
           date={new Date().toISOString()}
           heading="Save contract"

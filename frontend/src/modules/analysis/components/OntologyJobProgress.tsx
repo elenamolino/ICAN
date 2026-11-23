@@ -1,7 +1,7 @@
 import { JobStepInfo } from '../api/ontologyAnalysisApi';
 
 const STEP_LABELS: Record<string, string> = {
-  split: 'Clause splitting',
+  split: 'Provision splitting',
   phase1: 'Classification',
   phase2: 'Turtle generation',
   phase3: 'Validation & repair',

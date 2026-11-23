@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import ImportFromIcan, { ImportedContract } from '../../components/ImportFromIcan';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { useAnalysisApi, AnalyzeResponse } from '../../api/analysisApi';
@@ -10,7 +11,13 @@ import ActionButton from '../../../core/components/action-button';
 import BlockAlert from '../../../core/components/block-alert';
 import customAlert from '../../../core/utils/custom-alert';
 
-type InputMode = 'paste' | 'upload';
+type InputMode = 'paste' | 'upload' | 'import';
+
+const MODES: { id: InputMode; label: string }[] = [
+  { id: 'paste', label: 'Paste text' },
+  { id: 'upload', label: 'Upload file' },
+  { id: 'import', label: 'Import from iCan' },
+];
 
 export default function AiClassifyPage() {
   const { classify } = useAnalysisApi();
@@ -26,6 +33,18 @@ export default function AiClassifyPage() {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const metadataComplete = provider.trim() !== '' && title.trim() !== '' && date.trim() !== '';
+  // The agreement imported from iCan, to link back to it.
+  const [source, setSource] = useState<ImportedContract['source'] | null>(null);
+
+  const handleImport = (imported: ImportedContract) => {
+    setText(imported.text);
+    setProvider(imported.provider);
+    setTitle(imported.title);
+    setDate(imported.date);
+    setSource(imported.source);
+    setResult(null);
+    setMode('paste');
+  };
 
   const handleFileSubmit = async (file: File) => {
     try {
@@ -55,16 +74,21 @@ export default function AiClassifyPage() {
   return (
     <>
       <Helmet>
-        <title>AI Classify | ICAN</title>
+        <title>Abusive Analysis | ICAN</title>
       </Helmet>
       <div className="w-full p-4 pb-16 md:p-8">
         <div className="mx-auto max-w-4xl">
           <div className="mb-8">
-            <h1 className="font-display text-2xl text-tp-ink">AI Classify</h1>
+            <h1 className="font-display text-2xl text-tp-ink">Abusive Analysis</h1>
             <p className="mt-1 text-sm text-tp-steel">
-              Paste a contract's text or upload a plain-text file to detect potentially unfair
-              clauses across 8 categories, powered by the unfair-tos-detector model.
+              Paste a contract's text, upload a plain-text file or import an agreement from iCan to detect potentially unfair
+              provisions across 8 categories, powered by the unfair-tos-detector model.
             </p>
+            {source && (
+              <p className="mt-2 text-sm text-tp-steel">
+                Imported from <Link to={source.href} className="font-medium text-tp-primary hover:underline">{source.name}</Link>.
+              </p>
+            )}
           </div>
 
           <div className="mb-4 space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
@@ -107,29 +131,21 @@ export default function AiClassifyPage() {
           </div>
 
           <div className="space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMode('paste')}
-                className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                  mode === 'paste'
-                    ? 'bg-tp-primary text-tp-on-primary'
-                    : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
-                }`}
-              >
-                Paste text
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('upload')}
-                className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                  mode === 'upload'
-                    ? 'bg-tp-primary text-tp-on-primary'
-                    : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
-                }`}
-              >
-                Upload file
-              </button>
+            <div className="flex flex-wrap gap-2">
+              {MODES.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setMode(option.id)}
+                  className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    mode === option.id
+                      ? 'bg-tp-primary text-tp-on-primary'
+                      : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
 
             {mode === 'paste' ? (
@@ -152,7 +168,10 @@ export default function AiClassifyPage() {
                     Fill in the provider, title and date above before analyzing.
                   </p>
                 )}
+
               </>
+            ) : mode === 'import' ? (
+              <ImportFromIcan onImport={handleImport} />
             ) : (
               <FileUpload
                 onSubmit={handleFileSubmit}

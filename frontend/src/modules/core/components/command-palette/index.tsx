@@ -37,8 +37,8 @@ export default function CommandPalette() {
     () => [
       {
         id: 'ai-classify',
-        label: 'AI Classify',
-        description: 'Automatically classify contract clauses',
+        label: 'Abusive Analysis',
+        description: 'Find potentially unfair provisions',
         shortcut: [],
         icon: FiCpu,
         group: 'Analyse',
@@ -46,7 +46,7 @@ export default function CommandPalette() {
       },
       {
         id: 'ontology-analysis',
-        label: 'Ontology Analysis',
+        label: 'Full Analysis',
         description: 'Analyse contracts against a shared ontology',
         shortcut: [],
         icon: FiShare2,

@@ -1,3 +1,4 @@
+import { DOCUMENT_TYPES } from '../../utils/documentTypes';
 import { check } from 'express-validator';
 
 const save = [
@@ -76,6 +77,10 @@ const save = [
     .bail()
     .matches(/^\d{1,4}\.\d{1,4}$/)
     .withMessage('The versionNumber field must look like 0.1'),
+  check('documentType')
+    .optional({ values: 'null' })
+    .isIn(DOCUMENT_TYPES)
+    .withMessage(`The documentType field must be one of: ${DOCUMENT_TYPES.join(', ')}`),
   check('parentVersionId')
     .optional({ values: 'null' })
     .isMongoId()

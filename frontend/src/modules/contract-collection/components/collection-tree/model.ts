@@ -1,9 +1,13 @@
 import { Contract } from '../../api/contractCollectionsApi';
 import { ServiceSummary } from '../../api/servicesApi';
+import { DocumentType } from '../../../core/utils/document-types';
 
-// Contracts carry no category of their own, so it is derived from the contract name.
+// A contract's category comes from its type, or from its name when it has none.
 // A service has one Customer Agreement, and every document, the SLA too, is part of it.
 export type AgreementName = 'Customer Agreement';
+
+/** The node where the API puts documents without a service: it has no agreement page. */
+export const UNASSIGNED_SERVICE_ID = '__unassigned__';
 export type CategoryName = 'Terms and Policies' | 'Service Level Agreement' | 'Guidelines' | 'Other documents';
 
 const CUSTOMER_AGREEMENT: AgreementName = 'Customer Agreement';
@@ -26,7 +30,19 @@ export interface ServiceNode {
   agreements: AgreementNode[];
 }
 
+const CATEGORY_OF: Record<DocumentType, CategoryName> = {
+  'terms-of-service': 'Terms and Policies',
+  'service-level-agreement': 'Service Level Agreement',
+  'privacy-policy': 'Terms and Policies',
+  'acceptable-use-policy': 'Terms and Policies',
+  'cookie-policy': 'Terms and Policies',
+  'data-processing-agreement': 'Terms and Policies',
+  other: 'Other documents',
+};
+
 function categoryForContract(contract: Contract): CategoryName {
+  // The type, when it was chosen; for older contracts, the name.
+  if (contract.documentType) return CATEGORY_OF[contract.documentType];
   const name = contract.name.toLocaleLowerCase();
   if (name.includes('service level') || name.includes(' sla')) return 'Service Level Agreement';
   if (name.includes('guidelines')) return 'Guidelines';

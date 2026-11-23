@@ -6,7 +6,7 @@ function ClauseCard({ clause }: { clause: ClauseAnalysis }) {
   const relevantCategories = topCategories(clause);
 
   return (
-    <div className="rounded-lg border border-tp-hairline bg-tp-canvas p-4">
+    <div className={`rounded-lg border bg-tp-canvas p-4 ${clause.isUnfair ? 'border-tp-severity-error-border' : 'border-tp-hairline'}`}>
       <div className="flex items-start justify-between gap-3">
         <p className="flex-1 text-sm text-tp-ink">{clause.term}</p>
         <span
@@ -42,7 +42,7 @@ export default function ClauseResultsList({ result }: { result: AnalyzeResponse 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryStat label="Clauses" value={summary.totalClauses} />
+        <SummaryStat label="Provisions" value={summary.totalClauses} />
         <SummaryStat label="Potentially unfair" value={summary.unfairClauses} />
         <SummaryStat label="Words" value={summary.totalWords} />
         <SummaryStat label="Sections" value={summary.sectionCount ? summary.sectionCount : 'N/A'} />

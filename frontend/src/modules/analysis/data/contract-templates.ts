@@ -1,7 +1,11 @@
 import { format } from 'date-fns';
 
+import { DocumentType } from '../../core/utils/document-types';
+
 export interface ContractTemplate {
   id: string;
+  /** The type of the documents it starts. */
+  documentType: DocumentType;
   name: string;
   description: string;
   text: string;
@@ -80,14 +84,70 @@ If we disagree, write to us first and we will try to solve it. If we cannot, you
 Questions about these terms: [email].
 `;
 
+const SAAS_SLA = `# Service Level Agreement
+
+Last updated: [date]
+
+## 1. Scope
+
+This Service Level Agreement is part of the [Service] Terms of Service between you and [Company]. It applies to the paid plans of [Service].
+
+## 2. Definitions
+
+"Downtime" means a period of at least 5 consecutive minutes in which the service cannot be used. "Monthly Uptime Percentage" is the share of a calendar month without Downtime.
+
+## 3. Service commitment
+
+We will make [Service] available with a Monthly Uptime Percentage of at least 99.9%.
+
+## 4. Exclusions
+
+Downtime does not include:
+
+- planned maintenance announced at least 48 hours before;
+- problems caused by your own systems, or by using the service against the Terms of Service;
+- events beyond our reasonable control.
+
+## 5. Support and response times
+
+Report problems at [support email]. We answer critical incidents, when the service cannot be used, within 1 hour, and other requests within 1 business day.
+
+## 6. Service credits
+
+If the Monthly Uptime Percentage falls below the commitment, you get a credit on the monthly fee of your plan, as listed in the pricing at [Pricing link]:
+
+- below 99.9%: 10% of the monthly fee;
+- below 99%: 25% of the monthly fee;
+- below 95%: 50% of the monthly fee.
+
+## 7. How to claim
+
+To receive a credit, write to [support email] within 30 days of the end of the month, with the dates and times of the Downtime. Credits are applied to your next invoice.
+
+## 8. Changes
+
+We may change this agreement. We will tell you by email at least 30 days before a change takes effect, and a change never lowers the commitment during a period you already paid for.
+`;
+
 export const CONTRACT_TEMPLATES: ContractTemplate[] = [
   {
     id: 'saas',
+    documentType: 'terms-of-service',
     name: 'SaaS Terms of Service',
     description: 'A complete, balanced model for an online service, with every expected section filled in.',
     text: SAAS_TERMS,
   },
+  {
+    id: 'saas-sla',
+    documentType: 'service-level-agreement',
+    name: 'SaaS Service Level Agreement',
+    description: 'Availability, support times and service credits for an online service, linked to its pricing.',
+    text: SAAS_SLA,
+  },
 ];
+
+/** A blank document of a type that has no template: only its title. */
+export const blankDocument = (title: string) => `# ${title}\n\nLast updated: [date]\n\n`;
 
 /** A template as a new contract starts from it: last updated today, written out ("22 November 2026"). */
 export function templateText(template: ContractTemplate): string {

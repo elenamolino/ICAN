@@ -13,8 +13,8 @@ const NAV_STRUCTURE = [
   {
     label: 'Analyse',
     children: [
-      { label: 'AI Classify', to: '/analyse/ai-classify' },
-      { label: 'Ontology Analysis', to: '/analyse/ontology-analysis' },
+      { label: 'Abusive Analysis', to: '/analyse/ai-classify' },
+      { label: 'Full Analysis', to: '/analyse/ontology-analysis' },
     ],
   },
   {

@@ -17,7 +17,7 @@ function ClauseCard({ clause, threshold }: { clause: ClauseAnalysis; threshold: 
   const relevantCategories = topCategories(clause, threshold);
 
   return (
-    <div className="rounded-lg border border-tp-hairline bg-tp-canvas p-4">
+    <div className={`rounded-lg border bg-tp-canvas p-4 ${clause.isUnfair ? 'border-tp-severity-error-border' : 'border-tp-hairline'}`}>
       <div className="flex items-start justify-between gap-3">
         <p className="flex-1 text-sm text-tp-ink">{clause.term}</p>
         <span
@@ -115,14 +115,14 @@ export default function FilterableClauseList({ clauses }: { clauses: ClauseAnaly
       </div>
 
       <p className="text-xs text-tp-steel">
-        {filtered.length} of {clauses.length} clauses
+        {filtered.length} of {clauses.length} provisions
       </p>
 
       <div className="space-y-3">
         {filtered.map((clause, index) => (
           <ClauseCard key={index} clause={clause} threshold={threshold} />
         ))}
-        {filtered.length === 0 && <p className="text-sm text-tp-steel">No clauses match the current filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-tp-steel">No provisions match the current filters.</p>}
       </div>
     </div>
   );

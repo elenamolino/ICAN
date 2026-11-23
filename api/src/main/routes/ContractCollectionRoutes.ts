@@ -27,6 +27,16 @@ const loadFileRoutes = function (app: express.Application) {
     .post(ContractCollectionValidator.transfer, handleValidation, contractCollectionController.transfer);
 
   app
+    .route(baseUrl + '/contractCollections/:organizationId/:collectionSlug/services/:serviceId')
+    .get(contractCollectionController.showAgreement);
+
+  app
+    .route(baseUrl + '/contractCollections/:organizationId/:collectionSlug/services/:serviceId/permalink')
+    .get(contractCollectionController.getAgreementShareToken);
+
+  app.route(baseUrl + '/permalinks/agreement/:token').get(contractCollectionController.resolveAgreementPermalink);
+
+  app
     .route(baseUrl + '/contractCollections/:organizationId/:collectionSlug/services')
     .get(ContractCollectionValidator.indexServices, handleValidation, contractCollectionController.indexServices);
 

@@ -36,13 +36,15 @@ interface SaveAnalysisModalProps {
   versionName?: string;
   /** Given by the editor: the service written in the contract. */
   serviceName?: string;
+  /** Given by the editor: what the document is. */
+  documentType?: string;
   /** Given by the editor: number the version, a major or a minor step after the last one. */
   versionStep?: 'minor' | 'major';
 }
 
 export default function SaveAnalysisModal({
   open, onClose, text, result, provider, title, date, onSaved, heading = 'Save analysis', submitLabel = 'Save analysis', versionName,
-  serviceName, versionStep,
+  serviceName, versionStep, documentType,
 }: SaveAnalysisModalProps) {
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
@@ -175,8 +177,8 @@ export default function SaveAnalysisModal({
   }, [selectedCollection]);
 
   useEffect(() => {
-    // From the editor, a new service's contract is the one just written.
-    setContractSelection(versionStep && serviceSelection?.mode === 'new' ? { mode: 'new', name: title } : null);
+    // From the editor, the contract is the one just written: a new one, named by its title.
+    setContractSelection(versionStep && serviceSelection ? { mode: 'new', name: title } : null);
 
     if (!selectedCollection || !serviceSelection || serviceSelection.mode !== 'existing') {
       setContracts([]);
@@ -240,6 +242,7 @@ export default function SaveAnalysisModal({
           ? { contractId: contractSelection.id, ...(attachVersionId ? { versionId: attachVersionId } : {}) }
           : { contractName: contractSelection.name, provider: provider.trim(), title: titleFromName(contractSelection.name, provider) || title.trim() }),
         date: new Date(date).toISOString(),
+        ...(documentType ? { documentType } : {}),
         ...(versionStep && !attachVersionId
           ? { versionNumber: nextVersionNumbers(existingVersions)[versionStep] }
           : {}),

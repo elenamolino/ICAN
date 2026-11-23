@@ -32,6 +32,8 @@ export interface SaveAnalysisPayload {
   versionName?: string;
   /** Number of the new version: "0.1". */
   versionNumber?: string;
+  /** What the document is; on an existing contract, it changes its type. */
+  documentType?: string;
   /** Version of `contractId` the new one was edited from, to draw it as a branch. */
   parentVersionId?: string;
   provider?: string;
@@ -83,6 +85,7 @@ class AnalysisSaveService {
             name: `${payload.provider} — ${payload.title}`,
             content: payload.text,
             serviceId,
+            documentType: payload.documentType ?? null,
           },
           organizationId,
           // Inherit the collection's visibility: a contract saved into a private
@@ -92,6 +95,10 @@ class AnalysisSaveService {
           payload.collectionId
         );
     const contractId = contract.id ?? contract._id?.toString();
+    // Checked above: who saves a version of an existing contract may edit it.
+    if (payload.contractId && payload.documentType && contract.documentType !== payload.documentType) {
+      await this.contractRepository.update(contractId, { documentType: payload.documentType });
+    }
 
     if (payload.versionId) {
       await this.contractVersionService.attachAnalysis(contractId, payload.versionId, {

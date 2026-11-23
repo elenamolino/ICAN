@@ -17,7 +17,7 @@ export default function HeroSection({ onNavigate }: { onNavigate: (to: string) =
 
       <RevealBlock delay={160} className="mt-6">
         <p className="max-w-2xl text-base leading-relaxed text-[#475467] md:text-lg">
-          ICAN analyses the Terms of Service of SaaS products and flags potentially unfair clauses,
+          ICAN analyses the Terms of Service of SaaS products and flags potentially unfair provisions,
           using a language model and a formal ontology.
         </p>
       </RevealBlock>

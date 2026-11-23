@@ -1,4 +1,11 @@
+import { DOCUMENT_TYPES } from '../../utils/documentTypes';
 import { check } from 'express-validator';
+
+const documentType = () =>
+  check('documentType')
+    .optional({ values: 'null' })
+    .isIn(DOCUMENT_TYPES)
+    .withMessage(`The documentType field must be one of: ${DOCUMENT_TYPES.join(', ')}`);
 
 const create = [
   check('name')
@@ -32,6 +39,7 @@ const create = [
     .isString()
     .withMessage('The version field must be a string')
     .trim(),
+  documentType(),
 ];
 
 const update = [
@@ -60,6 +68,7 @@ const update = [
     .isString()
     .withMessage('The version field must be a string')
     .trim(),
+  documentType(),
 ];
 
 export { create, update };

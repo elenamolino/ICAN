@@ -20,6 +20,17 @@ class ServiceRepository extends RepositoryBase {
     return service.toObject();
   }
 
+  async findByShareToken(shareToken: string) {
+    return ServiceMongoose.findOne({ shareToken }).select('_collectionId _organizationId').lean<any>();
+  }
+
+  /** The service's link secret, set to `candidate` the first time. */
+  async ensureShareToken(id: string, candidate: string): Promise<string | null> {
+    await ServiceMongoose.updateOne({ _id: id, shareToken: null }, { $set: { shareToken: candidate } }, { timestamps: false });
+    const service = await ServiceMongoose.findById(id).select('+shareToken').lean<any>();
+    return service?.shareToken ?? null;
+  }
+
   async create(data: Record<string, any>) {
     if (data._collectionId) data._collectionId = String(data._collectionId);
     if (data._organizationId) data._organizationId = new mongoose.Types.ObjectId(data._organizationId);

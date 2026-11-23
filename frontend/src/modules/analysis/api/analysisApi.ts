@@ -39,6 +39,8 @@ export interface SaveAnalysisPayload {
   versionName?: string;
   /** Number of the new version: "0.1". */
   versionNumber?: string;
+  /** What the document is. */
+  documentType?: string;
   /** Version of `contractId` the text was edited from, drawn as a branch from it. */
   parentVersionId?: string;
   provider?: string;

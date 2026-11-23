@@ -17,6 +17,9 @@ class ContractCollectionController {
     this.indexByAuthenticatedUser = this.indexByAuthenticatedUser.bind(this);
     this.show = this.show.bind(this);
     this.indexServices = this.indexServices.bind(this);
+    this.showAgreement = this.showAgreement.bind(this);
+    this.getAgreementShareToken = this.getAgreementShareToken.bind(this);
+    this.resolveAgreementPermalink = this.resolveAgreementPermalink.bind(this);
     this.create = this.create.bind(this);
     this.addContractToCollection = this.addContractToCollection.bind(this);
     this.update = this.update.bind(this);
@@ -75,6 +78,35 @@ class ContractCollectionController {
         req.user
       );
       res.json(collection);
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async showAgreement(req: any, res: any) {
+    try {
+      const { organizationId, collectionSlug, serviceId } = req.params;
+      res.json(await this.contractCollectionService.getAgreement(organizationId, collectionSlug, serviceId, req.user, req.query.share));
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async getAgreementShareToken(req: any, res: any) {
+    try {
+      const { organizationId, collectionSlug, serviceId } = req.params;
+      res.json(await this.contractCollectionService.getAgreementShareToken(organizationId, collectionSlug, serviceId, req.user));
+    } catch (err: any) {
+      const { status, message } = handleError(err);
+      res.status(status).send({ error: message });
+    }
+  }
+
+  async resolveAgreementPermalink(req: any, res: any) {
+    try {
+      res.json(await this.contractCollectionService.resolveAgreementPermalink(req.params.token));
     } catch (err: any) {
       const { status, message } = handleError(err);
       res.status(status).send({ error: message });

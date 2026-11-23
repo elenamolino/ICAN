@@ -23,6 +23,8 @@ describe('policyTypeForContract', () => {
   it('classifies documents by their name', () => {
     expect(policyTypeForContract({ name: 'GitHub — Privacy Policy' })).toBe('privacy-policy');
     expect(policyTypeForContract({ name: 'AWS Service Level Agreement' })).toBe('service-level-agreement');
+    expect(policyTypeForContract({ name: 'Acme — Terms', documentType: 'service-level-agreement' })).toBe('service-level-agreement');
+    expect(policyTypeForContract({ name: 'Acme — Privacy', documentType: 'cookie-policy' })).toBe('data-security-policy');
     expect(policyTypeForContract({ name: 'Terms of Service' })).toBe('terms-of-service');
     expect(policyTypeForContract({ name: 'Cookie notice' })).toBe('data-security-policy');
     expect(policyTypeForContract({ name: 'Imprint' })).toBe('other-policy');

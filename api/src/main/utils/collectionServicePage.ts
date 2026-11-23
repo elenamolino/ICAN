@@ -2,6 +2,8 @@
 // detail page. This used to run in the browser over every contract of the
 // collection; it lives here so the page only receives the services it shows.
 
+import { DocumentType } from './documentTypes';
+
 export const POLICY_TYPES = [
   'terms-of-service',
   'privacy-policy',
@@ -65,7 +67,18 @@ export interface ServicePage<C extends ServicePageContract> {
 
 const DAY_MS = 86_400_000;
 
-export function policyTypeForContract(contract: Pick<ServicePageContract, 'name'>): PolicyType {
+const POLICY_TYPE_OF: Record<DocumentType, PolicyType> = {
+  'terms-of-service': 'terms-of-service',
+  'service-level-agreement': 'service-level-agreement',
+  'privacy-policy': 'privacy-policy',
+  'acceptable-use-policy': 'acceptable-use-policy',
+  'cookie-policy': 'data-security-policy',
+  'data-processing-agreement': 'data-security-policy',
+  other: 'other-policy',
+};
+
+export function policyTypeForContract(contract: { name: string; documentType?: string | null }): PolicyType {
+  if (contract.documentType && contract.documentType in POLICY_TYPE_OF) return POLICY_TYPE_OF[contract.documentType as DocumentType];
   const name = contract.name.toLocaleLowerCase();
   if (name.includes('service level') || name.includes(' sla')) return 'service-level-agreement';
   if (name.includes('privacy')) return 'privacy-policy';

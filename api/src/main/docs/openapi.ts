@@ -30,6 +30,11 @@ const saveBodyCommon = {
   },
   provider: { type: 'string', description: 'Required when creating a new contract.' },
   title: { type: 'string', description: 'Required when creating a new contract.' },
+  documentType: {
+    type: 'string',
+    enum: ['terms-of-service', 'service-level-agreement', 'privacy-policy', 'acceptable-use-policy', 'cookie-policy', 'data-processing-agreement', 'other'],
+    description: 'What the document is. On an existing contract, it changes its type.',
+  },
   date: { type: 'string', format: 'date', description: 'Capture date of the text (ISO 8601).' },
 };
 
@@ -355,6 +360,32 @@ export const openApiSpec = {
         description: 'Anybody with it can read the contract and its versions, adding `?share={token}`. For a private contract, only who can edit it gets it.',
         parameters: [orgParam, { name: 'contractSlug', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { '200': { description: 'The token.' }, '404': errorResponse('Not found.') },
+      },
+    },
+    '/contractCollections/{organizationId}/{collectionSlug}/services/{serviceId}': {
+      get: {
+        tags: ['Collections'],
+        summary: 'The Customer Agreement of a service: its documents and their current versions',
+        description: 'With `?share={token}` (its permanent link), every document of it, private or not.',
+        parameters: [orgParam, { name: 'collectionSlug', in: 'path', required: true, schema: { type: 'string' } }, { name: 'serviceId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'The agreement.' }, '404': errorResponse('Not found.') },
+      },
+    },
+    '/contractCollections/{organizationId}/{collectionSlug}/services/{serviceId}/permalink': {
+      get: {
+        tags: ['Collections'],
+        summary: 'Get the secret of the permanent link of a Customer Agreement',
+        description: 'Anybody with it reads every document of the agreement. In a private collection, only who can edit it gets it.',
+        parameters: [orgParam, { name: 'collectionSlug', in: 'path', required: true, schema: { type: 'string' } }, { name: 'serviceId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'The token.' } },
+      },
+    },
+    '/permalinks/agreement/{token}': {
+      get: {
+        tags: ['Collections'],
+        summary: 'Find where the Customer Agreement of a permanent link lives now',
+        parameters: [{ name: 'token', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { '200': { description: 'Its organizationId, collectionSlug and serviceId.' }, '404': errorResponse('Not found.') },
       },
     },
     '/permalinks/contract/{token}': {

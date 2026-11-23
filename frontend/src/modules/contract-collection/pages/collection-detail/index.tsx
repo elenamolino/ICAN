@@ -170,8 +170,8 @@ export default function CollectionDetailPage() {
     count: facets?.policyTypes[type] ?? 0,
   })).filter((option) => option.count > 0), [facets]);
   const reviewOptions = useMemo(() => [
-    { label: 'Has unfair clauses', value: 'has-unfair-clauses', count: facets?.review['has-unfair-clauses'] ?? 0 },
-    { label: 'No unfair clauses', value: 'no-unfair-clauses', count: facets?.review['no-unfair-clauses'] ?? 0 },
+    { label: 'Has unfair provisions', value: 'has-unfair-clauses', count: facets?.review['has-unfair-clauses'] ?? 0 },
+    { label: 'No unfair provisions', value: 'no-unfair-clauses', count: facets?.review['no-unfair-clauses'] ?? 0 },
     { label: 'Not analysed', value: 'not-analysed', count: facets?.review['not-analysed'] ?? 0 },
   ].filter((option) => option.count > 0), [facets]);
   const captureAgeOptions = useMemo(() => [
@@ -404,7 +404,12 @@ export default function CollectionDetailPage() {
                   {filteredTree.length === 0 ? (
                     <NoResults />
                   ) : (
-                    <CollectionTree tree={filteredTree} selection={selection} onSelect={selectCategory} />
+                    <CollectionTree
+                      tree={filteredTree}
+                      selection={selection}
+                      onSelect={selectCategory}
+                      agreementHref={(serviceId) => `/collections/${organizationId}/${collectionSlug}/agreements/${serviceId}`}
+                    />
                   )}
                   {remainingServices > 0 && (
                     <button

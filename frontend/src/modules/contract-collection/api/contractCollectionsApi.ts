@@ -1,3 +1,5 @@
+import type { DocumentType } from '../../core/utils/document-types';
+
 import { useAuth } from '../../auth/hooks/useAuth';
 import { AnalysisSummary, ClauseAnalysis } from '../../analysis/api/analysisApi';
 import { JobReport } from '../../analysis/api/ontologyAnalysisApi';
@@ -80,6 +82,8 @@ export interface Contract {
   id: string;
   name: string;
   slug: string;
+  /** Null for contracts saved before there were types. */
+  documentType?: DocumentType | null;
   version?: string;
   createdAt: string;
   url?: string;
@@ -92,6 +96,16 @@ export interface Contract {
   collection?: { id: string; name: string; slug: string } | null;
   service?: ContractServiceRef | null;
   latestVersionSummary?: AnalysisSummary;
+}
+
+/** The Customer Agreement of a service: its documents, each with its current version. */
+export interface Agreement {
+  collection: { name: string; slug: string; private: boolean };
+  organization: ContractCollectionOrganization;
+  service: { id: string; name: string };
+  contracts: (Pick<Contract, 'id' | 'name' | 'slug' | 'documentType' | 'private' | 'latestVersionSummary'> & {
+    current: { id: string; number: string | null; name: string | null; capturedAt: string } | null;
+  })[];
 }
 
 export type ContractVersionLabel = 'first' | 'intermediate' | 'last';
@@ -201,6 +215,28 @@ export function useContractCollectionsApi() {
   async function resolvePermalink(token: string): Promise<{ organizationId: string; contractSlug: string }> {
     const res = await fetchWithInterceptor(`${BASE_URL}/permalinks/contract/${token}`);
     if (!res.ok) throw new Error('Contract not found');
+    return res.json();
+  }
+
+  async function getAgreement(organizationId: string, collectionSlug: string, serviceId: string): Promise<Agreement> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}/services/${serviceId}${shareQuery()}`
+    );
+    if (!res.ok) throw new Error(res.status === 404 ? 'Customer Agreement not found' : 'You cannot see this Customer Agreement');
+    return res.json();
+  }
+
+  async function getAgreementShareToken(organizationId: string, collectionSlug: string, serviceId: string): Promise<string> {
+    const res = await fetchWithInterceptor(
+      `${BASE_URL}/contractCollections/${organizationId}/${collectionSlug}/services/${serviceId}/permalink`
+    );
+    if (!res.ok) throw new Error('This Customer Agreement cannot be shared');
+    return (await res.json()).token;
+  }
+
+  async function resolveAgreementPermalink(token: string): Promise<{ organizationId: string; collectionSlug: string; serviceId: string }> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/permalinks/agreement/${token}`);
+    if (!res.ok) throw new Error('Customer Agreement not found');
     return res.json();
   }
 
@@ -355,6 +391,9 @@ export function useContractCollectionsApi() {
     transferCollection,
     resolvePermalink,
     getShareToken,
+    getAgreement,
+    getAgreementShareToken,
+    resolveAgreementPermalink,
     updateContract,
     deleteCollection,
     deleteContract,

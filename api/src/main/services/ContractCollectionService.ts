@@ -13,11 +13,16 @@ import OrganizationService from './OrganizationService';
 import { Organization } from '../types/database/Organization';
 import { buildServicePage, groupContractsByService, ServicePageQuery } from '../utils/collectionServicePage';
 import { pickDefined } from '../utils/pickDefined';
+import crypto from 'node:crypto';
+import ContractVersionRepository from '../repositories/mongoose/ContractVersionRepository';
+
+const SHARE_TOKEN = /^[a-f0-9]{32}$/;
 
 class ContractCollectionService {
   private readonly contractCollectionRepository: ContractCollectionRepository;
   private readonly contractRepository: ContractRepository;
   private readonly serviceRepository: ServiceRepository;
+  private readonly contractVersionRepository: ContractVersionRepository;
   private readonly permissionEngine: PermissionEngine;
   private readonly permissionService: PermissionService;
   private readonly userService: UserService;
@@ -27,6 +32,7 @@ class ContractCollectionService {
     this.contractCollectionRepository = container.resolve('contractCollectionRepository');
     this.contractRepository = container.resolve('contractRepository');
     this.serviceRepository = container.resolve('serviceRepository');
+    this.contractVersionRepository = container.resolve('contractVersionRepository');
     this.permissionEngine = new PermissionEngine();
     this.permissionService = container.resolve('permissionService');
     this.userService = container.resolve('userService');
@@ -248,6 +254,7 @@ class ContractCollectionService {
         name: contract.name,
         slug: contract.slug,
         version: contract.version,
+        documentType: contract.documentType ?? null,
         createdAt: contract.createdAt,
         url: contract.url,
         private: contract.private,
@@ -264,6 +271,73 @@ class ContractCollectionService {
       service.contracts = service.contracts.map(({ serviceId: _serviceId, ...contract }) => contract) as any;
     });
     return page;
+  }
+
+  private async serviceInCollection(organizationId: string, collectionSlug: string, serviceId: string) {
+    const collection: any = await this.contractCollectionRepository.findByOrganizationAndSlug(organizationId, collectionSlug);
+    const service: any = /^[a-f0-9]{24}$/i.test(serviceId) ? await this.serviceRepository.findById(serviceId) : null;
+    if (!collection || !service || String(service._collectionId) !== String(collection.id)) {
+      throw new Error('NOT FOUND: Customer Agreement not found');
+    }
+    return { collection, service };
+  }
+
+  /**
+   * The Customer Agreement of a service: all its documents, each with its current version.
+   * Its permanent link's secret opens them all, private or not; otherwise the usual rules apply.
+   */
+  async getAgreement(organizationId: string, collectionSlug: string, serviceId: string, reqUser?: LeanUser, share?: unknown) {
+    const { collection, service } = await this.serviceInCollection(organizationId, collectionSlug, serviceId);
+    const shared = typeof share === 'string' && SHARE_TOKEN.test(share)
+      ? await this.serviceRepository.findByShareToken(share)
+      : null;
+    const opened = !!shared && String(shared._id) === String(service._id ?? service.id);
+
+    const contracts = opened
+      ? await this.contractRepository.findSummariesByCollection(collection.id)
+      : (await this.visibleContent(organizationId, await this.show(organizationId, collectionSlug, reqUser), reqUser)).contracts;
+    const own = contracts.filter((c: any) => String(c._serviceId) === String(service._id ?? service.id));
+    const latest = await this.contractVersionRepository.findLatestByContracts(own.map((c: any) => String(c._id)));
+
+    return {
+      collection: { name: collection.name, slug: collection.slug, private: Boolean(collection.private) },
+      organization: collection.organization,
+      service: { id: String(service._id ?? service.id), name: service.name },
+      contracts: own.map((c: any) => {
+        const current = latest.find(v => v._contractId === String(c._id));
+        return {
+          id: String(c._id),
+          name: c.name,
+          slug: c.slug,
+          documentType: c.documentType ?? null,
+          private: c.private,
+          latestVersionSummary: c.latestVersionSummary ?? null,
+          current: current ? { id: String(current._id), number: current.number ?? null, name: current.name ?? null, capturedAt: current.capturedAt } : null,
+        };
+      }),
+    };
+  }
+
+  /** The secret of the Customer Agreement's permanent link. Of a private collection, only for who can edit it. */
+  async getAgreementShareToken(organizationId: string, collectionSlug: string, serviceId: string, reqUser?: LeanUser) {
+    const { service } = await this.serviceInCollection(organizationId, collectionSlug, serviceId);
+    const collection: any = await this.show(organizationId, collectionSlug, reqUser);
+    if (collection.private && !collection.canEdit) {
+      throw new Error('PERMISSION ERROR: Only who can edit a private collection can share its agreements');
+    }
+    const token = await this.serviceRepository.ensureShareToken(
+      String(service._id ?? service.id),
+      crypto.randomBytes(16).toString('hex')
+    );
+    return { token };
+  }
+
+  /** Where the Customer Agreement of a permanent link lives now. */
+  async resolveAgreementPermalink(token: string) {
+    const service = SHARE_TOKEN.test(token) ? await this.serviceRepository.findByShareToken(token) : null;
+    const collection: any = service ? await this.contractCollectionRepository.findById(String(service._collectionId)) : null;
+    if (!service || !collection) throw new Error('NOT FOUND: Customer Agreement not found');
+    return { organizationId: String(collection.organization.id), collectionSlug: collection.slug, serviceId: String(service._id) };
   }
 
   /** The services of a collection, for whoever may open it. */

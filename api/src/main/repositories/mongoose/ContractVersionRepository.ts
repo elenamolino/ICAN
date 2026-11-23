@@ -17,6 +17,13 @@ class ContractVersionRepository extends RepositoryBase {
     });
   }
 
+  /** The current version of each contract: its number, name and capture date. */
+  async findLatestByContracts(contractIds: string[]) {
+    return ContractVersionMongoose.find({ _contractId: { $in: contractIds.map(String) }, label: 'last' })
+      .select('_contractId number name capturedAt')
+      .lean<any[]>();
+  }
+
   async findById(id: string) {
     const version = await ContractVersionMongoose.findById(id);
     if (!version) return null;

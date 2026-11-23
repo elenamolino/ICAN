@@ -4,6 +4,7 @@ import { ContractIndexQueryParams } from '../types/services/ContractService';
 import ContractCollectionService from './ContractCollectionService';
 import ContractRepository from '../repositories/mongoose/ContractRepository';
 import ContractVersionRepository from '../repositories/mongoose/ContractVersionRepository';
+import ServiceRepository from '../repositories/mongoose/ServiceRepository';
 import { LeanUser } from '../types/models/User';
 import { PermissionEngine } from '../policies/PermissionEngine';
 import { generateSlug, deduplicateSlug } from '../utils/slug-manager';
@@ -19,6 +20,7 @@ const SHARE_TOKEN = /^[a-f0-9]{32}$/;
 class ContractService {
   private contractRepository: ContractRepository;
   private contractVersionRepository: ContractVersionRepository;
+  private serviceRepository: ServiceRepository;
   private contractCollectionService: ContractCollectionService;
   private permissionEngine: PermissionEngine;
   private permissionService: PermissionService;
@@ -28,6 +30,7 @@ class ContractService {
   constructor() {
     this.contractRepository = container.resolve('contractRepository');
     this.contractVersionRepository = container.resolve('contractVersionRepository');
+    this.serviceRepository = container.resolve('serviceRepository');
     this.contractCollectionService = container.resolve('contractCollectionService');
     this.permissionEngine = new PermissionEngine();
     this.permissionService = container.resolve('permissionService');
@@ -130,10 +133,13 @@ class ContractService {
     return { token: await this.contractRepository.ensureShareToken(id, crypto.randomBytes(16).toString('hex')) };
   }
 
+  /** The secret of the contract's own link, or of the Customer Agreement of its service. */
   private async opensWith(share: unknown, contract: any) {
     if (typeof share !== 'string' || !SHARE_TOKEN.test(share)) return false;
     const shared = await this.contractRepository.findByShareToken(share);
-    return !!shared && String(shared._id) === String(contract.id ?? contract._id);
+    if (shared) return String(shared._id) === String(contract.id ?? contract._id);
+    const service = await this.serviceRepository.findByShareToken(share);
+    return !!service && !!contract._serviceId && String(service._id) === String(contract._serviceId);
   }
 
   async indexByCollection(collectionId: string) {
@@ -209,7 +215,7 @@ class ContractService {
   }
 
   async create(
-    data: { name: string; url?: string; content?: string; version?: string; serviceId?: string },
+    data: { name: string; url?: string; content?: string; version?: string; serviceId?: string; documentType?: string | null },
     organizationId: string,
     isPrivate: boolean,
     reqUser: LeanUser,
@@ -249,6 +255,7 @@ class ContractService {
       name: data.name,
       slug,
       version: data.version,
+      documentType: data.documentType ?? null,
       _collectionId: collectionId,
       _serviceId: data.serviceId,
       _organizationId: organizationId,
@@ -370,7 +377,7 @@ class ContractService {
     }
 
     // Never the organization or the collection: those have their own checked endpoints.
-    const changes = pickDefined(data, ['name', 'private', 'url', 'content', 'version']);
+    const changes = pickDefined(data, ['name', 'private', 'url', 'content', 'version', 'documentType']);
     if (changes.name) {
       changes.slug = await deduplicateSlug(generateSlug(changes.name), slugToCheck =>
         this.contractRepository.findExistingSlug(slugToCheck, organizationId)

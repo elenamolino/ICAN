@@ -46,7 +46,7 @@ function ClauseCard({ clause }: { clause: ClauseReportItem }) {
     .map(([category]) => ontologyCategoryLabel(category));
 
   return (
-    <div className="rounded-lg border border-tp-hairline bg-tp-canvas">
+    <div className={`rounded-lg border bg-tp-canvas ${unfair > 0 ? 'border-tp-severity-error-border' : 'border-tp-hairline'}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -266,7 +266,7 @@ function ClauseList({ clauses, summary }: { clauses: ClauseReportItem[]; summary
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-tp-steel">Clause type</label>
+            <label className="mb-1 block text-xs text-tp-steel">Provision type</label>
             <select value={type} onChange={(e) => setType(e.target.value)} className={SELECT_CLASS}>
               <option value="all">All types</option>
               {types.map((t) => (
@@ -282,14 +282,14 @@ function ClauseList({ clauses, summary }: { clauses: ClauseReportItem[]; summary
       {summary}
 
       <p className="text-xs text-tp-steel">
-        {filtered.length} of {clauses.length} clauses
+        {filtered.length} of {clauses.length} provisions
       </p>
 
       <div className="space-y-3">
         {filtered.map((clause) => (
           <ClauseCard key={clause.clause_id} clause={clause} />
         ))}
-        {filtered.length === 0 && <p className="text-sm text-tp-steel">No clauses match the current filters.</p>}
+        {filtered.length === 0 && <p className="text-sm text-tp-steel">No provisions match the current filters.</p>}
       </div>
     </div>
   );

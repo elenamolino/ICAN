@@ -11,12 +11,19 @@ import {
 import OntologyJobProgress from '../../components/OntologyJobProgress';
 import OntologyReport from '../../components/OntologyReport';
 import SaveOntologyAnalysisModal from '../../components/SaveOntologyAnalysisModal';
+import ImportFromIcan, { ImportedContract } from '../../components/ImportFromIcan';
 import FileUpload from '../../../core/components/file-upload-input';
 import customAlert from '../../../core/utils/custom-alert';
 import ActionButton from '../../../core/components/action-button';
 import BlockAlert from '../../../core/components/block-alert';
 
-type InputMode = 'paste' | 'upload';
+type InputMode = 'paste' | 'upload' | 'import';
+
+const MODES: { id: InputMode; label: string }[] = [
+  { id: 'paste', label: 'Paste text' },
+  { id: 'upload', label: 'Upload file' },
+  { id: 'import', label: 'Import from iCan' },
+];
 
 type Stage = 'idle' | 'submitting' | 'polling' | 'done' | 'error';
 
@@ -43,6 +50,17 @@ export default function OntologyAnalysisPage() {
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [report, setReport] = useState<JobReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The agreement imported from iCan, to link back to it.
+  const [source, setSource] = useState<ImportedContract['source'] | null>(null);
+
+  const handleImport = (imported: ImportedContract) => {
+    setText(imported.text);
+    setProvider(imported.provider);
+    setTitle(imported.title);
+    setDate(imported.date);
+    setSource(imported.source);
+    setMode('paste');
+  };
 
   useEffect(() => {
     listModels()
@@ -135,19 +153,24 @@ export default function OntologyAnalysisPage() {
   return (
     <>
       <Helmet>
-        <title>Ontology Analysis | ICAN</title>
+        <title>Full Analysis | ICAN</title>
       </Helmet>
       <div className="w-full p-4 pb-16 md:p-8">
         <div className="mx-auto max-w-4xl">
           <div className="mb-8 flex items-start justify-between gap-4">
             <div>
-              <h1 className="font-display text-2xl text-tp-ink">Ontology Analysis</h1>
+              <h1 className="font-display text-2xl text-tp-ink">Full Analysis</h1>
               <p className="mt-1 text-sm text-tp-steel">
-                Paste a contract's text or upload a plain-text file to convert it into ODRL
+                Paste a contract's text, upload a plain-text file or import an agreement from iCan to convert it into ODRL
                 permissions, prohibitions and duties, flag unfair terms, and evaluate
                 semantic fidelity, powered by the tos-to-odrl pipeline. The text is cut into
-                the same clauses AI Classify analyses.
+                the same provisions Abusive Analysis analyses.
               </p>
+              {source && (
+                <p className="mt-2 text-sm text-tp-steel">
+                  Imported from <Link to={source.href} className="font-medium text-tp-primary hover:underline">{source.name}</Link>.
+                </p>
+              )}
             </div>
             {stage !== 'idle' && (
               <button
@@ -234,8 +257,8 @@ export default function OntologyAnalysisPage() {
               </div>
 
               <div className="space-y-4 rounded-lg border border-tp-hairline-soft bg-tp-canvas p-5">
-                <div className="flex gap-2">
-                  {(['paste', 'upload'] as const).map((option) => (
+                <div className="flex flex-wrap gap-2">
+                  {MODES.map(({ id: option, label }) => (
                     <button
                       key={option}
                       type="button"
@@ -246,7 +269,7 @@ export default function OntologyAnalysisPage() {
                           : 'border border-tp-hairline text-tp-slate hover:bg-tp-canvas'
                       }`}
                     >
-                      {option === 'paste' ? 'Paste text' : 'Upload file'}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -272,6 +295,8 @@ export default function OntologyAnalysisPage() {
                       </p>
                     )}
                   </>
+                ) : mode === 'import' ? (
+                  <ImportFromIcan onImport={handleImport} />
                 ) : (
                   <FileUpload
                     onSubmit={handleFileSubmit}

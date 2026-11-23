@@ -131,9 +131,9 @@ export default function VersionComparison({
             <span className="text-center">Δ</span>
           </div>
           <div className="divide-y divide-tp-hairline-soft">
-            <StatRow label="Clauses" before={before.summary.totalClauses} after={after.summary.totalClauses} />
+            <StatRow label="Provisions" before={before.summary.totalClauses} after={after.summary.totalClauses} />
             <StatRow
-              label="Unfair clauses"
+              label="Unfair provisions"
               before={before.summary.unfairClauses}
               after={after.summary.unfairClauses}
               invertGood
@@ -144,7 +144,7 @@ export default function VersionComparison({
           {before.clauses && after.clauses && (
             <>
               <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-tp-steel">
-                Clauses by category
+                Provisions by category
               </h3>
               <div className="divide-y divide-tp-hairline-soft">
                 {CATEGORY_KEYS.map((key) => (
