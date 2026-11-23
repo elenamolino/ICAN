@@ -122,6 +122,20 @@ export default function CollectionTree({ tree, selection, onSelect, agreementHre
                               </li>
                             );
                           })}
+                          {agreement.pricingUrl && (
+                            <li role="treeitem">
+                              <a
+                                href={agreement.pricingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`The ${service.name} pricing, in a new tab`}
+                                className={`${rowClass} text-tp-steel hover:bg-tp-surface hover:text-tp-ink`}
+                              >
+                                <span className="min-w-0 flex-1 truncate">Pricing</span>
+                                <Iconify icon="mdi:open-in-new" width={13} className="shrink-0" />
+                              </a>
+                            </li>
+                          )}
                         </ul>
                       )}
                     </li>

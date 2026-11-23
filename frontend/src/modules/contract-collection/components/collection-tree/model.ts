@@ -23,6 +23,8 @@ export interface AgreementNode {
   key: string;
   name: AgreementName;
   categories: CategoryNode[];
+  /** The pricing, a sibling of the categories: it is a page elsewhere, not a document here. */
+  pricingUrl?: string | null;
 }
 
 export interface ServiceNode {
@@ -37,6 +39,7 @@ const CATEGORY_OF: Record<DocumentType, CategoryName> = {
   'acceptable-use-policy': 'Terms and Policies',
   'cookie-policy': 'Terms and Policies',
   'data-processing-agreement': 'Terms and Policies',
+  'security-policy': 'Terms and Policies',
   other: 'Other documents',
 };
 
@@ -67,8 +70,8 @@ export function buildServiceTree(
       name: category,
       contracts: byCategory.get(category)!,
     }));
-    const agreements = categories.length
-      ? [{ key: `${service.id}/${CUSTOMER_AGREEMENT}`, name: CUSTOMER_AGREEMENT, categories }]
+    const agreements = categories.length || service.pricingUrl
+      ? [{ key: `${service.id}/${CUSTOMER_AGREEMENT}`, name: CUSTOMER_AGREEMENT, categories, pricingUrl: service.pricingUrl ?? null }]
       : [];
 
     return { service, agreements };
@@ -94,9 +97,9 @@ export function findCategory(tree: ServiceNode[], key: string | null): CategoryS
 
 export function firstCategory(tree: ServiceNode[]): CategorySelection | null {
   for (const { service, agreements } of tree) {
-    if (agreements.length > 0) {
-      return { service, agreement: agreements[0], category: agreements[0].categories[0] };
-    }
+    // A service whose agreement only has its pricing has no documents to show.
+    const agreement = agreements.find((a) => a.categories.length > 0);
+    if (agreement) return { service, agreement, category: agreement.categories[0] };
   }
   return null;
 }

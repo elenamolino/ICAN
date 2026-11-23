@@ -35,6 +35,8 @@ export interface ServicePageService {
   id: string;
   name: string;
   slug: string;
+  /** Where the service's pricing is published, if it is. */
+  pricingUrl?: string | null;
 }
 
 export interface ServicePageQuery {
@@ -74,6 +76,7 @@ const POLICY_TYPE_OF: Record<DocumentType, PolicyType> = {
   'acceptable-use-policy': 'acceptable-use-policy',
   'cookie-policy': 'data-security-policy',
   'data-processing-agreement': 'data-security-policy',
+  'security-policy': 'data-security-policy',
   other: 'other-policy',
 };
 

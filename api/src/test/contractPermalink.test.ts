@@ -32,6 +32,7 @@ describe('Contract permalinks and version numbers', () => {
     };
     const savePath = `${BASE_PATH}/contracts/${organizationId}/ai-classify/save`;
     expect((await request(app).post(savePath).set(auth).send({ ...payload, documentType: 'poem' })).status).toBe(422);
+    expect((await request(app).post(savePath).set(auth).send({ ...payload, url: 'javascript:alert(1)' })).status).toBe(422);
     const saved = await request(app).post(savePath).set(auth).send(payload);
     expect(saved.status).toBeLessThan(300);
 
@@ -40,8 +41,9 @@ describe('Contract permalinks and version numbers', () => {
     const page = (await request(app).get(`${BASE_PATH}/contractCollections/${organizationId}/${collection.slug}/services?policyTypes=service-level-agreement`)).body;
     expect(page.services[0].contracts[0].documentType).toBe('service-level-agreement');
 
-    await request(app).post(savePath).set(auth).send({ ...payload, contractId: contract.id, documentType: 'terms-of-service', text: 'v2' });
+    await request(app).post(savePath).set(auth).send({ ...payload, contractId: contract.id, documentType: 'terms-of-service', text: 'v2', url: 'https://acme.example/terms' });
     expect((await request(app).get(`${BASE_PATH}/contracts/${organizationId}/${saved.body.contractSlug}`)).body.documentType).toBe('terms-of-service');
+    expect((await request(app).get(`${BASE_PATH}/contracts/${organizationId}/${saved.body.contractSlug}`)).body.url).toBe('https://acme.example/terms');
   });
 
   it('numbers versions, and opens a private contract to who has its link', async () => {
@@ -148,5 +150,26 @@ describe('Contract permalinks and version numbers', () => {
     const doc = (slug: string) => request(app).get(`${BASE_PATH}/contracts/${organizationId}/${slug}?share=${token}`);
     expect((await doc(terms.body.contractSlug)).status).toBe(200);
     expect((await doc(other.body.contractSlug)).status).toBe(404);
+  });
+
+  it('shows where a service publishes its pricing, set only by its owners', async () => {
+    const { user, organizationId } = await createAndLoginUser('USER', `price_${randomSuffix()}`);
+    const { user: stranger } = await createAndLoginUser('USER', `pstr_${randomSuffix()}`);
+    const auth = { Authorization: `Bearer ${user.token}` };
+    const { body: collection } = await request(app).post(`${BASE_PATH}/contractCollections/${organizationId}`).set(auth)
+      .send({ name: `Prices ${randomSuffix()}`, private: false });
+    await request(app).post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`).set(auth).send({
+      collectionId: collection.id ?? collection._id, serviceName: 'Rooms', contractName: 'Terms', provider: 'Acme', title: 'Terms',
+      date: new Date().toISOString(), text: 'Text.', summary: { totalClauses: 1, unfairClauses: 0, totalWords: 1 }, clauses: [],
+    });
+    const [service] = (await request(app).get(`${BASE_PATH}/services?collectionId=${collection.id ?? collection._id}`)).body.services;
+    const id = service.id ?? service._id;
+    const url = 'https://sphere.score.us.es/p/6aff51536b77f124b0283ec2';
+
+    expect((await request(app).put(`${BASE_PATH}/services/${id}`).set('Authorization', `Bearer ${stranger.token}`).send({ pricingUrl: url })).status).toBe(403);
+    expect((await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingUrl: 'javascript:alert(1)' })).status).toBe(422);
+    expect((await request(app).put(`${BASE_PATH}/services/${id}`).set(auth).send({ pricingUrl: url })).body.pricingUrl).toBe(url);
+    const agreement = (await request(app).get(`${BASE_PATH}/contractCollections/${organizationId}/${collection.slug}/services/${id}`)).body;
+    expect(agreement.service.pricingUrl).toBe(url);
   });
 });

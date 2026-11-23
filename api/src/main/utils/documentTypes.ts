@@ -8,6 +8,7 @@ export const DOCUMENT_TYPES = [
   'acceptable-use-policy',
   'cookie-policy',
   'data-processing-agreement',
+  'security-policy',
   'other',
 ] as const;
 

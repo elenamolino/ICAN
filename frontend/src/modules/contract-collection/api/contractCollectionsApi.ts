@@ -45,6 +45,7 @@ export interface CollectionServiceNode {
   id: string;
   name: string;
   slug: string;
+  pricingUrl?: string | null;
   contracts: Contract[];
 }
 
@@ -102,8 +103,8 @@ export interface Contract {
 export interface Agreement {
   collection: { name: string; slug: string; private: boolean };
   organization: ContractCollectionOrganization;
-  service: { id: string; name: string };
-  contracts: (Pick<Contract, 'id' | 'name' | 'slug' | 'documentType' | 'private' | 'latestVersionSummary'> & {
+  service: { id: string; name: string; pricingUrl: string | null };
+  contracts: (Pick<Contract, 'id' | 'name' | 'slug' | 'documentType' | 'private' | 'latestVersionSummary' | 'url'> & {
     current: { id: string; number: string | null; name: string | null; capturedAt: string } | null;
   })[];
 }

@@ -272,7 +272,7 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   },
   {
     path: '/services/*',
-    methods: ['DELETE'],
+    methods: ['PUT', 'DELETE'],
     allowedUserRoles: ['ADMIN', 'USER'],
   },
 

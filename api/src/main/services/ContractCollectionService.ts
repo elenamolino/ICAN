@@ -244,6 +244,7 @@ class ContractCollectionService {
       id: String(service._id),
       name: service.name,
       slug: service.slug,
+      pricingUrl: service.pricingUrl ?? null,
     }));
     const servicesById = new Map(serviceRefs.map(service => [service.id, service]));
 
@@ -302,7 +303,7 @@ class ContractCollectionService {
     return {
       collection: { name: collection.name, slug: collection.slug, private: Boolean(collection.private) },
       organization: collection.organization,
-      service: { id: String(service._id ?? service.id), name: service.name },
+      service: { id: String(service._id ?? service.id), name: service.name, pricingUrl: service.pricingUrl ?? null },
       contracts: own.map((c: any) => {
         const current = latest.find(v => v._contractId === String(c._id));
         return {
@@ -310,6 +311,7 @@ class ContractCollectionService {
           name: c.name,
           slug: c.slug,
           documentType: c.documentType ?? null,
+          url: c.url || null,
           private: c.private,
           latestVersionSummary: c.latestVersionSummary ?? null,
           current: current ? { id: String(current._id), number: current.number ?? null, name: current.name ?? null, capturedAt: current.capturedAt } : null,

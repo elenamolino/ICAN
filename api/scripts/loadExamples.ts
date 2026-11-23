@@ -25,6 +25,8 @@ interface ExampleDocument {
   service: string;
   company: string;
   title: string;
+  /** The contract's name, when it is not "Company — Title". */
+  name?: string;
   documentType: string;
   url?: string;
   versions: ExampleVersion[];
@@ -33,6 +35,8 @@ interface ExampleFile {
   collection: string;
   description?: string;
   documents: ExampleDocument[];
+  /** Per service name: where its pricing is published (its Pricing card). */
+  services?: Record<string, { pricingUrl?: string }>;
 }
 
 const base = (process.env.ICAN_URL ?? 'http://localhost:8080').replace(/\/$/, '') + '/api/v1';
@@ -70,12 +74,15 @@ async function main() {
   const collectionId = collection.id ?? collection._id;
 
   for (const doc of examples.documents) {
-    const name = `${doc.company} — ${doc.title}`;
+    const name = doc.name ?? `${doc.company} — ${doc.title}`;
     for (const version of doc.versions) {
       const services: any[] = (await call('GET', `/services?collectionId=${collectionId}`)).services;
       const service = services.find(s => s.name === doc.service);
       const { contracts } = await call('GET', `/contracts/${organizationId}?collection=${collection.slug}&limit=200`);
-      const contract = contracts.find((c: any) => c.name === name);
+      // By name, or by its official page: a contract renamed in iCan is still the same one.
+      const contract = contracts.find(
+        (c: any) => c.name === name || (doc.url && c.url === doc.url && c.service?.name === doc.service)
+      );
       const analysis = version.analysis ?? (await call('POST', '/analysis/ai-classify', { text: version.text }));
 
       await call('POST', `/contracts/${organizationId}/ai-classify/save`, {
@@ -87,11 +94,19 @@ async function main() {
         summary: analysis.summary,
         clauses: analysis.clauses,
         documentType: doc.documentType,
+        ...(doc.url ? { url: doc.url } : {}),
         versionNumber: version.number,
         versionName: version.name,
       });
       console.log(`${name}: v${version.number} (${version.name})`);
     }
+  }
+  const services: any[] = (await call('GET', `/services?collectionId=${collectionId}`)).services;
+  for (const [name, settings] of Object.entries(examples.services ?? {})) {
+    const service = services.find(s => s.name === name);
+    if (!service || !settings.pricingUrl) continue;
+    await call('PUT', `/services/${service.id ?? service._id}`, { pricingUrl: settings.pricingUrl });
+    console.log(`${name}: pricing at ${settings.pricingUrl}`);
   }
   console.log(`Done: ${examples.documents.length} documents in "${examples.collection}".`);
 }

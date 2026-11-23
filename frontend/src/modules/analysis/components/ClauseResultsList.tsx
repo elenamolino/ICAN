@@ -1,3 +1,4 @@
+import { CHIP_CLASS, UNFAIR_CHIP_CLASS } from './filterStyles';
 import { AnalyzeResponse, ClauseAnalysis } from '../api/analysisApi';
 import { topCategories } from '../constants/clauseCategories';
 import SummaryStat from './SummaryStat';
@@ -24,7 +25,11 @@ function ClauseCard({ clause }: { clause: ClauseAnalysis }) {
           {relevantCategories.map(({ key, label, score }) => (
             <span
               key={key}
-              className="rounded-full bg-tp-surface px-2 py-0.5 text-xs text-tp-slate"
+              className={
+                clause.isUnfair
+                  ? UNFAIR_CHIP_CLASS
+                  : CHIP_CLASS
+              }
               title={label}
             >
               {label} · {Math.round(score * 100)}%

@@ -32,9 +32,10 @@ const saveBodyCommon = {
   title: { type: 'string', description: 'Required when creating a new contract.' },
   documentType: {
     type: 'string',
-    enum: ['terms-of-service', 'service-level-agreement', 'privacy-policy', 'acceptable-use-policy', 'cookie-policy', 'data-processing-agreement', 'other'],
+    enum: ['terms-of-service', 'service-level-agreement', 'privacy-policy', 'acceptable-use-policy', 'cookie-policy', 'data-processing-agreement', 'security-policy', 'other'],
     description: 'What the document is. On an existing contract, it changes its type.',
   },
+  url: { type: 'string', description: 'Where the provider publishes the document. On an existing contract, it replaces its source.' },
   date: { type: 'string', format: 'date', description: 'Capture date of the text (ISO 8601).' },
 };
 
@@ -450,6 +451,17 @@ export const openApiSpec = {
         summary: 'List the services of a collection',
         parameters: [{ name: 'collectionId', in: 'query', required: true, schema: { type: 'string' } }],
         responses: { '200': { description: 'Services.' } },
+      },
+    },
+    '/services/{id}': {
+      put: {
+        tags: ['Services'],
+        summary: 'Set where the pricing of a service is published',
+        description: 'Owners and admins of its organization. `pricingUrl` is shown as the Pricing card of the Customer Agreement; null removes it.',
+        security: secured,
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { pricingUrl: { type: 'string', nullable: true } } } } } },
+        responses: { '200': { description: 'The service.' }, '403': errorResponse('Not an owner or admin.') },
       },
     },
     '/users/{username}/api-keys': {

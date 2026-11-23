@@ -77,6 +77,10 @@ const save = [
     .bail()
     .matches(/^\d{1,4}\.\d{1,4}$/)
     .withMessage('The versionNumber field must look like 0.1'),
+  check('url')
+    .optional({ values: 'null' })
+    .isURL({ protocols: ['http', 'https'], require_protocol: true })
+    .withMessage('The url field must be a web address'),
   check('documentType')
     .optional({ values: 'null' })
     .isIn(DOCUMENT_TYPES)

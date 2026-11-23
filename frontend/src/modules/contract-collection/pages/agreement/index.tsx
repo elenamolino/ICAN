@@ -50,6 +50,7 @@ export default function AgreementPage() {
     );
   }
 
+  const pricingUrl = agreement.service.pricingUrl;
   const documents = [...agreement.contracts].sort(
     (a, b) => ORDER.indexOf(documentTypeOf(a)) - ORDER.indexOf(documentTypeOf(b)) || a.name.localeCompare(b.name)
   );
@@ -76,7 +77,7 @@ export default function AgreementPage() {
           <h1 className="font-display text-3xl font-normal text-tp-ink">{agreement.service.name}</h1>
           <p className="mt-1 text-sm text-tp-steel">
             {companies.length > 0 && <>By {companies.join(', ')} · </>}
-            {documents.length} {documents.length === 1 ? 'document' : 'documents'}
+            {documents.length + (pricingUrl ? 1 : 0)} {documents.length + (pricingUrl ? 1 : 0) === 1 ? 'document' : 'documents'}
           </p>
         </div>
         {token && (
@@ -92,7 +93,7 @@ export default function AgreementPage() {
         )}
       </div>
 
-      {documents.length === 0 ? (
+      {documents.length === 0 && !pricingUrl ? (
         <p className="rounded-xl border border-tp-hairline bg-tp-canvas px-4 py-12 text-center text-sm text-tp-steel">
           No documents you can see in this agreement.
         </p>
@@ -117,10 +118,24 @@ export default function AgreementPage() {
                 )}
                 <p className="mt-3 flex-1 text-sm leading-relaxed text-tp-slate">{documentTypeDescription(type)}</p>
                 <div className="mt-4 flex items-center justify-between gap-2">
-                  <Link to={href} className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-tp-primary hover:underline">
-                    View document
-                    <Iconify icon="mdi:chevron-right" width={16} />
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <Link to={href} className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-tp-primary hover:underline">
+                      View document
+                      <Iconify icon="mdi:chevron-right" width={16} />
+                    </Link>
+                    {doc.url && (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`The provider's page: ${doc.url}`}
+                        className="inline-flex cursor-pointer items-center gap-1 text-xs text-tp-steel hover:text-tp-ink hover:underline"
+                      >
+                        Official source
+                        <Iconify icon="mdi:open-in-new" width={12} />
+                      </a>
+                    )}
+                  </div>
                   {typeof unfair === 'number' && (
                     <span className={`rounded px-1.5 py-0.5 text-[11px] ${unfair > 0 ? 'bg-tp-severity-warning-bg text-tp-severity-warning' : 'bg-tp-severity-success-bg text-tp-severity-success'}`}>
                       {unfair} unfair
@@ -130,6 +145,27 @@ export default function AgreementPage() {
               </li>
             );
           })}
+          {pricingUrl && (
+            <li className="flex flex-col rounded-xl border border-tp-hairline bg-tp-canvas p-5 transition-shadow hover:shadow-elevation-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-tp-primary">Pricing</p>
+              <h2 className="mt-2 text-lg font-medium leading-snug text-tp-ink">{agreement.service.name} pricing</h2>
+              <p className="mt-1 truncate text-xs text-tp-steel">{new URL(pricingUrl).host}</p>
+              <p className="mt-3 flex-1 text-sm leading-relaxed text-tp-slate">
+                The plans, their prices and what each one includes. The documents of the agreement refer to it.
+              </p>
+              <div className="mt-4">
+                <a
+                  href={pricingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex cursor-pointer items-center gap-1 text-sm font-medium text-tp-primary hover:underline"
+                >
+                  View pricing
+                  <Iconify icon="mdi:open-in-new" width={14} />
+                </a>
+              </div>
+            </li>
+          )}
         </ul>
       )}
     </div>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ClauseAnalysis } from '../../../analysis/api/analysisApi';
-import { CHIP_CLASS, SELECT_CLASS, pillClass } from '../../../analysis/components/filterStyles';
+import { CHIP_CLASS, SELECT_CLASS, UNFAIR_CHIP_CLASS, pillClass } from '../../../analysis/components/filterStyles';
 import { CATEGORY_LABELS, CATEGORY_KEYS, topCategories } from '../../../analysis/constants/clauseCategories';
 
 type ViewMode = 'all' | 'unfair';
@@ -33,7 +33,7 @@ function ClauseCard({ clause, threshold }: { clause: ClauseAnalysis; threshold: 
       {relevantCategories.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {relevantCategories.map(({ key, label, score }) => (
-            <span key={key} className={CHIP_CLASS} title={label}>
+            <span key={key} className={clause.isUnfair ? UNFAIR_CHIP_CLASS : CHIP_CLASS} title={label}>
               {label} · {Math.round(score * 100)}%
             </span>
           ))}

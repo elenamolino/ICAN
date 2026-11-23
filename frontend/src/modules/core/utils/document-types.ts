@@ -8,6 +8,7 @@ export const DOCUMENT_TYPES = [
   { id: 'acceptable-use-policy', label: 'Acceptable Use Policy', description: 'What users may and may not do with the service.' },
   { id: 'cookie-policy', label: 'Cookie Policy', description: 'Which cookies and similar technologies are used, and the choices users have.' },
   { id: 'data-processing-agreement', label: 'Data Processing Agreement', description: 'How the provider processes personal data on behalf of its business customers.' },
+  { id: 'security-policy', label: 'Security Overview', description: 'How the provider protects the data: storage, transfers, backups and certifications.' },
   { id: 'other', label: 'Other document', description: 'Another document of the agreement.' },
 ] as const;
 
@@ -23,6 +24,7 @@ export function documentTypeFromName(name: string): DocumentType {
   if (text.includes('acceptable use')) return 'acceptable-use-policy';
   if (text.includes('cookie')) return 'cookie-policy';
   if (/data processing|\bdpa\b/.test(text)) return 'data-processing-agreement';
+  if (/security/.test(text)) return 'security-policy';
   if (/terms|conditions|agreement/.test(text)) return 'terms-of-service';
   return 'other';
 }
