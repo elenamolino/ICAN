@@ -16,6 +16,10 @@ const loadServiceRoutes = function (app: express.Application) {
         .optional({ values: 'null' })
         .isURL({ protocols: ['http', 'https'], require_protocol: true })
         .withMessage('The pricingUrl field must be a web address'),
+      check('pricingSourceUrl')
+        .optional({ values: 'null' })
+        .isURL({ protocols: ['http', 'https'], require_protocol: true })
+        .withMessage('The pricingSourceUrl field must be a web address'),
       handleValidation,
       serviceController.update
     )

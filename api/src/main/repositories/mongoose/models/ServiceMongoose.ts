@@ -9,6 +9,8 @@ const serviceSchema = new Schema(
     _organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true },
     // Where the service's pricing is published, such as its permanent link in SPHERE.
     pricingUrl: { type: String, required: false, default: null },
+    // The provider's own pricing page, its official source.
+    pricingSourceUrl: { type: String, required: false, default: null },
     // The secret of the permanent link to this service's Customer Agreement: who has it
     // reads all its documents. Never selected, so no list hands it out.
     shareToken: { type: String, required: false, select: false, index: { unique: true, sparse: true } },

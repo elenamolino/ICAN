@@ -37,6 +37,8 @@ export interface ServicePageService {
   slug: string;
   /** Where the service's pricing is published, if it is. */
   pricingUrl?: string | null;
+  /** The provider's own pricing page. */
+  pricingSourceUrl?: string | null;
 }
 
 export interface ServicePageQuery {

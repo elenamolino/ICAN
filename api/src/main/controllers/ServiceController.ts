@@ -32,7 +32,7 @@ class ServiceController {
   async update(req: any, res: any) {
     try {
       const scopes = req.authType === 'api-key' ? req.user.apiKey?.scopes ?? [] : undefined;
-      const service = await this.serviceService.update(req.params.id, { pricingUrl: req.body.pricingUrl }, req.user, scopes);
+      const service = await this.serviceService.update(req.params.id, { pricingUrl: req.body.pricingUrl, pricingSourceUrl: req.body.pricingSourceUrl }, req.user, scopes);
       res.json(service);
     } catch (err: any) {
       const { status, message } = handleError(err);

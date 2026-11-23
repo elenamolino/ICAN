@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import Iconify from '../../../core/components/iconify';
+
 export type ProblemKind = 'unfair' | 'placeholder' | 'field' | 'missing' | 'mentioned';
 
 export interface Problem {
@@ -8,6 +11,8 @@ export interface Problem {
   /** For problems outside the text, such as an empty field: what clicking it does. */
   onSelect?: () => void;
 }
+
+const FOLDED_KEY = 'ican.editor.problemsFolded';
 
 // Unfair clauses are errors. The rest only make the version a draft.
 const BADGE: Record<ProblemKind, { label: string; className: string }> = {
@@ -24,9 +29,33 @@ export default function ProblemsPanel({ problems, note, onReveal }: {
   note?: string;
   onReveal: (line: number) => void;
 }) {
+  // Folded or not, as the person left it last time.
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(FOLDED_KEY) !== '1';
+    } catch {
+      return true;
+    }
+  });
+  const toggle = () => {
+    setOpen(!open);
+    try {
+      localStorage.setItem(FOLDED_KEY, open ? '1' : '0');
+    } catch {
+      // Without storage it is only remembered while the page is open.
+    }
+  };
+
   return (
     <div className="border-t border-tp-hairline bg-tp-surface">
-      <div className="flex flex-wrap items-center gap-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-tp-steel">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        title={open ? 'Fold the problems' : 'Unfold the problems'}
+        className="flex w-full cursor-pointer flex-wrap items-center gap-2 px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-tp-steel hover:text-tp-ink"
+      >
+        <Iconify icon={open ? 'mdi:chevron-down' : 'mdi:chevron-right'} width={16} className="-ml-1" />
         Problems
         <span
           className={`rounded-full px-2 py-0.5 normal-case tracking-normal ${
@@ -36,8 +65,8 @@ export default function ProblemsPanel({ problems, note, onReveal }: {
           {problems.length ? `${problems.length} to review` : 'No issues'}
         </span>
         {note && <span className="ml-auto font-normal normal-case tracking-normal text-tp-steel">{note}</span>}
-      </div>
-      {problems.length > 0 && (
+      </button>
+      {open && problems.length > 0 && (
         <ul className="max-h-44 space-y-1 overflow-y-auto px-4 pb-3 text-sm">
           {problems.map((problem) => {
             const badge = BADGE[problem.kind];
