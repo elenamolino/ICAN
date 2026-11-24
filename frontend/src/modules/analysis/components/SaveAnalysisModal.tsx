@@ -40,12 +40,16 @@ interface SaveAnalysisModalProps {
   documentType?: string;
   /** Given by the editor: number the version, a major or a minor step after the last one. */
   versionStep?: 'minor' | 'major';
+  /** What is being saved, as the user calls it: the editor saves an agreement template. */
+  itemLabel?: string;
 }
 
 export default function SaveAnalysisModal({
   open, onClose, text, result, provider, title, date, onSaved, heading = 'Save analysis', submitLabel = 'Save analysis', versionName,
-  serviceName, versionStep, documentType,
+  serviceName, versionStep, documentType, itemLabel = 'Contract',
 }: SaveAnalysisModalProps) {
+  // The editor already knows the service, so it is shown, not asked for.
+  const fixedService = serviceName?.trim() || '';
   const { getMyOrganizations } = useOrganizationsApi();
   const { saveAnalysis } = useAnalysisApi();
   const { listCollections, listContracts, listContractVersions, createCollection } = useContractCollectionsApi();
@@ -56,6 +60,8 @@ export default function SaveAnalysisModal({
   const [loadingCollections, setLoadingCollections] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<ContractCollectionSummary | null>(null);
 
+  const [serviceCollectionIds, setServiceCollectionIds] = useState<string[]>([]);
+  const [proposedCollection, setProposedCollection] = useState(false);
   const [showCreateCollection, setShowCreateCollection] = useState(false);
   const [newCollectionOrgId, setNewCollectionOrgId] = useState('');
   const [newCollectionName, setNewCollectionName] = useState('');
@@ -85,6 +91,8 @@ export default function SaveAnalysisModal({
 
   const resetAll = useCallback(() => {
     setSelectedCollection(null);
+    setServiceCollectionIds([]);
+    setProposedCollection(false);
     setServices([]);
     setServiceSelection(null);
     setContracts([]);
@@ -122,6 +130,25 @@ export default function SaveAnalysisModal({
         const { collections: myCollections } = await listCollections({ organizationIds: orgIds, limit: 100 });
         setCollections(myCollections);
         setShowCreateCollection(myCollections.length === 0);
+
+        // Mark the collections that already hold this service's Customer Agreement.
+        // Only when there is just one is it proposed: with several, the user chooses.
+        if (fixedService && myCollections.length > 0) {
+          const wanted = fixedService.toLowerCase();
+          const found = await Promise.all(
+            myCollections.map((c) =>
+              listServices({ collectionId: c.id }, fetchWithInterceptor)
+                .then((list) => list.some((s) => s.name.toLowerCase() === wanted))
+                .catch(() => false)
+            )
+          );
+          const homes = myCollections.filter((_, i) => found[i]);
+          setServiceCollectionIds(homes.map((c) => c.id));
+          if (homes.length === 1) {
+            setSelectedCollection(homes[0]);
+            setProposedCollection(true);
+          }
+        }
       } catch {
         setCollections([]);
       } finally {
@@ -286,7 +313,9 @@ export default function SaveAnalysisModal({
             <div className="flex flex-col items-center gap-4 py-4 text-center">
               <MdCheckCircle className="h-10 w-10 text-tp-severity-success" />
               <div>
-                <p className="text-base font-semibold text-tp-ink">Analysis saved</p>
+                <p className="text-base font-semibold text-tp-ink">
+                  {itemLabel === 'Contract' ? 'Analysis saved' : `${itemLabel} saved`}
+                </p>
                 <p className="mt-1 text-sm text-tp-steel">
                   Saved to "{savedResult.collectionName}".
                 </p>
@@ -304,7 +333,7 @@ export default function SaveAnalysisModal({
                   onClick={onClose}
                   className="cursor-pointer rounded-lg bg-tp-primary px-4 py-2 text-sm font-medium text-tp-on-primary transition-colors hover:bg-tp-primary/90"
                 >
-                  View contract
+                  View {itemLabel.toLowerCase()}
                 </Link>
               </div>
             </div>
@@ -319,6 +348,14 @@ export default function SaveAnalysisModal({
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
+            {fixedService && (
+              <div className="flex items-baseline gap-2 text-sm">
+                <span className="font-medium text-tp-ink">Service</span>
+                <span className="min-w-0 truncate text-tp-ink">{fixedService}</span>
+                <span className="text-xs text-tp-steel">(from the editor)</span>
+              </div>
+            )}
+
             <div>
               <div className="mb-1 flex items-center justify-between">
                 <label className="block text-sm font-medium text-tp-ink">Collection</label>
@@ -336,11 +373,12 @@ export default function SaveAnalysisModal({
               {!showCreateCollection && (
                 <select
                   value={selectedCollection?.id ?? ''}
-                  onChange={(e) =>
-                    setSelectedCollection(collections.find((c) => c.id === e.target.value) ?? null)
-                  }
+                  onChange={(e) => {
+                    setSelectedCollection(collections.find((c) => c.id === e.target.value) ?? null);
+                    setProposedCollection(false);
+                  }}
                   disabled={loadingCollections}
-                  className="w-full rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
+                  className="w-full cursor-pointer rounded-lg border border-tp-hairline bg-tp-surface px-3 py-2 text-sm text-tp-ink focus:border-tp-primary focus:outline-none"
                 >
                   <option value="">
                     {loadingCollections ? 'Loading collections…' : 'Select a collection'}
@@ -348,15 +386,38 @@ export default function SaveAnalysisModal({
                   {collections.map((c) => (
                     <option key={c.id} value={c.id}>
                       {orgs.find((o) => o.id === c.organization.id)?.label ?? c.organization.displayName} / {c.name}
+                      {serviceCollectionIds.includes(c.id) ? ` · has ${fixedService}` : ''}
                     </option>
                   ))}
                 </select>
               )}
 
+              {fixedService && !showCreateCollection && !loadingCollections && (
+                <p className="mt-1 text-xs text-tp-steel">
+                  {proposedCollection && selectedCollection ? (
+                    <>{fixedService}'s Customer Agreement is in this collection. You can choose another one.</>
+                  ) : serviceCollectionIds.length > 1 && !selectedCollection ? (
+                    <>
+                      {fixedService} is in {serviceCollectionIds.length} of your collections, marked in the list.
+                      Choose where to save it.
+                    </>
+                  ) : serviceCollectionIds.length === 0 && !selectedCollection ? (
+                    <>
+                      First agreement template for {fixedService}? Create a collection for your service
+                      with <span className="font-medium">+ New collection</span>.
+                    </>
+                  ) : null}
+                </p>
+              )}
+
               {showCreateCollection && (
                 <div className="space-y-2 rounded-lg border border-tp-hairline bg-tp-surface p-3">
                   {!loadingCollections && collections.length === 0 && (
-                    <p className="text-xs text-tp-steel">You have no collections yet. Create one below.</p>
+                    <p className="text-xs text-tp-steel">
+                      {fixedService
+                        ? 'Is this your first agreement template? Create a collection for your service first.'
+                        : 'You have no collections yet. Create one below.'}
+                    </p>
                   )}
                   {createCollectionError && (
                     <BlockAlert variant="error" onDismiss={() => setCreateCollectionError(null)}>
@@ -428,27 +489,33 @@ export default function SaveAnalysisModal({
               )}
             </div>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-tp-ink">Service</label>
-              <EntityPickerInput
-                items={services.map((s) => ({ id: s.id, name: s.name }))}
-                loading={loadingServices}
-                disabled={!selectedCollection}
-                selection={serviceSelection}
-                onChange={setServiceSelection}
-                placeholder={selectedCollection ? 'Search or create a service...' : 'Select a collection first'}
-              />
-            </div>
+            {!fixedService && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-tp-ink">Service</label>
+                <EntityPickerInput
+                  items={services.map((s) => ({ id: s.id, name: s.name }))}
+                  loading={loadingServices}
+                  disabled={!selectedCollection}
+                  selection={serviceSelection}
+                  onChange={setServiceSelection}
+                  placeholder={selectedCollection ? 'Search or create a service...' : 'Select a collection first'}
+                />
+              </div>
+            )}
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-tp-ink">Contract</label>
+              <label className="mb-1 block text-sm font-medium text-tp-ink">{itemLabel}</label>
               <EntityPickerInput
                 items={contracts.map((c) => ({ id: c.id, name: c.name }))}
                 loading={loadingContracts}
                 disabled={!serviceSelection}
                 selection={contractSelection}
                 onChange={setContractSelection}
-                placeholder={serviceSelection ? 'Search or create a contract...' : 'Select a service first'}
+                placeholder={
+                  serviceSelection
+                    ? `Search or create ${itemLabel === 'Contract' ? 'a contract' : `an ${itemLabel.toLowerCase()}`}...`
+                    : fixedService ? 'Select a collection first' : 'Select a service first'
+                }
               />
             </div>
 

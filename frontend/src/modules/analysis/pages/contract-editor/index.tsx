@@ -42,7 +42,7 @@ const FROM_CONTRACT = 'saved-contract';
 
 // A draft can be saved without them, and a contract needs a name.
 const NO_COMPANY = 'Unnamed company';
-const NO_TITLE = 'Untitled contract';
+const NO_TITLE = 'Untitled agreement template';
 
 const FIELD = 'min-w-0 rounded-lg border border-tp-hairline bg-tp-canvas px-2.5 py-1.5 text-sm text-tp-ink focus:border-tp-primary focus:outline-none';
 const BUTTON = 'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
@@ -102,7 +102,7 @@ function ContractEditor() {
         const contract = await getContract(organizationId, contractSlug);
         const versions = await listContractVersions(organizationId, contractSlug);
         const versionId = searchParams.get('version') ?? versions.find((v) => v.label === 'last')?.id ?? versions[versions.length - 1]?.id;
-        if (!forking && (!versionId || !contract.collection)) throw new Error('This contract has no saved version to edit.');
+        if (!forking && (!versionId || !contract.collection)) throw new Error('This agreement template has no saved version to edit.');
         const version = versionId ? await getContractVersion(organizationId, contractSlug, versionId) : null;
         if (cancelled) return;
 
@@ -143,7 +143,7 @@ function ContractEditor() {
           parentVersionId: versionId,
         });
       } catch (err: any) {
-        if (!cancelled) await customAlert(err.message || 'The contract could not be opened.', 'error');
+        if (!cancelled) await customAlert(err.message || 'The agreement template could not be opened.', 'error');
       }
     })();
     return () => {
@@ -192,9 +192,9 @@ function ContractEditor() {
       id: `field-${field}`,
       kind: 'field' as const,
       text: {
-        Service: 'Service is empty: write its name, in Contract.',
-        Company: 'Company is empty: write who provides the service, in Contract.',
-        Title: 'Title is empty: write the name of the document, in Contract.',
+        Service: 'Service is empty: write its name, in Agreement template.',
+        Company: 'Company is empty: write who provides the service, in Agreement template.',
+        Title: 'Title is empty: write the name of the document, in Agreement template.',
       }[field],
       onSelect: () => fieldRefs[field].current?.focus(),
     })),
@@ -282,7 +282,7 @@ function ContractEditor() {
       }
       // Drafts saved before the editor kept the service do not have it: look it up.
       const serviceId = target.serviceId ?? (await getContract(target.organizationId, target.contractSlug)).service?.id;
-      if (!serviceId) throw new Error('This contract has no service, so a new version cannot be added to it.');
+      if (!serviceId) throw new Error('This agreement template has no service, so a new version cannot be added to it.');
       if (!target.serviceId) setTarget({ ...target, serviceId });
       const saved = await saveAnalysis(target.organizationId, {
         collectionId: target.collectionId,
@@ -299,7 +299,7 @@ function ContractEditor() {
       });
       openSavedVersion(saved.organizationId, saved.contractSlug, saved.versionId);
     } catch (err: any) {
-      await customAlert(err.message || 'The contract could not be saved.', 'error');
+      await customAlert(err.message || 'The agreement template could not be saved.', 'error');
     } finally {
       setBusy(null);
     }
@@ -351,14 +351,14 @@ function ContractEditor() {
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-4 py-4 md:px-6">
       <Helmet>
-        <title>Contract editor | ICAN</title>
+        <title>Agreement template editor | ICAN</title>
       </Helmet>
 
       {/* A thin bar, as in SPHERE: the page and its two actions.
           The help line under it only appears when something blocks saving. */}
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-2xl font-normal text-tp-ink">Contract editor</h1>
+          <h1 className="font-display text-2xl font-normal text-tp-ink">Agreement template editor</h1>
           <div className="ml-auto flex gap-2">
             <button
               type="button"
@@ -405,7 +405,7 @@ function ContractEditor() {
             >
               {!template && (
                 <option value={templateId} disabled>
-                  {target ? 'From a saved contract' : 'Blank document'}
+                  {target ? 'From a saved agreement template' : 'Blank document'}
                 </option>
               )}
               {CONTRACT_TEMPLATES.map((t) => (
@@ -426,7 +426,7 @@ function ContractEditor() {
           {/* The contract's details: they only matter when saving, so they sit
               here, out of the way of the text. */}
           <div className="flex flex-col gap-2 border-b border-tp-hairline px-4 py-3">
-            <h2 className="text-sm font-semibold text-tp-ink">Contract</h2>
+            <h2 className="text-sm font-semibold text-tp-ink">Agreement template</h2>
             {[
               { label: 'Type', field: (
                 <select
@@ -485,7 +485,7 @@ function ContractEditor() {
                     value={versionStep}
                     onChange={(e) => setStep(e.target.value as 'minor' | 'major')}
                     aria-label="Version number"
-                    title={incomplete ? 'An incomplete contract can only take a minor version' : undefined}
+                    title={incomplete ? 'An incomplete agreement template can only take a minor version' : undefined}
                     className={`${FIELD} w-[5rem] shrink-0 cursor-pointer`}
                   >
                     <option value="minor">{nextNumbers.minor}</option>
@@ -517,7 +517,7 @@ function ContractEditor() {
                 ) : (
                   origin.label
                 )}
-                . Saving creates a new contract of yours.
+                . Saving creates a new agreement template of yours.
               </p>
             )}
             {target && (
@@ -556,8 +556,9 @@ function ContractEditor() {
           documentType={documentType}
           versionStep={versionStep}
           date={new Date().toISOString()}
-          heading="Save contract"
-          submitLabel="Save contract"
+          heading={service.trim() ? `Save to ${service.trim()}'s Customer Agreement` : 'Save agreement template'}
+          submitLabel="Save agreement template"
+          itemLabel="Agreement template"
           versionName={versionName}
           onSaved={async (saved) => {
             try {
