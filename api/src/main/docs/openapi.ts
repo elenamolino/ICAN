@@ -28,7 +28,11 @@ const saveBodyCommon = {
     description:
       'Attach the result to this existing version of `contractId` (overwriting that analysis) instead of creating or reusing a version by content hash.',
   },
-  provider: { type: 'string', description: 'Required when creating a new contract.' },
+  provider: {
+    type: 'string',
+    description:
+      'Who provides the service, such as OpenAI for ChatGPT. Required when creating a new contract. Kept as the contract\'s `company`; a new contract is named `<service> — <title>`. On an existing contract, it replaces its company.',
+  },
   title: { type: 'string', description: 'Required when creating a new contract.' },
   documentType: {
     type: 'string',

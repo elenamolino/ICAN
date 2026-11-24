@@ -356,11 +356,13 @@ export default function ContractDetailPage() {
           <button type="button" onClick={() => router.push('/collections')} className="cursor-pointer hover:text-tp-ink">
             Collections
           </button>
-          {collectionSlug && (
+          {/* The collection comes from the address or, when opened from elsewhere
+              (such as right after saving in the editor), from the contract itself. */}
+          {(contract.collection || collectionSlug) && (
             <>
               <span>/</span>
               <button type="button" onClick={() => router.push(backHref)} className="cursor-pointer hover:text-tp-ink">
-                {collectionSlug}
+                {contract.collection?.name ?? collectionSlug}
               </button>
             </>
           )}

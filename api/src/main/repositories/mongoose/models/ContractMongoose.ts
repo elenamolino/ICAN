@@ -5,6 +5,8 @@ import { DOCUMENT_TYPES } from '../../../utils/documentTypes';
 const contractSchema = new Schema(
   {
     name: { type: String, required: true },
+    // Who provides the service, such as OpenAI for ChatGPT. The name carries the service.
+    company: { type: String, required: false, default: null },
     slug: { type: String, required: false },
     _collectionId: { type: String, ref: 'ContractCollection', required: false },
     // The secret of the permanent link: who has it reads the contract, private or not.

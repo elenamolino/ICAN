@@ -91,11 +91,11 @@ export default function CollectionTree({ tree, selection, onSelect, agreementHre
                         {agreementHref && service.id !== UNASSIGNED_SERVICE_ID && (
                           <Link
                             to={agreementHref(service.id)}
-                            title={`Open the ${service.name} Customer Agreement`}
-                            aria-label={`Open the ${service.name} Customer Agreement`}
+                            title={`See the ${service.name} Customer Agreement`}
+                            aria-label={`See the ${service.name} Customer Agreement`}
                             className="shrink-0 cursor-pointer rounded-md p-1.5 text-tp-steel transition-colors hover:bg-tp-surface hover:text-tp-primary"
                           >
-                            <Iconify icon="mdi:open-in-new" width={14} />
+                            <Iconify icon="mdi:eye-outline" width={15} />
                           </Link>
                         )}
                       </div>

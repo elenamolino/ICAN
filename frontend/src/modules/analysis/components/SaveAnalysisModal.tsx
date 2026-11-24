@@ -544,7 +544,7 @@ export default function SaveAnalysisModal({
 
             {isNewContract && contractSelection && (
               <p className="text-xs text-tp-steel">
-                Will be saved as "{provider} — {(contractSelection && titleFromName(contractSelection.name, provider)) || title}", dated {date}.
+                Will be saved as "{serviceSelection?.name || fixedService || provider} — {(contractSelection && titleFromName(contractSelection.name, provider)) || title}", dated {date}.
               </p>
             )}
 

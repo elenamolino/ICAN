@@ -215,7 +215,7 @@ class ContractService {
   }
 
   async create(
-    data: { name: string; url?: string; content?: string; version?: string; serviceId?: string; documentType?: string | null },
+    data: { name: string; url?: string; content?: string; version?: string; serviceId?: string; documentType?: string | null; company?: string | null },
     organizationId: string,
     isPrivate: boolean,
     reqUser: LeanUser,
@@ -256,6 +256,7 @@ class ContractService {
       slug,
       version: data.version,
       documentType: data.documentType ?? null,
+      company: data.company ?? null,
       _collectionId: collectionId,
       _serviceId: data.serviceId,
       _organizationId: organizationId,
@@ -377,7 +378,7 @@ class ContractService {
     }
 
     // Never the organization or the collection: those have their own checked endpoints.
-    const changes = pickDefined(data, ['name', 'private', 'url', 'content', 'version', 'documentType']);
+    const changes = pickDefined(data, ['name', 'company', 'private', 'url', 'content', 'version', 'documentType']);
     if (changes.name) {
       changes.slug = await deduplicateSlug(generateSlug(changes.name), slugToCheck =>
         this.contractRepository.findExistingSlug(slugToCheck, organizationId)

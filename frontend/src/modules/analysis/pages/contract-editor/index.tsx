@@ -22,6 +22,7 @@ import { useDebouncedValue } from '../../../core/hooks/useDebouncedValue';
 import customConfirm from '../../../core/utils/custom-confirm';
 import customAlert from '../../../core/utils/custom-alert';
 import Iconify from '../../../core/components/iconify';
+import { useServicesApi } from '../../../contract-collection/api/servicesApi';
 
 /** The contract the editor saves new versions to, after the first save. */
 interface SaveTarget {
@@ -45,6 +46,8 @@ const NO_COMPANY = 'Unnamed company';
 const NO_TITLE = 'Untitled agreement template';
 
 const FIELD = 'min-w-0 rounded-lg border border-tp-hairline bg-tp-canvas px-2.5 py-1.5 text-sm text-tp-ink focus:border-tp-primary focus:outline-none';
+// A field needed to save that is still empty.
+const MISSING_FIELD = FIELD.replace('border-tp-hairline', 'border-tp-severity-error').replace('focus:border-tp-primary', 'focus:border-tp-severity-error');
 const BUTTON = 'inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
 // Every visit starts clean from the default template: going to Editor from
@@ -59,6 +62,7 @@ export default function ContractEditorPage() {
 function ContractEditor() {
   const { classify, saveAnalysis } = useAnalysisApi();
   const { getContract, getContractVersion, listContractVersions } = useContractCollectionsApi();
+  const { setServicePricing } = useServicesApi();
   const [searchParams] = useSearchParams();
   const router = useRouter();
   const [versionName, setVersionName] = useState('');
@@ -109,7 +113,7 @@ function ContractEditor() {
         // Contracts saved from the editor are named "Company — Title".
         // Checked above: only a fork may come from a contract without a collection or versions.
         const content = version?.content ?? contract.content ?? '';
-        const { company: savedCompany, title: savedTitle } = splitContractName(contract.name, contract.service?.name);
+        const { company: savedCompany, title: savedTitle } = splitContractName(contract.name, contract.service?.name, contract.company);
         const savedValues = {
           // A field still in brackets in the text was left empty when the draft was saved.
           service: content.includes('[Service]') ? '' : contract.service?.name ?? '',
@@ -224,10 +228,13 @@ function ContractEditor() {
         ? 'Text changed since the analysis'
         : `${analysis.summary.unfairClauses} unfair of ${analysis.summary.totalClauses} provisions`;
 
-  // Anything can be saved. An unfinished contract can only take a minor version.
+  // The service and its company say whose Customer Agreement this is, so they are
+  // needed to save. Anything else can be unfinished: it then only takes a minor version.
   const saveBlockers = [
     ...(authUser.isAuthenticated ? [] : ['log in']),
     ...(text.trim() ? [] : ['write some text']),
+    ...(service.trim() ? [] : ['write the service']),
+    ...(company.trim() ? [] : ['write the company']),
   ];
   // On the text as it is now, not settled: Save can be pressed right after typing.
   const incomplete =
@@ -271,6 +278,22 @@ function ContractEditor() {
     router.push(`/contracts/${organizationId}/${contractSlug}?tab=versions&version=${versionId}`);
   };
 
+  // The pricing written in the document is also the Pricing entry of the service's
+  // Customer Agreement. Only owners and admins can change a service: anyone else
+  // still has the document saved, and is told why the entry did not change.
+  const publishPricing = async (serviceId: string | undefined) => {
+    const url = pricing.trim();
+    if (!serviceId || !/^https?:\/\/\S+$/i.test(url)) return;
+    try {
+      await setServicePricing(serviceId, url);
+    } catch (err: any) {
+      await customAlert(
+        `Saved. The pricing link was not added to the Customer Agreement: ${err.message || 'the service could not be changed'}.`,
+        'warning'
+      );
+    }
+  };
+
   const handleSave = async () => {
     if (saveBlockers.length) return;
     setBusy('saving');
@@ -288,6 +311,7 @@ function ContractEditor() {
         collectionId: target.collectionId,
         serviceId,
         contractId: target.contractId,
+        ...(company.trim() ? { provider: company.trim() } : {}),
         ...(target.parentVersionId ? { parentVersionId: target.parentVersionId } : {}),
         date: new Date().toISOString(),
         text,
@@ -297,6 +321,7 @@ function ContractEditor() {
         clauses: result.clauses,
         ...(versionName.trim() ? { versionName: versionName.trim() } : {}),
       });
+      await publishPricing(serviceId);
       openSavedVersion(saved.organizationId, saved.contractSlug, saved.versionId);
     } catch (err: any) {
       await customAlert(err.message || 'The agreement template could not be saved.', 'error');
@@ -382,7 +407,7 @@ function ContractEditor() {
           </div>
         </div>
         {saveBlockers.length > 0 && (
-          <p className="text-right text-xs text-tp-steel">
+          <p className="text-right text-xs font-medium text-tp-severity-error">
             To save, {saveBlockers.join(', ')}.
             {!authUser.isAuthenticated && (
               <> <Link to="/authentication" className="font-medium text-tp-primary hover:underline">Log in</Link></>
@@ -446,7 +471,8 @@ function ContractEditor() {
                   value={service}
                   onChange={(e) => changeField('service', e.target.value)}
                   placeholder="Name of the service"
-                  className={`${FIELD} w-full`}
+                  className={`${service.trim() ? FIELD : MISSING_FIELD} w-full`}
+                  aria-invalid={!service.trim()}
                 />
               ) },
               { label: 'Company', field: (
@@ -455,7 +481,8 @@ function ContractEditor() {
                   value={company}
                   onChange={(e) => changeField('company', e.target.value)}
                   placeholder="Who provides the service"
-                  className={`${FIELD} w-full`}
+                  className={`${company.trim() ? FIELD : MISSING_FIELD} w-full`}
+                  aria-invalid={!company.trim()}
                 />
               ) },
               { label: 'Title', field: (
@@ -572,6 +599,7 @@ function ContractEditor() {
                 contractSlug: saved.contractSlug,
                 contractName: contract.name,
               });
+              await publishPricing(contract.service?.id);
             } catch {
               // Saved, but the editor could not look the contract up: the next save asks again.
             }

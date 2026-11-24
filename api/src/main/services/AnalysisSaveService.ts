@@ -38,6 +38,7 @@ export interface SaveAnalysisPayload {
   url?: string;
   /** Version of `contractId` the new one was edited from, to draw it as a branch. */
   parentVersionId?: string;
+  /** Who provides the service. Kept as the contract's company; the name carries the service. */
   provider?: string;
   title?: string;
   date: string;
@@ -84,7 +85,8 @@ class AnalysisSaveService {
       ? await this._resolveExistingContract(payload.contractId, organizationId, payload.collectionId, reqUser)
       : await this.contractService.create(
           {
-            name: `${payload.provider} — ${payload.title}`,
+            name: `${service.name} — ${payload.title}`,
+            company: payload.provider?.trim() || null,
             content: payload.text,
             serviceId,
             documentType: payload.documentType ?? null,
@@ -103,6 +105,7 @@ class AnalysisSaveService {
       const changes = {
         ...(payload.documentType && contract.documentType !== payload.documentType && { documentType: payload.documentType }),
         ...(payload.url && contract.url !== payload.url && { url: payload.url }),
+        ...(payload.provider?.trim() && contract.company !== payload.provider.trim() && { company: payload.provider.trim() }),
       };
       if (Object.keys(changes).length) await this.contractRepository.update(contractId, changes);
     }
@@ -155,7 +158,8 @@ class AnalysisSaveService {
       ? await this._resolveExistingContract(payload.contractId, organizationId, payload.collectionId, reqUser)
       : await this.contractService.create(
           {
-            name: `${payload.provider} — ${payload.title}`,
+            name: `${service.name} — ${payload.title}`,
+            company: payload.provider?.trim() || null,
             content: payload.text ?? payload.report.clauses.map(c => c.clause_text).join('\n\n'),
             serviceId,
           },

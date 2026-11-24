@@ -7,6 +7,16 @@ const documentType = () =>
     .isIn(DOCUMENT_TYPES)
     .withMessage(`The documentType field must be one of: ${DOCUMENT_TYPES.join(', ')}`);
 
+// Who provides the service; null clears it.
+const company = () =>
+  check('company')
+    .optional({ values: 'null' })
+    .isString()
+    .withMessage('The company field must be a string')
+    .isLength({ max: 255 })
+    .withMessage('The company must have at most 255 characters')
+    .trim();
+
 const create = [
   check('name')
     .exists({ checkNull: true, checkFalsy: true })
@@ -40,6 +50,7 @@ const create = [
     .withMessage('The version field must be a string')
     .trim(),
   documentType(),
+  company(),
 ];
 
 const update = [
@@ -69,6 +80,7 @@ const update = [
     .withMessage('The version field must be a string')
     .trim(),
   documentType(),
+  company(),
 ];
 
 export { create, update };

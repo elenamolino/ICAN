@@ -106,6 +106,31 @@ describe('POST /api/v1/contracts/:organizationId/ai-classify/save', () => {
     expect(versions[0].summary?.totalClauses).toBe(1);
   });
 
+  it('names a new contract after its service and keeps the provider as its company', async () => {
+    const { user, organizationId, collectionId } = await setupCollection();
+    const serviceName = `FastMusic_${randomSuffix()}`;
+    const save = (body: Record<string, unknown>) =>
+      request(app)
+        .post(`${BASE_PATH}/contracts/${organizationId}/ai-classify/save`)
+        .set('Authorization', `Bearer ${user.token}`)
+        .send({ collectionId, date: '2026-01-01T00:00:00.000Z', summary: sampleSummary, clauses: sampleClauses, ...body });
+
+    const first = await save({ serviceName, contractName: 'x', provider: 'FastMusic Inc.', title: 'Service Level Agreement', text: 'Uptime of 99.9%.' });
+    expect(first.status).toBe(201);
+    const contract: any = await ContractMongoose.findOne({ slug: first.body.contractSlug });
+    contractsToDelete.add(String(contract!._id));
+    expect(contract.name).toBe(`${serviceName} — Service Level Agreement`);
+    expect(contract.company).toBe('FastMusic Inc.');
+
+    // A later version written by another company replaces it; the name stays.
+    const service: any = await ServiceMongoose.findById(contract._serviceId);
+    const second = await save({ serviceId: String(service._id), contractId: String(contract._id), provider: 'FastMusic Ltd.', text: 'Uptime of 99.95%.' });
+    expect(second.status).toBe(201);
+    const updated: any = await ContractMongoose.findById(contract._id);
+    expect(updated.company).toBe('FastMusic Ltd.');
+    expect(updated.name).toBe(`${serviceName} — Service Level Agreement`);
+  });
+
   it('reuses the existing version instead of duplicating it when the same text is saved again', async () => {
     const { user, organizationId, collectionId } = await setupCollection();
 
