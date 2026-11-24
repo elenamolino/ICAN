@@ -57,7 +57,7 @@ export default function AgreementPage() {
   const documents = [...agreement.contracts].sort(
     (a, b) => ORDER.indexOf(documentTypeOf(a)) - ORDER.indexOf(documentTypeOf(b)) || a.name.localeCompare(b.name)
   );
-  const companies = [...new Set(agreement.contracts.map((c) => splitContractName(c.name).company).filter(Boolean))];
+  const companies = [...new Set(agreement.contracts.map((c) => splitContractName(c.name, null, c.company).company).filter(Boolean))];
   const query = share ? `?share=${share}` : '';
 
   return (
@@ -112,7 +112,7 @@ export default function AgreementPage() {
                   <span className="text-tp-primary">{documentTypeLabel(type)}</span>
                   {doc.private && <span className="inline-flex items-center gap-0.5"><Iconify icon="mdi:lock-outline" width={12} />Private</span>}
                 </p>
-                <h2 className="mt-2 text-lg font-medium leading-snug text-tp-ink">{splitContractName(doc.name).title}</h2>
+                <h2 className="mt-2 text-lg font-medium leading-snug text-tp-ink">{splitContractName(doc.name, null, doc.company).title}</h2>
                 {doc.current && (
                   <p className="mt-1 text-xs text-tp-steel">
                     {doc.current.number ? `${formatVersionNumber(doc.current.number)} · ` : ''}

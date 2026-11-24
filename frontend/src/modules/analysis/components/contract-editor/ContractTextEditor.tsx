@@ -117,7 +117,7 @@ const ContractTextEditor = forwardRef<ContractTextEditorHandle, {
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        aria-label="Contract text"
+        aria-label="Agreement template text"
         spellCheck
         className="block h-full w-full resize-none bg-transparent px-4 py-3 font-mono text-[15px] leading-relaxed text-tp-ink outline-none"
       />

@@ -35,5 +35,18 @@ export function useServicesApi() {
     }
   }
 
-  return { deleteService };
+  /** Sets the link shown as the Pricing entry of the service's Customer Agreement. */
+  async function setServicePricing(serviceId: string, pricingUrl: string): Promise<void> {
+    const res = await fetchWithInterceptor(`${BASE_URL}/services/${serviceId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pricingUrl }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Failed to update the service');
+    }
+  }
+
+  return { deleteService, setServicePricing };
 }

@@ -55,7 +55,7 @@ export default function CommandPalette() {
       },
       {
         id: 'contract-editor',
-        label: 'Contract editor',
+        label: 'Agreement template editor',
         description: 'Write terms from a template and check their sections',
         shortcut: [],
         icon: FiEdit3,

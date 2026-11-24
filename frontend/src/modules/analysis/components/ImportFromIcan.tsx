@@ -69,7 +69,7 @@ export default function ImportFromIcan({ onImport }: { onImport: (contract: Impo
     setError(null);
     try {
       const version = await getContractVersion(collection.organization.id, contract.slug, versionId);
-      const { company, title } = splitContractName(contract.name, contract.service?.name);
+      const { company, title } = splitContractName(contract.name, contract.service?.name, contract.company);
       onImport({
         text: version.content ?? '',
         provider: company,

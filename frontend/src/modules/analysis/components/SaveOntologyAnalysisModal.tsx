@@ -487,7 +487,7 @@ export default function SaveOntologyAnalysisModal({ open, onClose, report, text 
                   </div>
                 </div>
                 <p className="mt-1 text-xs text-tp-steel">
-                  Will be saved as "{provider.trim() || '…'} — {title.trim() || '…'}".
+                  Will be saved as "{serviceSelection?.name || '…'} — {title.trim() || '…'}"{provider.trim() ? <>, by {provider.trim()}</> : null}.
                 </p>
               </div>
             )}

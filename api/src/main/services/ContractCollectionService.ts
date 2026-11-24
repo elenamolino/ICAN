@@ -254,6 +254,7 @@ class ContractCollectionService {
       return {
         id: String(contract._id),
         name: contract.name,
+        company: contract.company ?? null,
         slug: contract.slug,
         version: contract.version,
         documentType: contract.documentType ?? null,
@@ -315,6 +316,7 @@ class ContractCollectionService {
         return {
           id: String(c._id),
           name: c.name,
+          company: c.company ?? null,
           slug: c.slug,
           documentType: c.documentType ?? null,
           url: c.url || null,

@@ -84,6 +84,8 @@ export interface ContractServiceRef {
 export interface Contract {
   id: string;
   name: string;
+  /** Who provides the service. Null for documents saved before it was kept apart. */
+  company?: string | null;
   slug: string;
   /** Null for contracts saved before there were types. */
   documentType?: DocumentType | null;
@@ -106,7 +108,7 @@ export interface Agreement {
   collection: { name: string; slug: string; private: boolean };
   organization: ContractCollectionOrganization;
   service: { id: string; name: string; pricingUrl: string | null; pricingSourceUrl: string | null };
-  contracts: (Pick<Contract, 'id' | 'name' | 'slug' | 'documentType' | 'private' | 'latestVersionSummary' | 'url'> & {
+  contracts: (Pick<Contract, 'id' | 'name' | 'company' | 'slug' | 'documentType' | 'private' | 'latestVersionSummary' | 'url'> & {
     current: { id: string; number: string | null; name: string | null; capturedAt: string } | null;
   })[];
 }
