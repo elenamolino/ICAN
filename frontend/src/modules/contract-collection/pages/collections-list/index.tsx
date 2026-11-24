@@ -106,7 +106,7 @@ export default function CollectionsListPage() {
           className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           {collections.map((collection) => (
-            <motion.div key={collection.id} variants={fadeInUp} transition={transitionDefault}>
+            <motion.div key={collection.id} variants={fadeInUp} transition={transitionDefault} className="h-full">
               <CollectionCard collection={collection} />
             </motion.div>
           ))}

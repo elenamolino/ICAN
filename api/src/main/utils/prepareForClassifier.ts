@@ -8,6 +8,8 @@ const ATX_HEADING = /^\s{0,3}#{1,6}\s+.*$/;
 const SETEXT_UNDERLINE = /^\s{0,3}(=+|-+)\s*$/;
 const LIST_MARKER = /^\s*(?:[-*+]|\d+[.)])\s+/;
 const HORIZONTAL_RULE = /^\s{0,3}([-*_])(\s*\1){2,}\s*$/;
+const TABLE_ROW = /^\s*\|.*\|\s*$/;
+const TABLE_DIVIDER = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
 
 function inline(text: string) {
   return text
@@ -36,6 +38,14 @@ export function prepareForClassifier(text: string): string {
     if (ATX_HEADING.test(line)) return;
     if (SETEXT_UNDERLINE.test(next) && line.trim() && !LIST_MARKER.test(line)) return;
     if (SETEXT_UNDERLINE.test(line) || HORIZONTAL_RULE.test(line)) return;
+
+    // A table row is one sentence: its cells, in order. The header row only names the columns.
+    if (TABLE_ROW.test(line)) {
+      if (TABLE_DIVIDER.test(line) || TABLE_DIVIDER.test(next)) return;
+      const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(cell => inline(cell.trim())).filter(Boolean);
+      if (cells.length) out.push(closeSentence(cells.join('; ')));
+      return;
+    }
 
     if (LIST_MARKER.test(line)) {
       out.push(closeSentence(inline(line.replace(LIST_MARKER, ''))));

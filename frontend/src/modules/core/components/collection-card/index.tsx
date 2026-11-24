@@ -15,7 +15,7 @@ export default function CollectionCard({ collection }: Props) {
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
       onClick={() => router.push(`/collections/${collection.organization.id}/${collection.slug}`)}
-      className="group cursor-pointer rounded-xl border border-tp-hairline bg-tp-canvas p-4 transition-colors hover:border-tp-hairline-strong hover:shadow-elevation-2"
+      className="group h-full cursor-pointer rounded-xl border border-tp-hairline bg-tp-canvas p-4 transition-colors hover:border-tp-hairline-strong hover:shadow-elevation-2"
     >
       <div className="mb-3 flex items-center gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-tp-cream">
@@ -27,7 +27,8 @@ export default function CollectionCard({ collection }: Props) {
           <h3 className="truncate text-sm font-medium text-tp-ink group-hover:text-tp-primary">
             {collection.name}
           </h3>
-          <p className="text-[11px] text-tp-steel">
+          {/* One line, like the name: a long organization name does not make its card taller. */}
+          <p className="truncate text-[11px] text-tp-steel" title={collection.organization.displayName || collection.organization.name}>
             {collection.organization.displayName || collection.organization.name}
           </p>
         </div>

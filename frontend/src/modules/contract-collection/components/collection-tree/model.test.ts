@@ -24,4 +24,10 @@ describe('buildServiceTree', () => {
     expect(onlyPricing.agreements).toEqual([expect.objectContaining({ categories: [], pricingUrl: service.pricingUrl })]);
     expect(firstCategory([onlyPricing])).toBeNull();
   });
+
+  it('links the provider\'s pricing page when the pricing is not in SPHERE', () => {
+    const service = { id: 's', name: 'Acme', slug: 'acme', pricingUrl: null, pricingSourceUrl: 'https://acme.com/pricing' };
+    const [tree] = buildServiceTree([{ service, contracts: [] }]);
+    expect(tree.agreements[0].pricingUrl).toBe('https://acme.com/pricing');
+  });
 });

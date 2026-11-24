@@ -23,7 +23,10 @@ export interface AgreementNode {
   key: string;
   name: AgreementName;
   categories: CategoryNode[];
-  /** The pricing, a sibling of the categories: it is a page elsewhere, not a document here. */
+  /**
+   * The pricing, a sibling of the categories: it is a page elsewhere, not a document here.
+   * Its page in SPHERE, or the provider's own page when it has none in SPHERE.
+   */
   pricingUrl?: string | null;
 }
 
@@ -70,8 +73,9 @@ export function buildServiceTree(
       name: category,
       contracts: byCategory.get(category)!,
     }));
-    const agreements = categories.length || service.pricingUrl
-      ? [{ key: `${service.id}/${CUSTOMER_AGREEMENT}`, name: CUSTOMER_AGREEMENT, categories, pricingUrl: service.pricingUrl ?? null }]
+    const pricingUrl = service.pricingUrl || service.pricingSourceUrl || null;
+    const agreements = categories.length || pricingUrl
+      ? [{ key: `${service.id}/${CUSTOMER_AGREEMENT}`, name: CUSTOMER_AGREEMENT, categories, pricingUrl }]
       : [];
 
     return { service, agreements };

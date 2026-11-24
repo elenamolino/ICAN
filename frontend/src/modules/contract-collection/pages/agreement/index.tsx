@@ -51,8 +51,9 @@ export default function AgreementPage() {
     );
   }
 
-  const pricingUrl = agreement.service.pricingUrl;
-  const pricingSourceUrl = agreement.service.pricingSourceUrl;
+  // The pricing card opens SPHERE when the pricing is there, otherwise the provider's page.
+  const pricingUrl = agreement.service.pricingUrl || agreement.service.pricingSourceUrl;
+  const pricingSourceUrl = agreement.service.pricingUrl ? agreement.service.pricingSourceUrl : null;
   const documents = [...agreement.contracts].sort(
     (a, b) => ORDER.indexOf(documentTypeOf(a)) - ORDER.indexOf(documentTypeOf(b)) || a.name.localeCompare(b.name)
   );
