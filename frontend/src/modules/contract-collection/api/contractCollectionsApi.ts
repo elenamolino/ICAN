@@ -46,6 +46,8 @@ export interface CollectionServiceNode {
   name: string;
   slug: string;
   pricingUrl?: string | null;
+  /** The provider's own pricing page. */
+  pricingSourceUrl?: string | null;
   contracts: Contract[];
 }
 

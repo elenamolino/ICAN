@@ -8,6 +8,8 @@ export interface ServiceSummary {
   slug: string;
   /** Where the service's pricing is published, if it is. */
   pricingUrl?: string | null;
+  /** The provider's own pricing page. */
+  pricingSourceUrl?: string | null;
 }
 
 // Takes the caller's fetchWithInterceptor: the services of a private collection need the token.

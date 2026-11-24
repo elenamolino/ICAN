@@ -8,7 +8,9 @@
  * ORGANIZATION_ID is the organization that keeps the collection: for the course examples,
  * FIS – Fundamentos de Ingeniería del Software, so that every year's students see them.
  * The API key must belong to an owner or admin of the organization, with scope ALL on it.
- * Versions without a stored analysis are analysed by the API's classifier on the way.
+ * Versions without a stored analysis are analysed by the API's classifier on the way, or by the
+ * one at ANALYSE_URL (such as http://localhost:8080) when it is set. With REPLACE_CHANGED=1, a
+ * version already there whose text or name differs from the example's is deleted and saved again.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -42,14 +44,29 @@ interface ExampleFile {
 const base = (process.env.ICAN_URL ?? 'http://localhost:8080').replace(/\/$/, '') + '/api/v1';
 const apiKey = process.env.ICAN_API_KEY;
 const organizationId = process.env.ORGANIZATION_ID;
+// Another iCan to analyse the texts with, such as a local one, when the target's classifier is too slow for long texts.
+// With REPLACE_CHANGED=1, a version already there whose text or name is not the example's is replaced.
+const replaceChanged = process.env.REPLACE_CHANGED === '1';
+const analyseBase = process.env.ANALYSE_URL ? process.env.ANALYSE_URL.replace(/\/$/, '') + '/api/v1' : base;
 const file = process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), 'examples', 'fis-examples.json');
 
-async function call<T = any>(method: string, route: string, body?: unknown): Promise<T> {
-  const response = await fetch(base + route, {
-    method,
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey! },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+async function call<T = any>(method: string, route: string, body?: unknown, apiBase = base): Promise<T> {
+  let response: Response | undefined;
+  // A long text can keep the classifier busy past what the network waits: try again, up to three times.
+  for (let attempt = 1; !response; attempt++) {
+    try {
+      response = await fetch(apiBase + route, {
+        method,
+        // The key belongs to the target; classifying is open, so another iCan gets none.
+        headers: { 'Content-Type': 'application/json', ...(apiBase === base ? { 'x-api-key': apiKey! } : {}) },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (error: any) {
+      if (attempt === 3) throw new Error(`${method} ${route}: ${error.message}`);
+      console.log(`  ${method} ${route} failed (${error.message}), trying again`);
+      await new Promise(resolve => setTimeout(resolve, 5000 * attempt));
+    }
+  }
   const data = await response.json().catch(() => null);
   if (!response.ok) throw new Error(`${method} ${route}: ${response.status} ${JSON.stringify(data)}`);
   return data as T;
@@ -83,7 +100,24 @@ async function main() {
       const contract = contracts.find(
         (c: any) => c.name === name || (doc.url && c.url === doc.url && c.service?.name === doc.service)
       );
-      const analysis = version.analysis ?? (await call('POST', '/analysis/ai-classify', { text: version.text }));
+      // A version already there is not analysed again.
+      if (contract) {
+        const { versions } = await call('GET', `/contracts/${organizationId}/${contract.slug}/versions`);
+        const existing = versions.find((v: any) => v.number === version.number);
+        if (existing) {
+          const id = existing.id ?? existing._id;
+          const stored = replaceChanged
+            ? await call('GET', `/contracts/${organizationId}/${contract.slug}/versions/${id}`)
+            : null;
+          if (!stored || (stored.content.trim() === version.text.trim() && (stored.name ?? null) === (version.name ?? null))) {
+            console.log(`${name}: v${version.number} already there`);
+            continue;
+          }
+          await call('DELETE', `/contracts/${organizationId}/${contract.slug}/versions/${id}`);
+          console.log(`${name}: v${version.number} has a new text or name, replacing it`);
+        }
+      }
+      const analysis = version.analysis ?? (await call('POST', '/analysis/ai-classify', { text: version.text }, analyseBase));
 
       await call('POST', `/contracts/${organizationId}/ai-classify/save`, {
         collectionId,
@@ -99,6 +133,15 @@ async function main() {
         versionName: version.name,
       });
       console.log(`${name}: v${version.number} (${version.name})`);
+    }
+    // The API names a new contract "Company — Title"; the example may want another name.
+    const { contracts } = await call('GET', `/contracts/${organizationId}?collection=${collection.slug}&limit=200`);
+    const saved = contracts.find(
+      (c: any) => c.name === name || (doc.url && c.url === doc.url && c.service?.name === doc.service)
+    );
+    if (saved && saved.name !== name) {
+      await call('PUT', `/contracts/${organizationId}/${saved.slug}`, { name });
+      console.log(`${saved.name} renamed to ${name}`);
     }
   }
   const services: any[] = (await call('GET', `/services?collectionId=${collectionId}`)).services;

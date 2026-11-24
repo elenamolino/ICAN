@@ -26,6 +26,12 @@ describe('prepareForClassifier', () => {
     expect(prepareForClassifier(text)).toBe('Read the Privacy Policy. We are not liable for any loss [TBC].');
   });
 
+  it('turns each table row into a sentence and leaves out the header row', () => {
+    const text = 'Service credits:\n\n| **Uptime** | **Credit** |\n| --- | --- |\n| 99.0% <= Uptime < 99.9% | 10% |\n| Uptime < 99.0% | 25% |';
+
+    expect(prepareForClassifier(text)).toBe('Service credits:\n\n99.0% <= Uptime < 99.9%; 10%.\nUptime < 99.0%; 25%.');
+  });
+
   it('leaves plain text as it is', () => {
     const text = 'We may terminate your account at any time.\nYou can close it too.';
 
